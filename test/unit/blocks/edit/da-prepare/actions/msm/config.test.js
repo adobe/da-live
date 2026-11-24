@@ -199,11 +199,46 @@ describe('MSM config', () => {
       expect(calls[0].url).to.equal('https://api.aem.live/org/sites/h6-local/source/about.html');
     });
 
-    it('returns false when the HEAD keeps failing', async () => {
+    it('throws when the HEAD keeps failing', async () => {
       window.fetch = hlx6Fetch(['h6-fail'], () => Promise.reject(new TypeError('Failed to fetch')));
 
-      const result = await isPageLocal('org', 'h6-fail', '/about');
-      expect(result).to.be.false;
+      let error;
+      try {
+        await isPageLocal('org', 'h6-fail', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.exist;
+    });
+
+    it('throws when HEAD returns an error other than 404', async () => {
+      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 403 })));
+
+      let error;
+      try {
+        await isPageLocal('org', 'head-403', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('403');
+    });
+
+    it('throws when the site backend check fails', async () => {
+      const calls = [];
+      window.fetch = async (url, opts = {}) => {
+        if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
+        calls.push({ url, method: opts.method || 'GET' });
+        return new Response('', { status: 404 });
+      };
+
+      let error;
+      try {
+        await isPageLocal('org', 'ping-fail', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.exist;
+      expect(calls).to.have.length(0);
     });
 
     it('returns false when HEAD returns 404', async () => {
@@ -237,6 +272,24 @@ describe('MSM config', () => {
 
       const cpResult = results.find((r) => r.site === 'camp-pendleton-mccs');
       expect(cpResult.hasOverride).to.be.false;
+    });
+
+    it('rejects when a satellite cannot be checked', async () => {
+      window.fetch = hlx6Fetch([], (url) => {
+        const status = url.includes('/check-broken/') ? 500 : 404;
+        return Promise.resolve(new Response('', { status }));
+      });
+
+      let error;
+      try {
+        await checkOverrides('org', {
+          'check-ok': { label: 'OK' },
+          'check-broken': { label: 'Broken' },
+        }, '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('check-broken');
     });
 
     it('handles empty satellites', async () => {
@@ -278,6 +331,18 @@ describe('MSM config', () => {
     it('is false when the base is on Helix 6', async () => {
       window.fetch = hlx6Fetch(['inh-base3'], () => Promise.resolve(new Response('', { status: 200 })));
       expect(await inheritsFromBase('org', 'inh-base3', 'inh-sat3')).to.be.false;
+    });
+
+    it('rejects when a backend check fails, instead of guessing', async () => {
+      window.fetch = async () => { throw new TypeError('Failed to fetch'); };
+
+      let error;
+      try {
+        await inheritsFromBase('org', 'inh-base4', 'inh-sat4');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.exist;
     });
   });
 

@@ -183,6 +183,51 @@ describe('DaMsm component', () => {
       expect(el._role).to.equal('satellite');
       expect(el._baseSite).to.equal('mccs');
     });
+
+    it('shows an error with a retry when an override check fails', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-loaderr': BASE_CONFIG } });
+      const broken = async (url, opts = {}) => {
+        if (opts.method === 'HEAD' && url.includes('/san-diego/')) return new Response('', { status: 500 });
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-loaderr', site: 'mccs', path: '/about' }, broken);
+
+      expect(el._satellites).to.be.undefined;
+      const msg = el.shadowRoot.querySelector('.load-error');
+      expect(msg.textContent).to.include('san-diego');
+      expect(el.shadowRoot.querySelector('.satellite-list')).to.be.null;
+
+      window.fetch = good;
+      el.shadowRoot.querySelector('.form-actions sl-button').click();
+      await waitForLoad();
+
+      expect(el.shadowRoot.querySelector('.load-error')).to.be.null;
+      expect(el._satellites).to.have.length(2);
+    });
+
+    it('shows an error when the satellite cannot check its own page', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-saterr': BASE_CONFIG } });
+      const broken = async (url, opts = {}) => {
+        if (opts.method === 'HEAD') return new Response('', { status: 403 });
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-saterr', site: 'san-diego', path: '/about' }, broken);
+
+      expect(el._hasOverride).to.be.undefined;
+      expect(el.shadowRoot.querySelector('.load-error').textContent).to.include('403');
+    });
+
+    it('lists no satellite as inherited when the backend check fails', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-pingerr': BASE_CONFIG } });
+      const mock = async (url, opts = {}) => {
+        if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-pingerr', site: 'mccs', path: '/about' }, mock);
+
+      expect(el._satellites).to.be.undefined;
+      expect(el.shadowRoot.querySelector('.load-error')).to.exist;
+    });
   });
 
   describe('rendering — base view', () => {
@@ -772,6 +817,108 @@ describe('DaMsm component', () => {
       const sat = el._satellites.find((s) => s.site === 'san-diego');
       expect(sat.status).to.equal('error');
       expect(sat.hasOverride).to.be.false;
+    });
+  });
+
+  describe('resume inheritance after a failed status read', () => {
+    function failStatus(answer, calls) {
+      const base = createFetchMock({});
+      return async (url, opts = {}) => {
+        calls.push({ url, method: opts.method || 'GET' });
+        if (url.includes('admin.hlx.page/status/')) return answer();
+        return base(url, opts);
+      };
+    }
+
+    async function resetSanDiego(mock) {
+      await fixtureWithState(mock, {
+        satellites: makeSatellites(['san-diego']),
+        action: 'reset',
+        selected: new Set(['san-diego']),
+      });
+      await el.runAction('reset');
+      return el._satellites.find((s) => s.site === 'san-diego');
+    }
+
+    it('keeps the override when the status request is rejected', async () => {
+      const calls = [];
+      const sat = await resetSanDiego(failStatus(() => { throw new TypeError('Failed to fetch'); }, calls));
+
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('keeps the override when the status request answers 503', async () => {
+      const calls = [];
+      const sat = await resetSanDiego(failStatus(() => new Response('', { status: 503 }), calls));
+
+      expect(sat.status).to.equal('error');
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('keeps the override when the status names a rendition it could not read', async () => {
+      const calls = [];
+      const body = JSON.stringify({ preview: { status: 200 }, live: { status: 403 } });
+      const sat = await resetSanDiego(failStatus(() => new Response(body, { status: 200 }), calls));
+
+      expect(sat.status).to.equal('error');
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('keeps the satellite page when its status answers 403', async () => {
+      const calls = [];
+      await fixtureWithState(failStatus(() => new Response('', { status: 403 }), calls), {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: true,
+        details: { org: 'test', site: 'san-diego', path: '/about' },
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+
+      expect(el._satStatus).to.equal('error');
+      expect(el._hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('keeps the satellite page when its status request is rejected', async () => {
+      const calls = [];
+      await fixtureWithState(failStatus(() => { throw new TypeError('Failed to fetch'); }, calls), {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: true,
+        details: { org: 'test', site: 'san-diego', path: '/about' },
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+
+      expect(el._satStatus).to.equal('error');
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+  });
+
+  describe('a failed backend check', () => {
+    it('cancels no inheritance and writes nothing', async () => {
+      const calls = [];
+      const base = createFetchMock({});
+      const mock = async (url, opts = {}) => {
+        if (url.startsWith(PING) && url.includes('/ping-sat')) throw new TypeError('Failed to fetch');
+        calls.push({ url, method: opts.method || 'GET' });
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        satellites: [{ site: 'ping-sat', label: 'Ping', hasOverride: false }],
+        action: 'break',
+        selected: new Set(['ping-sat']),
+      });
+
+      await el.runAction('break');
+
+      const sat = el._satellites.find((s) => s.site === 'ping-sat');
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.false;
+      expect(calls.some((c) => ['PUT', 'POST', 'DELETE'].includes(c.method))).to.be.false;
     });
   });
 

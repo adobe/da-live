@@ -167,12 +167,45 @@ describe('MSM utils', () => {
       expect(status.live).to.be.false;
     });
 
-    it('returns false for both when fetch fails', async () => {
+    it('throws when the status request fails', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
 
-      const status = await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
-      expect(status.preview).to.be.false;
-      expect(status.live).to.be.false;
+      let error;
+      try {
+        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('500');
+    });
+
+    it('throws when the status request keeps failing', async () => {
+      window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+
+      let error;
+      try {
+        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('Failed to fetch');
+    });
+
+    it('throws when a rendition reports neither 200 nor 404', async () => {
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({
+          preview: { status: 200 },
+          live: { status: 403 },
+        }), { status: 200 }),
+      );
+
+      let error;
+      try {
+        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('san-diego-mccs');
     });
 
     it('strips .html from the path', async () => {
