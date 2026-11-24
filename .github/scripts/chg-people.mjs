@@ -2,17 +2,17 @@
  * Resolves the change coordinator and approvers for the iPaaS change request
  * (@adobe/semantic-release-ipaas-chg) from the PRs in the upcoming release.
  *
- * - coordinator: the mapped author of the newest PR, else the default coordinator
+ * - coordinator: always the default coordinator ("_coordinator")
  * - approvers:   the mapped approving reviewers of all PRs, else the default approvers
  *
  * Everything comes from one secret, DA_CHG_LDAP_MAP:
  *   {
- *     "_coordinator": "ldap",             // default coordinator
+ *     "_coordinator": "ldap",             // coordinator (always)
  *     "_approvers": ["ldap1", "ldap2"],    // default approvers
  *     "githubLogin": "ldap", ...           // GitHub login -> Adobe LDAP id
  *   }
  * Keys starting with "_" can never be GitHub logins (letters, digits, hyphens only).
- * Unmapped people (e.g. external contributors) are skipped.
+ * Unmapped approvers (e.g. external contributors) are skipped.
  * Results are written as IPAAS_COORDINATOR / IPAAS_APPROVED_BY to $GITHUB_ENV, which
  * overrides the values from the shared Helix secret. Every LDAP id is masked, because
  * the Actions logs of this public repo are public.
@@ -70,7 +70,7 @@ export function parseConfig(raw) {
 export function resolvePeople({ prs, map, defaults }) {
   const lookup = (login) => map[login?.toLowerCase()];
 
-  const coordinator = lookup(prs[0]?.author) || defaults.coordinator || undefined;
+  const coordinator = defaults.coordinator || undefined;
 
   const notCoordinator = (ldap) => ldap !== coordinator;
   const mapped = [...new Set(prs.flatMap((pr) => pr.approvers).map(lookup).filter(Boolean))]
@@ -123,7 +123,7 @@ async function github(path) {
   return resp.json();
 }
 
-// Merged PRs for the release commits, newest first, each with author and approvers.
+// Merged PRs for the release commits, newest first, each with its approvers.
 async function releasePRs(repo, base) {
   const seen = new Set();
   const prs = [];
@@ -133,7 +133,7 @@ async function releasePRs(repo, base) {
       if (pr.merged_at && pr.base.ref === base && !seen.has(pr.number)) {
         seen.add(pr.number);
         const reviews = await github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`);
-        prs.push({ number: pr.number, author: pr.user.login, approvers: latestApprovers(reviews) });
+        prs.push({ number: pr.number, approvers: latestApprovers(reviews) });
       }
     }
   }
