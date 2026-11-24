@@ -63,6 +63,24 @@ describe('comparison plugin protocol', () => {
     expect(request.resolve).to.equal(undefined);
   });
 
+  it('routes explicit source operands without allowing message context or HTML overrides', async () => {
+    const received = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe(resolve);
+    });
+    const details = {
+      candidate: '/candidate/site/.da/page.html',
+      baseline: '/baseline/site/page',
+    };
+    clientPort.postMessage({
+      action: 'openComparison',
+      details: { ...details, org: 'other', path: '/other', html: '<script>bad</script>' },
+    });
+    const request = await received;
+    expect(request.details).to.deep.equal(details);
+    expect(request.context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
+    expect(request.resolve).to.equal(undefined);
+  });
+
   it('ignores invalid comparison inputs before routing a valid fire-and-forget close', async () => {
     const requests = [];
     const closed = new Promise((resolve) => {
@@ -72,6 +90,10 @@ describe('comparison plugin protocol', () => {
       });
     });
     clientPort.postMessage({ action: 'openComparison', details: { candidate: 'url', baseline: 'live' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'proposal', baseline: 'live', proposedPath: '/example/site/.da/proposals/page.html' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'proposal', baseline: 'source', proposedPath: '/example/site/.da/proposals/page.html' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: '/org/site/../page', baseline: '/org/site/page' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: '/org/site/page', baseline: '//org/site/page' } });
     clientPort.postMessage({ action: 'closeComparison' });
     const request = await closed;
     expect(requests).to.have.length(1);
