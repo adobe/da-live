@@ -368,7 +368,7 @@ export function initPage(el) {
   if (!document.adoptedStyleSheets.includes(sheet)) {
     document.adoptedStyleSheets.push(sheet);
   }
-  el.closest('.block-content, .section')?.classList.add('start-page');
+  (el.closest('.section') ?? el.closest('.block-content'))?.classList.add('start-page');
 }
 
 export default function init(el) {

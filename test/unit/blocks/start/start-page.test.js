@@ -66,6 +66,26 @@ describe('authored Start page', () => {
     expect(surface.classList.contains('start-page')).to.be.true;
   });
 
+  it('scopes the layout to the section when authored blocks have separate wrappers', () => {
+    surface.className = 'section';
+    surface.innerHTML = `<div class="block-content">
+      <div class="start"><div><div></div></div></div>
+      <da-greeting class="greeting">Welcome</da-greeting>
+      <div class="add-site">Add a site</div>
+    </div>
+    <div class="default-content"><h4>Need to create a site?</h4></div>
+    <div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+    entry = surface.querySelector('div.start');
+    const wrappers = [...surface.children];
+    init(entry);
+
+    expect(surface.classList.contains('start-page')).to.be.true;
+    expect(entry.parentElement.classList.contains('start-page')).to.be.false;
+    expect([...surface.children]).to.deep.equal(wrappers);
+    expect(entry.hidden).to.be.true;
+    expect(surface.querySelector('.nx-cards.start')).to.exist;
+  });
+
   it('adopts the Start stylesheet only once', () => {
     init(entry);
     const sheets = [...document.adoptedStyleSheets];

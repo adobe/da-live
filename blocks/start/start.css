@@ -301,12 +301,14 @@
   justify-content: safe center;
   width: 100%;
   max-width: 1116px;
+  height: max-content;
   min-height: 100%;
   margin-inline: auto;
   padding: var(--s2-spacing-400);
 }
 
-.start-page > * {
+.start-page > *,
+.start-page > .block-content > * {
   box-sizing: border-box;
   flex-shrink: 0;
   width: 100%;
@@ -314,7 +316,25 @@
   margin-inline: auto;
 }
 
-.start-page > .nx-cards.start {
+.start-page > .block-content {
+  display: contents;
+}
+
+.start-page > .default-content {
+  max-width: 664px;
+  margin-block-start: var(--s2-spacing-300);
+  text-align: center;
+
+  h4 {
+    margin-block: 0;
+  }
+
+  p:last-child {
+    margin-block-end: 0;
+  }
+}
+
+.start-page .nx-cards.start {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   margin-inline: auto;
   margin-block-start: var(--s2-spacing-300);
@@ -324,7 +344,7 @@
   box-shadow: var(--s2-drop-shadow-emphasized);
 }
 
-.start-page > .greeting {
+.start-page .greeting {
   display: block;
   max-width: none;
   margin-block-end: var(--s2-spacing-600);
