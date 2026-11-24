@@ -9,19 +9,100 @@ describe('recent files', () => {
     localStorage.removeItem('da-recent-files');
   });
 
-  it('keeps the newest opened file first without duplicates', () => {
+  it('timestamps each opening, refreshing even the newest file without duplicates', () => {
+    const now = sinon.stub(Date, 'now').returns(1000);
     addRecentFile('/org/site/a.html');
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))['/org/site']).to.deep.equal([
+      { path: '/org/site/a.html', timestamp: 1000 },
+    ]);
+    now.returns(2000);
     addRecentFile('/org/site/de/b.html');
+    now.returns(3000);
     addRecentFile('/org/site/a.html');
     expect(getRecentFiles('/org/site')).to.deep.equal(['/org/site/a.html', '/org/site/de/b.html']);
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))['/org/site']).to.deep.equal([
+      { path: '/org/site/a.html', timestamp: 3000 },
+      { path: '/org/site/de/b.html', timestamp: 2000 },
+    ]);
+    now.returns(4000);
+    addRecentFile('/org/site/a.html');
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))['/org/site']).to.deep.equal([
+      { path: '/org/site/a.html', timestamp: 4000 },
+      { path: '/org/site/de/b.html', timestamp: 2000 },
+    ]);
+  });
+
+  it('reads legacy and mixed entries as paths without rewriting or timestamping history', () => {
+    const stored = JSON.stringify({
+      '/org/legacy': ['/org/legacy/a.html', '/org/legacy/b.html'],
+      '/org/site': [
+        '/org/site/a.html',
+        { path: '/org/site/b.html', timestamp: 1000 },
+        '/org/site/c.html',
+        null, 42, {}, { path: 42 },
+      ],
+    });
+    localStorage.setItem('da-recent-files', stored);
+    expect(getRecentFiles('/org/legacy')).to.deep.equal(['/org/legacy/a.html', '/org/legacy/b.html']);
+    expect(getRecentFiles('/org/site')).to.deep.equal([
+      '/org/site/a.html', '/org/site/b.html', '/org/site/c.html',
+    ]);
+    expect(getRecentFiles('/org/missing')).to.deep.equal([]);
+    expect(localStorage.getItem('da-recent-files')).to.equal(stored);
+  });
+
+  it('converts only the reopened legacy path and deduplicates both entry formats', () => {
+    sinon.stub(Date, 'now').returns(2000);
+    localStorage.setItem('da-recent-files', JSON.stringify({
+      '/org/site': [
+        '/org/site/a.html',
+        { path: '/org/site/b.html', timestamp: 1000 },
+        '/org/site/c.html',
+        { path: '/org/site/a.html', timestamp: 500 },
+        null, 42, {},
+      ],
+      '/org/other': ['/org/other/legacy.html'],
+    }));
+    addRecentFile('/org/site/a.html');
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))).to.deep.equal({
+      '/org/site': [
+        { path: '/org/site/a.html', timestamp: 2000 },
+        { path: '/org/site/b.html', timestamp: 1000 },
+        '/org/site/c.html',
+      ],
+      '/org/other': ['/org/other/legacy.html'],
+    });
+    expect(getRecentFiles('/org/site')).to.deep.equal([
+      '/org/site/a.html', '/org/site/b.html', '/org/site/c.html',
+    ]);
   });
 
   it('keeps 18 files per site and separates sites', () => {
+    sinon.stub(Date, 'now').returns(1000);
     Array.from({ length: 20 }, (_, i) => addRecentFile(`/org/site/${i}.html`));
     addRecentFile('/org/other/a.json');
-    expect(getRecentFiles('/org/site')).to.have.length(18);
-    expect(getRecentFiles('/org/site')[0]).to.equal('/org/site/19.html');
+    expect(getRecentFiles('/org/site')).to.deep.equal(
+      Array.from({ length: 18 }, (_, i) => `/org/site/${19 - i}.html`),
+    );
     expect(getRecentFiles('/org/other')).to.deep.equal(['/org/other/a.json']);
+    const stored = JSON.parse(localStorage.getItem('da-recent-files'));
+    expect(stored['/org/site']).to.have.length(18);
+    expect(stored['/org/site'].every((entry) => entry.timestamp === 1000)).to.equal(true);
+    expect(stored['/org/other']).to.deep.equal([{ path: '/org/other/a.json', timestamp: 1000 }]);
+  });
+
+  it('applies the cap to mixed history without converting unopened legacy entries', () => {
+    const history = Array.from({ length: 18 }, (_, i) => (i % 2
+      ? { path: `/org/site/${i}.html`, timestamp: i } : `/org/site/${i}.html`));
+    localStorage.setItem('da-recent-files', JSON.stringify({ '/org/site': history }));
+    sinon.stub(Date, 'now').returns(2000);
+    addRecentFile('/org/site/new.html');
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))['/org/site']).to.deep.equal([
+      { path: '/org/site/new.html', timestamp: 2000 }, ...history.slice(0, 17),
+    ]);
+    expect(getRecentFiles('/org/site')).to.deep.equal([
+      '/org/site/new.html', ...Array.from({ length: 17 }, (_, i) => `/org/site/${i}.html`),
+    ]);
   });
 
   it('ignores non-string and incomplete file paths', () => {

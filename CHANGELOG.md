@@ -1,3 +1,17 @@
+# [1.36.0](https://github.com/adobe/da-live/compare/v1.35.0...v1.36.0) (2026-11-24)
+
+
+### Features
+
+* link the config editor from the settings menu ([#1778](https://github.com/adobe/da-live/issues/1778)) ([6ee13df](https://github.com/adobe/da-live/commit/6ee13df2ad26d3bb77265cbaa4c06635b2fb6f3b))
+
+# [1.35.0](https://github.com/adobe/da-live/compare/v1.34.0...v1.35.0) (2026-11-24)
+
+
+### Features
+
+* add tiles on landing ([#1777](https://github.com/adobe/da-live/issues/1777)) ([d2698e0](https://github.com/adobe/da-live/commit/d2698e010da7763eaa80dec921fba9ce2659682d))
+
 # [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
 
 
