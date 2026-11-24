@@ -19,7 +19,8 @@ describe('da-unpublish', () => {
 
     try {
       await el.updateComplete;
-      const input = el.shadowRoot.querySelector('sl-input');
+      const input = el.shadowRoot.querySelector('input.nx-input');
+      const error = el.shadowRoot.querySelector('#confirm-error');
       const button = el.shadowRoot.querySelector('sl-button');
       const typeInto = async (value) => {
         input.value = value;
@@ -28,32 +29,34 @@ describe('da-unpublish', () => {
       };
 
       expect(button.hasAttribute('disabled')).to.equal(true);
-      expect(input.error).to.equal('');
+      expect(error.textContent).to.equal('');
       expect(input.getAttribute('aria-invalid')).to.equal('false');
 
       await typeInto('yes');
       expect(input.value).to.equal('yes');
       expect(button.hasAttribute('disabled')).to.equal(true);
       expect(input.getAttribute('aria-invalid')).to.equal('true');
-      expect(input.error).to.equal('Type YES in uppercase.');
-      expect(input.getAttribute('aria-description')).to.equal(input.error);
+      expect(error.textContent).to.equal('Type YES in uppercase.');
+      expect(input.getAttribute('aria-describedby')).to.equal(error.id);
+      expect(input.closest('.nx-field-error')).to.not.equal(null);
 
       await typeInto('YE');
       expect(button.hasAttribute('disabled')).to.equal(true);
       expect(input.getAttribute('aria-invalid')).to.equal('false');
-      expect(input.hasAttribute('aria-description')).to.equal(false);
-      expect(input.error).to.equal('');
+      expect(input.hasAttribute('aria-describedby')).to.equal(false);
+      expect(error.textContent).to.equal('');
 
       await typeInto('YES');
       expect(button.hasAttribute('disabled')).to.equal(false);
       expect(input.getAttribute('aria-invalid')).to.equal('false');
-      expect(input.hasAttribute('aria-description')).to.equal(false);
-      expect(input.error).to.equal('');
+      expect(input.hasAttribute('aria-describedby')).to.equal(false);
+      expect(error.textContent).to.equal('');
+      expect(input.closest('.nx-field-error')).to.equal(null);
 
       await typeInto('');
       expect(button.hasAttribute('disabled')).to.equal(true);
       expect(input.getAttribute('aria-invalid')).to.equal('false');
-      expect(input.error).to.equal('');
+      expect(error.textContent).to.equal('');
     } finally {
       el.remove();
     }
