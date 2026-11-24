@@ -302,4 +302,30 @@ describe('diff-actions addToHashMetadata without a global view', () => {
       initDaMetadata(null);
     }
   });
+
+  it('Adds to a key stored in another case instead of starting a second one', async () => {
+    const { getSchema } = await import('da-parser');
+    const { initDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
+    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
+    const storage = new Map([['rejectedhashes', 'aaaaaaaaaaaa']]);
+    initDaMetadata({
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      [Symbol.iterator]: () => storage.entries(),
+    });
+    try {
+      const node = getSchema().nodeFromJSON({
+        type: 'diff_deleted',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'source text' }] }],
+      });
+      await addToHashMetadata(node, REJECTED_KEY);
+      expect([...storage.keys()]).to.deep.equal(['rejectedhashes']);
+      const hashes = storage.get('rejectedhashes').split(',');
+      expect(hashes).to.have.length(2);
+      expect(hashes[0]).to.equal('aaaaaaaaaaaa');
+    } finally {
+      initDaMetadata(null);
+    }
+  });
 });

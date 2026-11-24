@@ -105,10 +105,12 @@ export const addToHashMetadata = async (node, mdKey) => {
   const html = nodeToHtml(node);
   if (!html) return;
   const hash = await objHash(html);
-  const hashStr = getDaMetadata(mdKey);
+  const key = Object.keys(getDaMetadata())
+    .find((name) => name.toLowerCase() === mdKey.toLowerCase()) ?? mdKey;
+  const hashStr = getDaMetadata(key);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
   hashes.add(hash);
-  setDaMetadata(mdKey, Array.from(hashes).join(','));
+  setDaMetadata(key, Array.from(hashes).join(','));
 };
 
 function createCompositeButton({
