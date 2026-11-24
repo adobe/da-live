@@ -33,7 +33,7 @@ describe('Browse Content opt-in', () => {
   });
 
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
-    await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
+    await import('../../../../blocks/browse/da-browse/da-browse.js');
     const { href } = window.location;
     const ordinary = document.createElement('div');
     const browse = document.createElement('da-browse');
@@ -45,10 +45,7 @@ describe('Browse Content opt-in', () => {
       ok: true,
       items: [{ name: 'page', path: `${fullpath}/page.html`, ext: 'html' }],
     }));
-    const configs = sinon.stub(config, 'get').resolves({
-      ok: true,
-      json: async () => ({ data: [], flags: { data: [{ key: 'browseV1', value: 'true' }] } }),
-    });
+    const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
     const fetch = sinon.stub(window, 'fetch').resolves(new Response('{}'));
     const observers = [];
     const whenMounted = (selector, root = ordinary) => new Promise((resolve) => {
@@ -67,7 +64,6 @@ describe('Browse Content opt-in', () => {
     try {
       const url = new URL(href);
       url.searchParams.set('landing', 'true');
-      url.searchParams.set('browse', '1');
       url.hash = '/org/site';
       window.history.replaceState(null, '', url);
       hashChange._set(details);

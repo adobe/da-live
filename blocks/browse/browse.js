@@ -63,7 +63,7 @@ async function loadComponent(el, cmpName, pathDetails, surface, greeting) {
   if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
   else {
     useV2Nav();
-    await import('./v2/da-browse/da-browse.js');
+    await import('./da-browse/da-browse.js');
   }
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;

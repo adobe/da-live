@@ -3,10 +3,10 @@ import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { createGreeting } from '../greeting/greeting.js';
 import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
-import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
+import { getBrowseSettings, updateBrowseSettings } from '../browse/shared/settings.js';
 import { getRecentFiles } from '../shared/recent-files.js';
 import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
-import '../browse/v2/da-list/da-list.js';
+import '../browse/da-browse/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
