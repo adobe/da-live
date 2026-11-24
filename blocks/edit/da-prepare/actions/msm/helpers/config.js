@@ -1,4 +1,5 @@
-import { fetchDaConfigs } from '../../../../../shared/utils.js';
+import { DA_ORIGIN } from '../../../../../shared/constants.js';
+import { daFetch, fetchDaConfigs } from '../../../../../shared/utils.js';
 import { getNx2Api } from '../../../../../../scripts/utils.js';
 import paced from './pace.js';
 
@@ -69,12 +70,23 @@ export async function getBaseSite(org, satellite) {
   return null;
 }
 
+// Legacy DA source calls go to the editor's DA origin, which Merge and the
+// editor use too. nx2 picks its own DA_ADMIN, which differs on da.page and on
+// branch hosts.
+export function legacySource(org, site, path, opts = {}) {
+  return daFetch(`${DA_ORIGIN}/source/${org}/${site}${path}`, { ...opts, noRedirect: true });
+}
+
 // Only a 404 means the satellite has no page of its own. Any other failure
 // throws: reading it as "inherited" would offer Cancel inheritance, which
 // overwrites the page.
 export async function isPageLocal(org, site, pagePath) {
-  const { source } = await getNx2Api();
-  const resp = await paced(() => source.getMetadata({ org, site, path: `${pagePath}.html` }));
+  const { isHlx6, source } = await getNx2Api();
+  const path = `${pagePath}.html`;
+  const head = await isHlx6(org, site)
+    ? () => source.getMetadata({ org, site, path })
+    : () => legacySource(org, site, path, { method: 'HEAD' });
+  const resp = await paced(head);
   if (resp?.status === 404) return false;
   if (!resp?.ok) throw new Error(`Could not check the page on ${site} (${resp?.status ?? 0})`);
   return true;

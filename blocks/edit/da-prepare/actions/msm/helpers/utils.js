@@ -1,6 +1,7 @@
-import { getNx, getNx2Api } from '../../../../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../../shared/constants.js';
 import { daFetch } from '../../../../../shared/utils.js';
+import { legacySource } from './config.js';
 import paced from './pace.js';
 
 async function call(task, fallback) {
@@ -31,12 +32,41 @@ export function publishSatellite(org, satellite, pagePath) {
 }
 
 export async function createOverride(org, base, satellite, pagePath) {
-  const { source } = await getNx2Api();
+  const path = `${pagePath}.html`;
+  const { isHlx6, source } = await getNx2Api();
+  const [baseHlx6, satelliteHlx6] = await Promise.all([
+    isHlx6(org, base),
+    isHlx6(org, satellite),
+  ]);
+
+  // DA admin's /copy answers 204 even when the source is missing or the write
+  // fails, so a legacy pair reads and writes the page itself.
+  if (!baseHlx6 && !satelliteHlx6) {
+    const read = await call(() => legacySource(org, base, path), 'Failed to fetch base content');
+    if (read.error) return read;
+    const body = new FormData();
+    body.append('data', new Blob([await read.resp.text()], { type: 'text/html' }));
+    const save = await call(
+      () => legacySource(org, satellite, path, { method: 'PUT', body }),
+      'Failed to create override',
+    );
+    return save.error ? save : { ok: true };
+  }
+
+  // nx2 reads or writes the legacy side of a mixed pair in its own DA
+  // environment, so the copy only runs when that is the editor's too.
+  if (baseHlx6 !== satelliteHlx6) {
+    const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
+    if (DA_ADMIN !== DA_ORIGIN) {
+      return { error: `Can't copy between a Helix 6 and a DA site in this DA environment (${DA_ORIGIN}, nx2 uses ${DA_ADMIN})` };
+    }
+  }
+
   const result = await call(() => source.copy({
     org,
     site: base,
-    path: `${pagePath}.html`,
-    destination: `/${org}/${satellite}${pagePath}.html`,
+    path,
+    destination: `/${org}/${satellite}${path}`,
   }), 'Failed to create override');
   return result.error ? result : { ok: true };
 }
@@ -59,11 +89,12 @@ export async function getSatellitePageStatus(org, satellite, pagePath) {
 }
 
 export async function deleteOverride(org, satellite, pagePath) {
-  const { source } = await getNx2Api();
-  const result = await call(
-    () => source.delete({ org, site: satellite, path: `${pagePath}.html` }),
-    'Failed to delete override',
-  );
+  const { isHlx6, source } = await getNx2Api();
+  const path = `${pagePath}.html`;
+  const remove = await isHlx6(org, satellite)
+    ? () => source.delete({ org, site: satellite, path })
+    : () => legacySource(org, satellite, path, { method: 'DELETE' });
+  const result = await call(remove, 'Failed to delete override');
   return result.error ? result : { ok: true };
 }
 
