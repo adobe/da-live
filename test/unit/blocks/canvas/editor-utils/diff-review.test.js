@@ -21,7 +21,7 @@ const GROUPED = `<body><header></header><main><div>
 <da-diff-deleted data-mdast="ignore" data-diff-group="g1" data-diff-side="source" data-diff-kind="changed" data-diff-reason="both-changed"><p>Alpha source</p><p>Yankee source</p></da-diff-deleted>
 <p da-diff-added="" data-diff-group="g1" data-diff-side="local" data-diff-kind="changed">Alpha local</p>
 <ul><li>One</li><li><da-diff-deleted data-mdast="ignore" data-diff-group="g2" data-diff-side="source" data-diff-kind="changed" data-diff-reason="differs">Two source</da-diff-deleted></li><li><da-diff-added data-diff-group="g2" data-diff-side="local" data-diff-kind="changed">Two local</da-diff-added></li><li>Three</li></ul>
-<da-diff-deleted data-mdast="ignore" data-diff-group="g3" data-diff-side="source" data-diff-kind="removed" data-diff-reason="both-changed"><p>Charlie source</p></da-diff-deleted>
+<da-diff-deleted data-mdast="ignore" data-diff-group="g3" data-diff-side="source" data-diff-kind="added" data-diff-reason="both-changed"><p>Charlie source</p></da-diff-deleted>
 <da-diff-deleted data-mdast="ignore"><p>Legacy source</p></da-diff-deleted>
 <p>Delta</p>
 </div></main><footer></footer></body>`;
@@ -71,7 +71,7 @@ describe('diff-review', () => {
     expect(g1.preview.base).to.equal('Alpha base');
     expect(g2.sides).to.deep.equal(['source', 'local']);
     expect(g2.preview).to.deep.equal({ source: 'Two source', local: 'Two local' });
-    expect(g3.kinds).to.deep.equal(['removed']);
+    expect(g3.kinds).to.deep.equal(['added']);
     expect(g3.sides).to.deep.equal(['source']);
     expect(summary.legacy).to.equal(false);
   });
@@ -119,7 +119,7 @@ describe('diff-review', () => {
     expect(main.querySelector('li[da-diff-added]')).to.equal(null);
   });
 
-  it('take source on a one-sided removed group keeps the source unit', () => {
+  it('take source on a one-sided both-changed group keeps the source unit', () => {
     resolveGroup(editor.view, 'g3', CHOICE.source);
     const main = mainOf(editor.view);
     expect(texts(main, ':scope > div > p')).to.include('Charlie source');

@@ -20,8 +20,8 @@ function el(tag, className, text) {
   return node;
 }
 
-export function groupTitle({ sides = [], kinds = [] }) {
-  const removed = kinds.includes('removed');
+export function groupTitle({ sides = [], reason = null }) {
+  const removed = reason === 'both-changed';
   if (sides.length > 1) return 'Source changed this · You changed this';
   if (sides[0] === 'source') return removed ? 'Source changed this · You removed it' : 'Source added this';
   if (sides[0] === 'local') return removed ? 'You changed this · Source removed it' : 'You added this';
@@ -82,7 +82,7 @@ class GroupCardView {
     const header = el('div', 'diff-group-header');
     this.titleEl = el('p', 'diff-group-title', groupTitle({
       sides: ['source', 'local'].filter((s) => markers.some(({ side }) => side === s)),
-      kinds: markers.map(({ node }) => node.attrs.diffKind).filter(Boolean),
+      reason: markers.map(({ node }) => node.attrs.diffReason).find(Boolean) ?? null,
     }));
     this.reasonEl = el('p', 'diff-group-reason');
     header.append(this.titleEl, this.reasonEl);

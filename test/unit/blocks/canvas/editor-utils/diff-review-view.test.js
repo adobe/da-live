@@ -17,7 +17,7 @@ const PAGE = `<body><header></header><main><div>
 <da-diff-deleted data-mdast="ignore" data-diff-group="g1" data-diff-side="source" data-diff-kind="changed" data-diff-reason="both-changed"><p>Alpha source</p><p>Yankee source</p></da-diff-deleted>
 <p da-diff-added="" data-diff-group="g1" data-diff-side="local" data-diff-kind="changed">Alpha local</p>
 <ul><li><da-diff-deleted data-mdast="ignore" data-diff-group="g2" data-diff-side="source" data-diff-kind="changed" data-diff-reason="differs">Two source</da-diff-deleted></li><li><da-diff-added data-diff-group="g2" data-diff-side="local" data-diff-kind="changed">Two local</da-diff-added></li></ul>
-<p da-diff-added="" data-diff-group="g3" data-diff-side="local" data-diff-kind="removed" data-diff-reason="both-changed">Charlie local</p>
+<p da-diff-added="" data-diff-group="g3" data-diff-side="local" data-diff-kind="added" data-diff-reason="both-changed">Charlie local</p>
 <da-diff-deleted data-mdast="ignore"><p>Legacy source</p></da-diff-deleted>
 <p>Delta</p>
 </div></main><footer></footer></body>`;
@@ -55,8 +55,8 @@ describe('diff-review-view', () => {
       expect(groupTitle({ sides: ['source', 'local'], kinds: ['changed'] })).to.equal('Source changed this · You changed this');
       expect(groupTitle({ sides: ['source'], kinds: ['added'] })).to.equal('Source added this');
       expect(groupTitle({ sides: ['local'], kinds: ['added'] })).to.equal('You added this');
-      expect(groupTitle({ sides: ['source'], kinds: ['removed'] })).to.equal('Source changed this · You removed it');
-      expect(groupTitle({ sides: ['local'], kinds: ['removed'] })).to.equal('You changed this · Source removed it');
+      expect(groupTitle({ sides: ['source'], kinds: ['added'], reason: 'both-changed' })).to.equal('Source changed this · You removed it');
+      expect(groupTitle({ sides: ['local'], kinds: ['added'], reason: 'both-changed' })).to.equal('You changed this · Source removed it');
     });
 
     it('gives plain words for each reason code', () => {
