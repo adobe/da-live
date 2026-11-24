@@ -224,6 +224,23 @@
   gap: var(--s2-spacing-100);
 }
 
+.config-icon-preview {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.config-icon-preview img {
+  object-fit: contain;
+}
+
+.config-icon-unavailable {
+  max-width: 12ch;
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+  font-weight: normal;
+}
+
 /* Names stay on one line; other values (full URLs included) wrap within a readable width. */
 .config-table-name-text {
   white-space: nowrap;
@@ -421,6 +438,36 @@
   color: var(--s2-gray-700);
   font-size: var(--s2-component-m-regular-font-size);
   line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-library-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  border: 1px solid var(--s2-gray-200);
+  box-shadow: inset 3px 0 0 var(--s2-blue-800);
+}
+
+.config-library-notice-text {
+  flex: 1 1 24rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.config-library-notice p {
+  margin: 0;
+}
+
+.config-library-notice .config-library-notice-title {
+  margin-block-end: var(--s2-spacing-75);
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-heading-font-weight);
+}
+
+.config-library-notice button {
+  flex: none;
 }
 
 /* A note with inline actions: setup callouts and the org form. */

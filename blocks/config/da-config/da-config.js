@@ -382,7 +382,8 @@ class DaConfig extends LitElement {
 
   async _onSetupLibrary() {
     const { store } = this._ctx;
-    const setup = (org, site) => setupLibrary(org, site, store);
+    const existingPath = this._file?.status === 'ok' ? this._file.path : null;
+    const setup = (org, site) => setupLibrary(org, site, { ...store, existingPath });
     const done = await this._write(setup, SHELL.setupLibraryFailed);
     if (done) this._load();
   }
@@ -414,7 +415,7 @@ class DaConfig extends LitElement {
     const opts = {
       org: this.org,
       site: this.site,
-      locked: this._locked,
+      locked: this._locked || !!this._edit?.dirty,
       onSetup: () => this._onSetupLibrary(),
     };
     return store.type === 'library'
@@ -459,6 +460,8 @@ class DaConfig extends LitElement {
   _renderRows({ panel }, { list }) {
     const onImport = () => this._onImportOpen();
     const handlers = {
+      org: this.org,
+      site: this.site,
       disabled: this._locked,
       actions: panel.importable ? renderImportButton(list.dirty, onImport) : nothing,
       onAdd: () => this._onRowAdd(),

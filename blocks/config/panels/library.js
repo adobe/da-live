@@ -2,6 +2,8 @@
 // registered by a `library` config row (see sections.js) and lists its items in a content sheet
 // of the site, read by the editor (blocks/canvas/ew-panel-extensions) from its first tab.
 
+import { html, nothing, repeat } from 'da-lit';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { all, validator, required, urlOrPath } from '../editors/validators.js';
 import { VALIDATION } from '../messages.js';
 
@@ -39,6 +41,30 @@ export const validateIcon = validator({
 });
 
 export const validatePlaceholder = validator({ Key: required(VALIDATION.key) });
+
+function iconPreview(row, { org, site }) {
+  const value = String(row.icon ?? '').trim();
+  if (!value) return nothing;
+  const src = toPreviewProxyUrl(value, { org, site, currentOrg: org });
+  return repeat([src], (url) => url, (url) => html`
+    <span class="config-icon-preview">
+      <img src=${url} alt="" width="24" height="24"
+        @error=${async ({ target }) => {
+    target.hidden = true;
+    target.nextElementSibling.hidden = false;
+    if (target.dataset.retried) return;
+    target.dataset.retried = 'true';
+    const ready = await ensurePreviewProxySession(url, { org, site, currentOrg: org });
+    if (ready) {
+      target.hidden = false;
+      target.nextElementSibling.hidden = true;
+      target.src = url;
+    }
+  }}>
+      <span class="config-icon-unavailable" hidden>Preview unavailable</span>
+    </span>
+  `);
+}
 
 export const blocks = libraryPanel({
   noun: 'block',
@@ -81,7 +107,9 @@ export const icons = libraryPanel({
   description: 'Icons authors can add to content. Each one is written into the page as :key:.',
   validate: validateIcon,
   columns: [
-    { key: 'key', label: 'Key', hint: 'Inserted as :key:.', required: true, placeholder: 'adobe' },
+    {
+      key: 'key', label: 'Key', hint: 'Inserted as :key:.', required: true, placeholder: 'adobe', preview: iconPreview,
+    },
     { key: 'value', label: 'Label', hint: 'Optional name shown to authors.', placeholder: 'Adobe logo' },
     {
       key: 'icon',

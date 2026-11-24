@@ -171,6 +171,29 @@ describe('config api', () => {
       expect(await setupLibrary('sl5', 'site5', TEMPLATES)).to.deep.equal({ ok: false, status: 500 });
       expect(puts).to.have.length(0);
     });
+
+    it('registers the displayed source even when a higher-priority file is now available', async () => {
+      const reads = [];
+      const puts = mockFetch({
+        sourceFor: (o, s, path) => {
+          reads.push(path);
+          return kv([]);
+        },
+      });
+      const existingPath = '/library/templates.json';
+      const result = await setupLibrary('slpin', 'site1', { ...TEMPLATES, existingPath });
+      expect([result.ok, result.path]).to.deep.equal([true, existingPath]);
+      expect(reads).to.deep.equal([existingPath]);
+      expect(paths(puts)).to.deep.equal(['config']);
+      expect(puts[0].body.library.data).to.deep.equal([{ title: 'Templates', path: existingPath }]);
+    });
+
+    it('does not recreate or register a displayed source that disappeared', async () => {
+      const puts = mockFetch({});
+      const result = await setupLibrary('slgone', 'site1', { ...TEMPLATES, existingPath: '/library/templates.json' });
+      expect(result).to.deep.equal({ ok: false, status: 404 });
+      expect(puts.length).to.equal(0);
+    });
   });
 
   describe('saveConfig', () => {
@@ -1051,6 +1074,129 @@ describe('da-config', () => {
       expect(puts.map((p) => p.path ?? 'config')).to.deep.equal(['/docs/library/templates.json', 'config']);
       expect(el.shadowRoot.textContent).to.include('No templates yet');
       expect(el.shadowRoot.textContent).to.include('previewed and published');
+    });
+
+    it('loads and saves existing placeholders without registering the library or losing other sheets', async () => {
+      const original = { Key: 'read-more', Text: 'Read more' };
+      const file = {
+        default: { data: [original] },
+        fr: { data: [{ Key: 'read-more', Text: 'Lire la suite' }] },
+        ':names': ['default', 'fr'],
+        ':type': 'multi-sheet',
+      };
+      const puts = mockFetch({
+        sitesFor: () => [{ name: 'alpha' }],
+        sourceFor: () => file,
+      });
+      await openSection('placeholders', 'lbph');
+      expect(has('.config-setup')).to.equal(false);
+      expect(q('.config-table tbody').textContent).to.include('Read more');
+      expect(puts.length).to.equal(0);
+      expect(q('.config-library-notice button').disabled).to.equal(false);
+      el._onRowEdit(0);
+      el._onDraftChange('Text', 'Continue reading');
+      el._onDraftApply();
+      await el.updateComplete;
+      expect(q('.config-library-notice button').disabled).to.equal(true);
+      q('.config-savebar .nx-form-btn-primary').click();
+      await waitUntil(() => !el._busy, el);
+      expect(puts.map((p) => p.path ?? 'config')).to.deep.equal(['/placeholders.json']);
+      expect(puts[0].body.default.data).to.deep.equal([{ ...original, Text: 'Continue reading' }]);
+      expect(puts[0].body.fr).to.deep.equal(file.fr);
+      expect(q('.config-library-notice button').disabled).to.equal(false);
+    });
+
+    it('keeps the registration action beside the notice on desktop and within it on narrow screens', async () => {
+      mockFetch({
+        sitesFor: () => [{ name: 'alpha' }],
+        sourceFor: () => kv([{ Key: 'read-more', Text: 'Read more' }]),
+      });
+      await openSection('placeholders', 'lbwidth');
+      const response = await savedFetch('/blocks/config/da-config/da-config.css');
+      const style = new CSSStyleSheet();
+      style.replaceSync(await response.text());
+      el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, style];
+      el.style.width = '960px';
+      const notice = q('.config-library-notice');
+      const text = q('.config-library-notice-text');
+      const button = notice.querySelector('button');
+      let bounds = notice.getBoundingClientRect();
+      let action = button.getBoundingClientRect();
+      expect(action.left).to.be.at.least(text.getBoundingClientRect().right);
+      expect(action.right).to.be.at.most(bounds.right);
+      expect(bounds.bottom).to.be.at.most(q('.config-row-buttons').getBoundingClientRect().top);
+      el.style.width = '320px';
+      bounds = notice.getBoundingClientRect();
+      action = button.getBoundingClientRect();
+      expect(action.left).to.be.at.least(bounds.left);
+      expect(action.right).to.be.at.most(bounds.right);
+      expect(action.bottom).to.be.at.most(bounds.bottom);
+    });
+
+    [
+      { id: 'blocks', row: { name: 'Cards', path: '/library/blocks/cards' }, name: 'Cards' },
+      { id: 'templates', row: { key: 'Article', value: '/library/templates/article' }, name: 'Article' },
+      { id: 'icons', row: { key: 'adobe', value: 'Adobe logo' }, name: 'adobe' },
+    ].forEach(({ id, row, name }) => {
+      it(`shows discovered ${id} and registers the displayed fallback file on request`, async () => {
+        const title = id[0].toUpperCase() + id.slice(1);
+        const primary = `/docs/library/${id}.json`;
+        const fallback = `/library/${id}.json`;
+        let primaryExists = false;
+        let registered = false;
+        const puts = mockFetch({
+          configFor: (o, s) => (s && registered
+            ? libraryConfig([{ title, path: fallback }]) : ORG_CONFIG),
+          sitesFor: () => [{ name: 'alpha' }],
+          sourceFor: (o, s, path) => {
+            if (path === primary && !primaryExists) return status(404)();
+            return kv([row]);
+          },
+          putFor: () => {
+            registered = true;
+            return new Response('', { status: 200 });
+          },
+        });
+        await openSection(id, `lb${id.slice(0, 4)}`);
+        expect(has('.config-setup')).to.equal(false);
+        expect(q('.config-table tbody').textContent).to.include(name);
+        const notice = q('.config-library-notice');
+        expect(notice.textContent).to.include(fallback);
+        expect(notice.querySelector('.nx-form-btn-primary').textContent.trim()).to.equal('Add to library');
+        expect(has('.config-info button')).to.equal(false);
+        expect(notice.nextElementSibling.classList.contains('config-row-buttons')).to.equal(true);
+        expect(puts.length).to.equal(0);
+        primaryExists = true;
+        notice.querySelector('button').click();
+        await waitUntil(() => el._file?.registered === fallback, el);
+        expect(puts.map((p) => p.path ?? 'config')).to.deep.equal(['config']);
+        expect(puts[0].body.library.data).to.deep.equal([{ title, path: fallback }]);
+        expect(q('.config-table tbody').textContent).to.include(name);
+        expect(has('.config-library-notice')).to.equal(false);
+      });
+    });
+
+    it('registers discovered placeholders only when explicitly requested, without rewriting the file', async () => {
+      let registered = false;
+      const file = kv([{ Key: 'read-more', Text: 'Read more' }]);
+      const puts = mockFetch({
+        configFor: (o, s) => (s && registered
+          ? libraryConfig([{ title: 'Placeholders', path: '/placeholders.json' }]) : ORG_CONFIG),
+        sitesFor: () => [{ name: 'alpha' }],
+        sourceFor: () => file,
+        putFor: () => {
+          registered = true;
+          return new Response('', { status: 200 });
+        },
+      });
+      await openSection('placeholders', 'lbreg');
+      expect(puts.length).to.equal(0);
+      q('.config-library-notice button').click();
+      await waitUntil(() => el._file?.registered === '/placeholders.json', el);
+      expect(puts.map((p) => p.path ?? 'config')).to.deep.equal(['config']);
+      expect(puts[0].body.library.data).to.deep.equal([{ title: 'Placeholders', path: '/placeholders.json' }]);
+      expect(q('.config-table tbody').textContent).to.include('Read more');
+      expect(has('.config-library-notice')).to.equal(false);
     });
 
     it('edits the first sheet of the file and keeps the other sheets', async () => {

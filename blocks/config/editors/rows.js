@@ -147,6 +147,7 @@ function renderRow(columns, item, handlers) {
     <tr class=${inherited ? 'is-inherited' : ''}>
       <th scope="row">
         <span class="config-table-name">
+          ${first.preview ? first.preview(row, handlers) : nothing}
           <span class="config-table-name-text">${cellText(first, row)}</span>
           ${inherited ? renderPill(INHERITANCE.inheritedPill, 'neutral') : nothing}
           ${overrides ? renderPill(INHERITANCE.overridesPill, 'override') : nothing}
