@@ -1,8 +1,7 @@
 import { getNx } from '../../scripts/utils.js';
-import { fetchDaConfigs } from '../shared/utils.js';
 import initGreeting from '../greeting/greeting.js';
 import initTiles from './tiles/tile-group.js';
-import { getBrowseComponent, resolveBrowsePath } from './utils.js';
+import { getBrowseComponent } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -74,16 +73,11 @@ async function loadComponent(el, cmpName, pathDetails, surface, { greeting, tile
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse, .landing')?.remove();
-  const componentPath = cmpName === 'da-sites' ? '.' : await resolveBrowsePath({
-    search: window.location.search,
-    org: pathDetails.org,
-    site: pathDetails.site,
-    fetchConfigs: fetchDaConfigs,
-  });
-  if (componentPath === './v2') useV2Nav();
   if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
-  else if (componentPath === './v2') await import('./v2/da-browse/da-browse.js');
-  else await import('./legacy/da-browse/da-browse.js');
+  else {
+    useV2Nav();
+    await import('./v2/da-browse/da-browse.js');
+  }
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   if (cmpName === 'da-sites') {
