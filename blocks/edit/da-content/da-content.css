@@ -82,6 +82,7 @@ da-versions {
 .da-editor-tab svg {
   width: 20px;
   height: 20px;
+  pointer-events: none;
 }
 
 .da-editor-tab.show-preview {
