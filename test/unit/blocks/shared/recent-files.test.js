@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { addRecentFile, getRecentFiles } from '../../../../blocks/shared/recent-files.js';
+import { addRecentFile, getRecentFiles, getRecentFileEntries } from '../../../../blocks/shared/recent-files.js';
 
 describe('recent files', () => {
   beforeEach(() => localStorage.removeItem('da-recent-files'));
@@ -77,6 +77,28 @@ describe('recent files', () => {
     ]);
   });
 
+  it('reads only valid timestamped entries for the requested site without changing history', () => {
+    const stored = JSON.stringify({
+      '/org/site': [
+        '/org/site/legacy.html',
+        { path: '/org/site/a.html', timestamp: 1000 },
+        { path: '/org/site/b.html' },
+        { path: '/org/site/c.html', timestamp: '2000' },
+        { path: '/org/site/d.html', timestamp: -1 },
+        { path: '/org/other/e.html', timestamp: 3000 },
+        null, 42, {},
+      ],
+      '/org/invalid': 'not an array',
+    });
+    localStorage.setItem('da-recent-files', stored);
+    expect(getRecentFileEntries('/org/site')).to.deep.equal([
+      { path: '/org/site/a.html', timestamp: 1000 },
+    ]);
+    expect(getRecentFileEntries('/org/missing')).to.deep.equal([]);
+    expect(getRecentFileEntries('/org/invalid')).to.deep.equal([]);
+    expect(localStorage.getItem('da-recent-files')).to.equal(stored);
+  });
+
   it('keeps 18 files per site and separates sites', () => {
     sinon.stub(Date, 'now').returns(1000);
     Array.from({ length: 20 }, (_, i) => addRecentFile(`/org/site/${i}.html`));
@@ -120,10 +142,12 @@ describe('recent files', () => {
   it('tolerates malformed or unavailable local storage', () => {
     localStorage.setItem('da-recent-files', '{');
     expect(getRecentFiles('/org/site')).to.deep.equal([]);
+    expect(getRecentFileEntries('/org/site')).to.deep.equal([]);
 
     sinon.stub(Storage.prototype, 'getItem').throws();
     sinon.stub(Storage.prototype, 'setItem').throws();
     expect(getRecentFiles('/org/site')).to.deep.equal([]);
+    expect(getRecentFileEntries('/org/site')).to.deep.equal([]);
     expect(() => addRecentFile('/org/site/a.html')).not.to.throw();
   });
 });
