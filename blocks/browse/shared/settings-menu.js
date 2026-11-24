@@ -5,7 +5,7 @@ export function getSettingsMenuItems({ org, site, canEditOrgConfig: canEdit = fa
   const sheet = { id: `/config#${path}/`, label: 'Config Sheet' };
   if (!canEdit) return [sheet];
   return [
-    { id: `/config/edit#${path}`, label: 'Configuration' },
+    { id: `/config/edit#${path}`, label: 'Configuration', trailing: { type: 'badge', label: 'New' } },
     { id: `/config/permissions#${path}`, label: 'Permissions' },
     { divider: true },
     sheet,
