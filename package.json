@@ -9,6 +9,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
+    "@adobe/da-merge": "file:deps/da-merge/pkg/adobe-da-merge-52f80e3.tgz",
     "@adobe/da-parser": "file:deps/da-parser/pkg/adobe-da-parser-f545641.tgz",
     "@adobe/da-sc-sdk": "0.6.1",
     "@open-wc/lit-helpers": "0.7.0",
@@ -62,13 +63,14 @@
     "lint:css": "stylelint blocks/**/*.css styles/*.css",
     "lint": "npm run lint:js && npm run lint:css",
     "copy:deps": "node ./deps/copy.js",
-    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:da-parser && npm run build:github-slugger && npm run build:da-sc-sdk",
+    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:da-parser && npm run build:da-merge && npm run build:github-slugger && npm run build:da-sc-sdk",
     "test": "wtr \"./test/unit/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
     "build:da-parser": "./tools/build-da-parser.sh",
+    "build:da-merge": "esbuild --format=esm --minify ./node_modules/@adobe/da-merge/src/index.js --bundle --outfile=./deps/da-merge/dist/index.js",
     "build:github-slugger": "esbuild --format=esm --minify ./deps/github-slugger/src/index.js --bundle --outfile=./deps/github-slugger/dist/index.js",
     "build:da-sc-sdk": "esbuild --format=esm --minify ./deps/da-sc-sdk/src/index.js --bundle --outfile=./deps/da-sc-sdk/dist/index.js",
     "semantic-release": "semantic-release",
