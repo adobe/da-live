@@ -226,7 +226,8 @@ describe('DaMsm component', () => {
       await fixture({ org: 'msm-pingerr', site: 'mccs', path: '/about' }, mock);
 
       expect(el._satellites).to.be.undefined;
-      expect(el.shadowRoot.querySelector('.load-error')).to.exist;
+      // Try again can't help: nx2 keeps a failed check until the page reloads
+      expect(el.shadowRoot.querySelector('.load-error').textContent).to.include('reload the page');
     });
   });
 

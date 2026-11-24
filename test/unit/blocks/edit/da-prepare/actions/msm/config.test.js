@@ -239,6 +239,7 @@ describe('MSM config', () => {
         error = e;
       }
       expect(error?.message).to.include('403');
+      expect(error?.message).not.to.include('reload the page');
     });
 
     it('throws when the site backend check fails', async () => {
@@ -255,7 +256,9 @@ describe('MSM config', () => {
       } catch (e) {
         error = e;
       }
-      expect(error).to.exist;
+      // nx2 keeps a failed check until the page reloads
+      expect(error?.message).to.include('ping-fail');
+      expect(error?.message).to.include('reload the page');
       expect(calls).to.have.length(0);
     });
 
@@ -360,7 +363,7 @@ describe('MSM config', () => {
       } catch (e) {
         error = e;
       }
-      expect(error).to.exist;
+      expect(error?.message).to.include('reload the page');
     });
   });
 

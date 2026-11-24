@@ -156,6 +156,24 @@ describe('MSM utils', () => {
       expect(result.error).to.include('create override');
       expect(result.error).to.include('409');
     });
+
+    it('asks for a reload and writes nothing when the backend check fails', async () => {
+      const calls = [];
+      window.fetch = async (url, opts = {}) => {
+        if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
+        calls.push({ url, method: opts.method || 'GET' });
+        return new Response('', { status: 201 });
+      };
+
+      let error;
+      try {
+        await createOverride('org', 'ping-fail', 'ping-fail-sat', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('reload the page');
+      expect(calls).to.have.length(0);
+    });
   });
 
   describe('getSatellitePageStatus', () => {
@@ -269,6 +287,24 @@ describe('MSM utils', () => {
 
       const result = await deleteOverride('org', 'san-diego-mccs', '/about');
       expect(result.error).to.include('delete override');
+    });
+
+    it('asks for a reload and deletes nothing when the backend check fails', async () => {
+      const calls = [];
+      window.fetch = async (url, opts = {}) => {
+        if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
+        calls.push({ url, method: opts.method || 'GET' });
+        return new Response(null, { status: 204 });
+      };
+
+      let error;
+      try {
+        await deleteOverride('org', 'ping-fail-del', '/about');
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('reload the page');
+      expect(calls).to.have.length(0);
     });
   });
 
