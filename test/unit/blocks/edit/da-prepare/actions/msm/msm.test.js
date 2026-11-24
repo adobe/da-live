@@ -87,7 +87,7 @@ describe('DaMsm component', () => {
     // the suite has to point nx at the test fixtures the way every other
     // da-prepare test does; without it getNx2Api() tries to load the real one.
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    setPaceOptions({ sleep: () => Promise.resolve(), minIntervalMs: 0 });
+    setPaceOptions({ sleep: () => Promise.resolve(), maxStartsPerSecond: Infinity });
 
     window.fetch = async (url) => {
       if (url.endsWith('.css')) {

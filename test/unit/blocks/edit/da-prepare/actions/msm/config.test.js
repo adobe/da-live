@@ -62,7 +62,7 @@ describe('MSM config', () => {
     window.localStorage.removeItem('nx-ims');
     // see msm.test.js — the org config is fetched through the nx2 config API
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    setPaceOptions({ sleep: () => Promise.resolve(), minIntervalMs: 0 });
+    setPaceOptions({ sleep: () => Promise.resolve(), maxStartsPerSecond: Infinity });
     clearMsmCache();
   });
 

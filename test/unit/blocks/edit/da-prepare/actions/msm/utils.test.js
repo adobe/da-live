@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx, getNx2 } from '../../../../../../../scripts/utils.js';
 import {
   previewSatellite,
@@ -44,7 +45,7 @@ describe('MSM utils', () => {
     window.localStorage.removeItem('nx-ims');
     // source and AEM calls go through the nx2 api (per-site Helix 6 routing)
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    setPaceOptions({ sleep: () => Promise.resolve(), minIntervalMs: 0 });
+    setPaceOptions({ sleep: () => Promise.resolve(), maxStartsPerSecond: Infinity });
   });
 
   afterEach(() => {
@@ -512,12 +513,14 @@ describe('MSM utils', () => {
 
   describe('pacing', () => {
     it('retries a 429 and honours x-retry-after', async () => {
+      const clock = sinon.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
       const waits = [];
       const sleep = (ms) => {
         waits.push(ms);
+        clock.tick(ms);
         return Promise.resolve();
       };
-      setPaceOptions({ sleep, minIntervalMs: 0 });
+      setPaceOptions({ sleep, maxStartsPerSecond: Infinity });
       let count = 0;
       window.fetch = hlx6Fetch(['h6-retry'], () => {
         count += 1;
@@ -527,10 +530,15 @@ describe('MSM utils', () => {
         return Promise.resolve(new Response('{}', { status: 200 }));
       });
 
-      const result = await previewSatellite('org', 'h6-retry', '/about');
+      let result;
+      try {
+        result = await previewSatellite('org', 'h6-retry', '/about');
+      } finally {
+        clock.restore();
+      }
       expect(result.error).to.be.undefined;
       expect(count).to.equal(2);
-      expect(waits).to.deep.equal([3000]);
+      expect(waits.at(-1)).to.equal(3000);
     });
 
     it('retries a network error (a 429 without CORS headers)', async () => {
@@ -547,10 +555,102 @@ describe('MSM utils', () => {
     });
 
     it('gives up after three retries and reports the error', async () => {
-      window.fetch = hlx6Fetch(['h6-giveup'], () => Promise.resolve(new Response('', { status: 429 })));
+      let count = 0;
+      window.fetch = hlx6Fetch(['h6-giveup'], () => {
+        count += 1;
+        return Promise.resolve(new Response('', { status: 429 }));
+      });
 
       const result = await previewSatellite('org', 'h6-giveup', '/about');
       expect(result.error).to.include('429');
+      expect(count).to.equal(4);
+    });
+
+    it('does not retry before a Retry-After longer than a minute', async () => {
+      const waits = [];
+      setPaceOptions({
+        sleep: (ms) => {
+          waits.push(ms);
+          return Promise.resolve();
+        },
+        maxStartsPerSecond: Infinity,
+      });
+      let count = 0;
+      const limited = () => {
+        count += 1;
+        return Promise.resolve(new Response('', { status: 429, headers: { 'x-retry-after': '120' } }));
+      };
+
+      const resp = await paced(limited);
+      expect(resp.status).to.equal(429);
+      expect(count).to.equal(1);
+      expect(waits).to.deep.equal([]);
+
+      let error;
+      try {
+        await paced(() => Promise.resolve(new Response('', { status: 200 })));
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.include('try again');
+    });
+
+    describe('on a clock', () => {
+      let clock;
+      const timerSleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+      beforeEach(() => {
+        clock = sinon.useFakeTimers({ now: Date.now() });
+        setPaceOptions({ sleep: timerSleep });
+      });
+
+      afterEach(() => {
+        clock.restore();
+        setPaceOptions({ sleep: () => Promise.resolve(), maxStartsPerSecond: Infinity });
+      });
+
+      it('starts at most eight calls in any second, retries included', async () => {
+        const starts = [];
+        const calls = Array.from({ length: 15 }, (_, i) => {
+          let failed = false;
+          return paced(async () => {
+            starts.push(Date.now());
+            if (i < 4 && !failed) {
+              failed = true;
+              return new Response('', { status: 503 });
+            }
+            return new Response('', { status: 200 });
+          });
+        });
+        await clock.runAllAsync();
+        await Promise.all(calls);
+
+        const inSecond = (t) => starts.filter((s) => s >= t && s < t + 1000).length;
+        expect(starts).to.have.length(19);
+        expect(Math.max(...starts.map(inSecond))).to.be.at.most(8);
+      });
+
+      it('holds every queued call until a Retry-After has passed', async () => {
+        let limitedAt;
+        const limited = paced(async () => {
+          if (limitedAt) return new Response('', { status: 200 });
+          limitedAt = Date.now();
+          return new Response('', { status: 429, headers: { 'x-retry-after': '5' } });
+        });
+        // eslint-disable-next-line no-await-in-loop
+        while (!limitedAt) await clock.nextAsync();
+        await clock.tickAsync(0);
+
+        let laterStart;
+        const later = paced(async () => {
+          laterStart = Date.now();
+          return new Response('', { status: 200 });
+        });
+        await clock.runAllAsync();
+        await Promise.all([limited, later]);
+
+        expect(laterStart - limitedAt).to.be.at.least(5000);
+      });
     });
 
     it('reports a request that keeps failing instead of throwing', async () => {
