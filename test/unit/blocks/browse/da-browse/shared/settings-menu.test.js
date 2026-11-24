@@ -7,32 +7,36 @@ const { getSettingsMenuItems } = await import('../../../../../../blocks/browse/d
 
 describe('settings menu', () => {
   describe('getSettingsMenuItems', () => {
-    it('returns org configuration and permissions when the user can edit the org config', () => {
+    const DIVIDER = { divider: true };
+
+    it('lists the config editor, permissions, then the config sheet for the org', () => {
       expect(getSettingsMenuItems({ org: 'org', canEditOrgConfig: true })).to.deep.equal([
-        { id: '/config#/org/', label: 'Configuration' },
+        { id: '/config/edit#/org', label: 'Configuration', trailing: { type: 'badge', label: 'New' } },
         { id: '/config/permissions#/org', label: 'Permissions' },
+        DIVIDER,
+        { id: '/config#/org/', label: 'Config Sheet' },
       ]);
     });
 
-    it('hides org permissions when the user cannot edit the org config', () => {
+    it('only lists the org config sheet when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
-        { id: '/config#/org/', label: 'Configuration' },
+        { id: '/config#/org/', label: 'Config Sheet' },
       ]);
     });
 
-    it('returns site configuration and permissions when the user can edit the org config', () => {
+    it('lists the config editor, permissions, then the config sheet for a site', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: true })).to.deep.equal([
-        { id: '/config#/org/site/', label: 'Configuration' },
+        { id: '/config/edit#/org/site', label: 'Configuration', trailing: { type: 'badge', label: 'New' } },
         { id: '/config/permissions#/org/site', label: 'Permissions' },
+        DIVIDER,
+        { id: '/config#/org/site/', label: 'Config Sheet' },
       ]);
     });
 
-    it('hides site permissions when the user cannot edit the org config', () => {
+    it('only lists the site config sheet when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: false })).to.deep.equal([
-        { id: '/config#/org/site/', label: 'Configuration' },
+        { id: '/config#/org/site/', label: 'Config Sheet' },
       ]);
-      expect(getSettingsMenuItems({ org: 'org', site: 'site' }).map(({ label }) => label))
-        .to.deep.equal(['Configuration']);
     });
   });
 });
