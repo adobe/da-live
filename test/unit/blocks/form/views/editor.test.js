@@ -230,6 +230,23 @@ describe('ew-form-fields primitive controls', () => {
     expect(fields[0].value).to.equal('./a.png');
   });
 
+  it('skips a shared schema without a field, alone and as an array item', async () => {
+    const video = (pointer) => ({
+      kind: 'object',
+      pointer,
+      label: 'Video',
+      sharedSchemaName: 'video',
+      value: { src: './clip.mp4' },
+      children: [{ kind: 'string', key: 'src', pointer: `${pointer}/src`, label: 'Source' }],
+    });
+    const el = await mountEditor(objectRoot([
+      video('/data/clip'),
+      { kind: 'array', pointer: '/data/clips', label: 'Clips', items: [video('/data/clips/0')] },
+    ]));
+    expect(el.shadowRoot.querySelector('[data-pointer="/data/clip"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('ew-form-input')).to.equal(null);
+  });
+
   it('passes the preview origin to the file field while keeping the stored value', async () => {
     const root = objectRoot([
       mediaNode({ value: { src: './media_example.png' } }),

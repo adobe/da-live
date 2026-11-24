@@ -10,7 +10,7 @@ import '../fields/date.js';
 import '../fields/asset.js';
 import { icon } from '../icons.js';
 import { findAssetType, isAssetType } from '../assets/asset-types.js';
-import { isStructured } from '../utils/model.js';
+import { isSharedSchemaField, isStructured } from '../utils/model.js';
 import { NAV_ORIGIN } from '../events.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
@@ -30,15 +30,6 @@ const DEBOUNCE_DELAY_MILLISECONDS = 350;
  * @returns {string|undefined} The value, or undefined when the input is empty.
  */
 const textValue = (value) => (value === '' ? undefined : value);
-
-/**
- * Asset types are edited as one field, an object with `src` and, for images, `altText`.
- * @param {object} [node] A node of the engine's model.
- * @returns {boolean} Whether the node is edited as one asset field.
- */
-function isAsset(node) {
-  return isAssetType(node?.sharedSchemaName);
-}
 
 /**
  * Builds the document value of an asset field. Removing the file clears the whole asset,
@@ -394,6 +385,21 @@ class Editor extends LitElement {
         @change=${(event) => this._onAssetChange(node, event)}
       ></ew-form-asset>
     `;
+  }
+
+  /**
+   * Renders the field of a shared schema node. Assets are the only shared schemas the form
+   * edits. Any other shared schema is skipped like an unsupported node, and its value is
+   * preserved.
+   * @param {object} node The shared schema node.
+   * @param {object} [options] The render settings, see `_renderAsset`.
+   * @returns {import('da-lit').TemplateResult|typeof nothing} The field, or nothing.
+   */
+  _renderSharedSchemaField(node, options) {
+    if (!isAssetType(node.sharedSchemaName)) {
+      return nothing;
+    }
+    return this._renderAsset(node, options);
   }
 
   /**
@@ -859,8 +865,8 @@ class Editor extends LitElement {
               ` : html`
                 <p class="form-array-item-simple-label">${title}</p>
                 <div class="form-array-item-input-row">
-                  ${isAsset(item)
-          ? this._renderAsset(item, { hideLabel: true })
+                  ${isSharedSchemaField(item)
+          ? this._renderSharedSchemaField(item, { hideLabel: true })
           : this._renderPrimitive(item, { hideLabel: true })}
                   <div class="form-array-item-actions">${menu}</div>
                 </div>
@@ -912,8 +918,8 @@ class Editor extends LitElement {
     if (node.kind === 'unsupported') {
       return nothing;
     }
-    if (isAsset(node)) {
-      return this._renderAsset(node);
+    if (isSharedSchemaField(node)) {
+      return this._renderSharedSchemaField(node);
     }
     if (node.kind === 'object') {
       return this._renderObject(node, options);
