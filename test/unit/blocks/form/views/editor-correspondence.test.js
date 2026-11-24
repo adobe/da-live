@@ -50,7 +50,7 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
-  if (isAssetType(node.typeName)) {
+  if (isAssetType(node.sharedSchemaName)) {
     return 'EW-FORM-ASSET';
   }
   if (Array.isArray(node.enumValues)) {
@@ -141,7 +141,7 @@ describe('ew-form-fields loads', () => {
 describe('ew-form-fields renders the model state', () => {
   function walk(el, node) {
     expect(allAt(el, node.pointer).length, `element for ${node.pointer}`).to.be.greaterThan(0);
-    if (node.kind === 'object' && node.typeRef === undefined) {
+    if (node.kind === 'object' && node.sharedSchemaName === undefined) {
       (node.children ?? []).forEach((child) => walk(el, child));
       return;
     }

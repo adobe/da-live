@@ -2,7 +2,6 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import '../../../../../blocks/form/views/editor.js';
 import { NAV_ORIGIN } from '../../../../../blocks/form/events.js';
-import { IMAGE_URL, FILE_URL } from '../helpers/sdk-types.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
@@ -19,8 +18,7 @@ const mediaNode = (extra = {}) => ({
   kind: 'object',
   pointer: '/data/heroImage',
   label: 'Hero image',
-  typeRef: IMAGE_URL,
-  typeName: 'image',
+  sharedSchemaName: 'image',
   children: [
     { kind: 'string', key: 'src', pointer: '/data/heroImage/src', label: 'Source' },
     { kind: 'string', key: 'altText', pointer: '/data/heroImage/altText', label: 'Alt text' },
@@ -165,8 +163,7 @@ describe('ew-form-fields primitive controls', () => {
 
   it('passes a file type without a preview or an alt text', async () => {
     const node = mediaNode({
-      typeRef: FILE_URL,
-      typeName: 'file',
+      sharedSchemaName: 'file',
       value: { src: './spec.pdf' },
       children: [{ kind: 'string', key: 'src', pointer: '/data/heroImage/src', label: 'Source' }],
     });
@@ -397,20 +394,9 @@ describe('ew-form-fields schema issues', () => {
     return [...el.shadowRoot.querySelectorAll('.schema-issues-list li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim());
   }
 
-  it('describes an external $ref', async () => {
-    const ref = 'https://example.com/asset.json';
-    const text = await issuesText([
-      { reason: 'external-ref', pointer: '/data/logo', details: { ref } },
-    ]);
-    expect(text).to.deep.equal([`/data/logo — uses external $ref "${ref}" (only same-document refs and the image and file definitions are supported)`]);
-  });
-
-  it('describes keywords next to the asset $ref', async () => {
-    const text = await issuesText([{
-      reason: 'type-ref-keywords',
-      pointer: '/data/hero',
-      details: { ref: 'https://example.com/asset.json', properties: ['required', 'properties'] },
-    }]);
-    expect(text).to.deep.equal(['/data/hero — sets "required", "properties" next to the asset $ref (only title, description, readOnly, default and, on an image, required: ["altText"] are allowed)']);
+  it('lists each issue with its pointer and the SDK message', async () => {
+    const message = 'External reference "https://example.com/asset.json" is not supported.';
+    const text = await issuesText([{ reason: 'external-ref', pointer: '/data/logo', message }]);
+    expect(text).to.deep.equal([`/data/logo — ${message}`]);
   });
 });

@@ -1,10 +1,7 @@
-import { ASSET_TYPES } from '../../../../../blocks/form/assets/asset-types.js';
+import { getSharedSchema } from '../../../../../deps/da-sc-sdk/dist/index.js';
 
-// The SDK resolves its asset types by these GitHub URLs.
-const SDK_SCHEMAS = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas';
+// Schemas reference the SDK's shared schemas by their `$id`.
+const sharedSchemaId = (name) => getSharedSchema({ name, version: '1.0.0' }).schema.$id;
 
-const SCHEMA_URLS = Object.fromEntries(ASSET_TYPES
-  .map(({ name }) => [name, `${SDK_SCHEMAS}/${name}/v1.0.0.json`]));
-
-export const IMAGE_URL = SCHEMA_URLS.image;
-export const FILE_URL = SCHEMA_URLS.file;
+export const IMAGE_URL = sharedSchemaId('image');
+export const FILE_URL = sharedSchemaId('file');

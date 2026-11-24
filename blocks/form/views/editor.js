@@ -9,7 +9,7 @@ import '../fields/number.js';
 import '../fields/date.js';
 import '../fields/asset.js';
 import { icon } from '../icons.js';
-import { ASSET_TYPES, findAssetType, isAssetType } from '../assets/asset-types.js';
+import { findAssetType, isAssetType } from '../assets/asset-types.js';
 import { isStructured } from '../utils/model.js';
 import { NAV_ORIGIN } from '../events.js';
 
@@ -24,17 +24,6 @@ const ELEMENT_NAME = 'ew-form-fields';
 /** How long typing pauses before a text or number input is saved. */
 const DEBOUNCE_DELAY_MILLISECONDS = 350;
 
-/** The asset type names as an English list, as named in the schema issues dialog. */
-const ASSET_TYPE_LIST = new Intl.ListFormat('en', { type: 'conjunction' })
-  .format(ASSET_TYPES.map(({ name }) => name));
-
-/** Explains which `$ref` targets the form supports. */
-const SUPPORTED_REFERENCES = `only same-document refs and the ${ASSET_TYPE_LIST} definitions are supported`;
-
-/** Explains which keywords may sit next to an asset `$ref`. */
-const ALLOWED_ASSET_KEYWORDS = 'only title, description, readOnly, default and, on an image, '
-  + 'required: ["altText"] are allowed';
-
 /**
  * Reads a text input for the document. An empty input clears the value.
  * @param {string} value The input value.
@@ -48,7 +37,7 @@ const textValue = (value) => (value === '' ? undefined : value);
  * @returns {boolean} Whether the node is edited as one asset field.
  */
 function isAsset(node) {
-  return isAssetType(node?.typeName);
+  return isAssetType(node?.sharedSchemaName);
 }
 
 /**
@@ -66,44 +55,6 @@ function assetValue(field) {
     return { src: field.value };
   }
   return { src: field.value, altText: field.altText };
-}
-
-/**
- * Lists names for a message, each in quotes.
- * @param {string[]} names The names to list.
- * @returns {string} The names, quoted and separated by commas.
- */
-function quoteList(names) {
-  return names.map((name) => `"${name}"`).join(', ');
-}
-
-/**
- * Describes why a part of the schema is not supported, as shown in the schema issues
- * dialog.
- * @param {{ reason: string, details?: object }} issue A schema issue of the engine.
- * @returns {string} The description, which follows the location of the issue.
- */
-function describeIssue(issue) {
-  const feature = issue.details?.keyword ?? issue.details?.type ?? 'unknown';
-  const reference = issue.details?.ref;
-  switch (issue.reason) {
-    case 'unsupported-composition':
-      return `uses unsupported composition keyword "${feature}"`;
-    case 'unsupported-type':
-      return `declares unsupported type "${feature}"`;
-    case 'type-as-array':
-      return 'declares "type" as an array';
-    case 'missing-type':
-      return 'is missing a "type" declaration';
-    case 'external-ref':
-      return `uses external $ref "${reference}" (${SUPPORTED_REFERENCES})`;
-    case 'type-ref-keywords':
-      return `sets ${quoteList(issue.details?.properties ?? [])} next to the asset $ref (${ALLOWED_ASSET_KEYWORDS})`;
-    case 'unresolved-ref':
-      return `uses $ref "${reference}" which does not resolve in the document`;
-    default:
-      return `uses unsupported schema feature "${feature}"`;
-  }
 }
 
 /**
@@ -432,8 +383,8 @@ class Editor extends LitElement {
         .description=${hideLabel ? '' : (node.description ?? '')}
         .value=${src}
         .altText=${altText}
-        .assetType=${node.typeName}
-        .showsPreview=${findAssetType(node.typeName).showsPreview}
+        .assetType=${node.sharedSchemaName}
+        .showsPreview=${findAssetType(node.sharedSchemaName).showsPreview}
         .acceptsAltText=${!!altNode}
         .altRequired=${!!altNode?.required}
         .altError=${this._error(`${pointer}/altText`)}
@@ -1005,7 +956,7 @@ class Editor extends LitElement {
         <ul class="schema-issues-list">
           ${issues.map((issue) => html`
             <li>
-              <code>${issue.pointer}</code> — ${describeIssue(issue)}
+              <code>${issue.pointer}</code> — ${issue.message}
             </li>
           `)}
         </ul>

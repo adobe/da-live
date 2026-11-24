@@ -129,7 +129,7 @@ describe('SDK state shape', () => {
     const engine = createEngine({ schema, document: validDoc({ heroImage: asset }) });
     const node = findByPointer(engine.getState().model.root, '/data/heroImage');
     expect(node.kind).to.equal('object');
-    expect(node.typeName).to.equal('image');
+    expect(node.sharedSchemaName).to.equal('image');
     expect(node.value).to.deep.equal(asset);
     expect(node.children.map((child) => child.key)).to.deep.equal(['src', 'altText']);
     expect(engine.getState().document.data.heroImage).to.deep.equal(asset);
@@ -455,16 +455,14 @@ describe('SDK model.root node shape', () => {
   });
 });
 
-// editor.js — describeIssue switches on issue.reason and reads the offending
-// value from issue.details (details.keyword / details.type / details.ref).
-// If the SDK issue shape drifts, the dialog would silently render "unknown";
-// these assertions catch that.
+// views/editor.js lists every schema issue by its pointer and message. If the
+// SDK issue shape drifts, the dialog would render empty lines; these assertions
+// catch that.
 describe('SDK schemaIssues entry shape', () => {
   const issueSchema = {
     type: 'object',
     properties: {
-      // oneOf at a property is known unsupported by the form's renderer —
-      // editor.js maps `reason: 'unsupported-composition'` to a human-readable string.
+      // oneOf at a property is known unsupported by the form's renderer.
       weird: { oneOf: [{ type: 'string' }, { type: 'number' }] },
     },
   };
@@ -475,15 +473,11 @@ describe('SDK schemaIssues entry shape', () => {
     expect(issues).to.be.an('array').that.is.not.empty;
   });
 
-  it('each entry carries reason + message + schemaPath + pointer + details', () => {
+  it('each entry carries a pointer and a message (read by editor.js)', () => {
     const engine = createEngine({ schema: issueSchema, document: validDoc() });
     const [issue] = engine.getState().schemaIssues;
-    expect(issue.reason).to.be.a('string');
-    expect(issue.message).to.be.a('string');
-    expect(issue.schemaPath).to.be.a('string');
     expect(issue.pointer).to.be.a('string');
-    // Composition folds its keyword into details — describeIssue reads it there.
-    expect(issue.details.keyword, 'issue.details.keyword').to.be.a('string');
+    expect(issue.message).to.be.a('string');
   });
 });
 

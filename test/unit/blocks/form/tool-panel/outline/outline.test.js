@@ -2,7 +2,6 @@ import { expect } from '@esm-bundle/chai';
 import '../../../../setup-nx.js';
 import { NAV_ORIGIN, formEvents } from '../../../../../../blocks/form/events.js';
 import '../../../../../../blocks/form/tool-panel/outline/outline.js';
-import { IMAGE_URL } from '../../helpers/sdk-types.js';
 
 const text = (pointer, label) => ({ kind: 'string', pointer, label, value: '' });
 
@@ -40,8 +39,7 @@ function sampleRoot() {
 
 const asset = (pointer) => ({
   kind: 'object',
-  typeRef: IMAGE_URL,
-  typeName: 'image',
+  sharedSchemaName: 'image',
   pointer,
   label: 'Image',
   children: [
