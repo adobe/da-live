@@ -47,26 +47,6 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 
 ## Additional details
-### Config editor library lists
-The Blocks, Templates, Icons and Placeholders sections detect existing list files
-even when the site has no corresponding library registration. Blocks, Templates and
-Icons look in `/docs/library/{type}.json`, then `/library/{type}.json`; Placeholders
-looks in `/placeholders.json`.
-
-Loading or saving entries does not register the list; **Add to library** is an
-explicit, optional action that registers the displayed file without rewriting it.
-It appears as a primary button in a separate notice above the list and is disabled
-while there are unsaved edits. The notice disappears after registration.
-A registered source takes precedence over these defaults. If no default exists,
-**Set up** creates and registers one. Read failures are reported rather than treated
-as missing files.
-Changes to published-source sheets need previewing and publishing for authors to see them.
-
-The Icons section shows each configured icon beside its key and keeps the URL
-available for editing. Site-relative and DA/AEM URLs use the shared preview proxy
-resolution. Failed images show **Preview unavailable** and retry once if preview
-authentication succeeds, without blocking editing.
-
 ### Legacy section metadata in previews
 Canvas and live preview follow the HTML pipeline's rendering feature decision.
 They use `https://api.aem.live/<org>/sites/<site>/config.json`:
