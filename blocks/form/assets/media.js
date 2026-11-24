@@ -68,7 +68,7 @@ function isMediaBusHref(href) {
 /**
  * Finds the asset type the SDK delivers a URL as, by the extension of its file name.
  * @param {string} href The URL.
- * @returns {import('./asset-types.js').AssetType} The asset type the URL is delivered as.
+ * @returns {object} The asset type the URL is delivered as.
  */
 function deliveredAssetTypeOfHref(href) {
   return deliveredAssetType(extensionOf(lastPathSegment(href.trim())));
