@@ -9,7 +9,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
-    "@adobe/da-parser": "2.2.1",
+    "@adobe/da-parser": "file:deps/da-parser/pkg/adobe-da-parser-f545641.tgz",
     "@adobe/da-sc-sdk": "0.6.1",
     "@open-wc/lit-helpers": "0.7.0",
     "esbuild": "0.21.0",
