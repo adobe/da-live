@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../../scripts/utils.js';
+import { setNx, getNx2 } from '../../../../../../../scripts/utils.js';
 import {
   getSatellites,
   getBaseSite,
@@ -9,8 +9,14 @@ import {
   inheritsFromBase,
 } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/config.js';
 import { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
+import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const PING = 'https://admin.hlx.page/ping/';
+
+// Switches nx2's DA environment in the module instance nx2's api.js uses.
+async function setDaAdmin(origin) {
+  (await import(`${getNx2()}/utils/utils.js`)).setDaAdmin(origin);
+}
 
 // isHlx6 memoizes per org/site, so Helix 6 cases use their own site names.
 function hlx6Fetch(hlx6Sites, handler, calls = []) {
@@ -197,6 +203,18 @@ describe('MSM config', () => {
       expect(result).to.be.true;
       expect(calls[0].method).to.equal('HEAD');
       expect(calls[0].url).to.equal('https://api.aem.live/org/sites/h6-local/source/about.html');
+    });
+
+    it('checks a legacy page in the editor\'s DA environment', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 200 })), calls);
+      await setDaAdmin('https://stage-admin.da.live');
+      try {
+        await isPageLocal('org', 'env-local', '/about');
+      } finally {
+        await setDaAdmin('https://admin.da.live');
+      }
+      expect(calls[0].url).to.equal(`${DA_ORIGIN}/source/org/env-local/about.html`);
     });
 
     it('throws when the HEAD keeps failing', async () => {

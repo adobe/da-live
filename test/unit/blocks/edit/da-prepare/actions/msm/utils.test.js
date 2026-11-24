@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../../scripts/utils.js';
+import { setNx, getNx2 } from '../../../../../../../scripts/utils.js';
 import {
   previewSatellite,
   publishSatellite,
@@ -10,8 +10,14 @@ import {
   getSatellitePageStatus,
 } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
 import paced, { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
+import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const PING = 'https://admin.hlx.page/ping/';
+
+// Switches nx2's DA environment in the module instance nx2's api.js uses.
+async function setDaAdmin(origin) {
+  (await import(`${getNx2()}/utils/utils.js`)).setDaAdmin(origin);
+}
 
 // isHlx6 memoizes per org/site, so Helix 6 cases use their own site names.
 // Pings for `hlx6Sites` answer with the upgrade header; every other call is
@@ -114,24 +120,40 @@ describe('MSM utils', () => {
   });
 
   describe('createOverride', () => {
-    it('copies the base page to the satellite', async () => {
+    it('copies a legacy page with a read and a write', async () => {
       const calls = [];
-      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 200 })), calls);
+      window.fetch = hlx6Fetch([], (url, opts) => {
+        if (opts.method === 'PUT') return Promise.resolve(new Response('', { status: 201 }));
+        return Promise.resolve(new Response('<p>Base</p>', { status: 200 }));
+      }, calls);
 
       const result = await createOverride('org', 'mccs', 'san-diego-mccs', '/about');
       expect(result.ok).to.be.true;
-
-      const copyCall = calls.find((c) => c.method === 'POST');
-      expect(copyCall.url).to.equal('https://admin.da.live/copy/org/mccs/about.html');
-      expect(copyCall.opts.body.get('destination')).to.equal('/org/san-diego-mccs/about.html');
+      expect(calls.map((c) => `${c.method} ${c.url}`)).to.deep.equal([
+        `GET ${DA_ORIGIN}/source/org/mccs/about.html`,
+        `PUT ${DA_ORIGIN}/source/org/san-diego-mccs/about.html`,
+      ]);
+      expect(await calls[1].opts.body.get('data').text()).to.equal('<p>Base</p>');
     });
 
-    it('returns error when the copy fails', async () => {
-      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 404 })));
+    it('returns error and writes nothing when the base page is missing', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 404 })), calls);
+
+      const result = await createOverride('org', 'mccs', 'san-diego-mccs', '/about');
+      expect(result.error).to.include('404');
+      expect(calls.some((c) => c.method !== 'GET')).to.be.false;
+    });
+
+    it('returns error when the satellite write fails', async () => {
+      window.fetch = hlx6Fetch([], (url, opts) => {
+        if (opts.method === 'PUT') return Promise.resolve(new Response('', { status: 409 }));
+        return Promise.resolve(new Response('<p>Base</p>', { status: 200 }));
+      });
 
       const result = await createOverride('org', 'mccs', 'san-diego-mccs', '/about');
       expect(result.error).to.include('create override');
-      expect(result.error).to.include('404');
+      expect(result.error).to.include('409');
     });
   });
 
@@ -431,6 +453,60 @@ describe('MSM utils', () => {
       setMergeCopy(null);
       expect(mergeCalled).to.be.false;
       expect(result.error).to.include('Helix 6');
+    });
+  });
+
+  describe('when nx2 runs on another DA environment than the editor', () => {
+    beforeEach(async () => {
+      await setDaAdmin('https://stage-admin.da.live');
+    });
+
+    afterEach(async () => {
+      await setDaAdmin('https://admin.da.live');
+    });
+
+    it('copies a legacy page in the editor\'s DA environment', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch([], (url, opts) => {
+        if (opts.method === 'PUT') return Promise.resolve(new Response('', { status: 201 }));
+        return Promise.resolve(new Response('<p>Base</p>', { status: 200 }));
+      }, calls);
+
+      const result = await createOverride('org', 'env-base1', 'env-sat1', '/about');
+      expect(result.ok).to.be.true;
+      expect(calls).to.have.length(2);
+      expect(calls.every((c) => c.url.startsWith(`${DA_ORIGIN}/source/`))).to.be.true;
+    });
+
+    it('deletes a legacy page in the editor\'s DA environment', async () => {
+      const calls = [];
+      const deleted = () => Promise.resolve(new Response(null, { status: 204 }));
+      window.fetch = hlx6Fetch([], deleted, calls);
+
+      const result = await deleteOverride('org', 'env-sat2', '/about');
+      expect(result.ok).to.be.true;
+      expect(calls[0].url).to.equal(`${DA_ORIGIN}/source/org/env-sat2/about.html`);
+    });
+
+    it('refuses to copy between a legacy and a Helix 6 site', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch(['env-h6-sat3'], () => Promise.resolve(new Response('<p>Base</p>', { status: 200 })), calls);
+
+      const result = await createOverride('org', 'env-base3', 'env-h6-sat3', '/about');
+      expect(result.error).to.include('DA environment');
+      expect(calls).to.have.length(0);
+    });
+
+    it('still copies between two Helix 6 sites', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch(['env-h6-base4', 'env-h6-sat4'], (url, opts) => {
+        if (opts.method === 'POST') return Promise.resolve(new Response('', { status: 201 }));
+        return Promise.resolve(new Response('<p>Base</p>', { status: 200 }));
+      }, calls);
+
+      const result = await createOverride('org', 'env-h6-base4', 'env-h6-sat4', '/about');
+      expect(result.ok).to.be.true;
+      expect(calls.map((c) => c.method)).to.deep.equal(['GET', 'POST']);
     });
   });
 

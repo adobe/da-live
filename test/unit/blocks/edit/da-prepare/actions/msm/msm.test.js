@@ -412,6 +412,23 @@ describe('DaMsm component', () => {
     });
   });
 
+  describe('cancel inheritance without a base page', () => {
+    it('reports an error and keeps the satellite inherited', async () => {
+      const base = createFetchMock({});
+      const mock = async (url, opts = {}) => {
+        if (url.includes('/source/') && !opts.method) return new Response('', { status: 404 });
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, { action: 'break', selected: new Set(['pendleton']) });
+
+      await el.runAction('break');
+
+      const sat = el._satellites.find((s) => s.site === 'pendleton');
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.false;
+    });
+  });
+
   describe('sync to satellite action', () => {
     it('creates override in override mode', async () => {
       const mock = createFetchMock({});
