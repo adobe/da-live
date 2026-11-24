@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
+
+
+### Features
+
+* add config editor for org and site settings ([#1667](https://github.com/adobe/da-live/issues/1667)) ([435355d](https://github.com/adobe/da-live/commit/435355d435452b888d23cbab9057103e78d529c3))
+
 ## [1.33.3](https://github.com/adobe/da-live/compare/v1.33.2...v1.33.3) (2026-11-23)
 
 
