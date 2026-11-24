@@ -69,24 +69,24 @@ describe('parseConfig', () => {
 });
 
 describe('resolvePeople', () => {
-  const map = { alice: 'ldap-alice', bob: 'ldap-bob', carol: 'ldap-carol' };
+  const map = { alice: 'ldap-alice', bob: 'ldap-bob', carol: 'ldap-carol', dave: 'ldap-default' };
   const defaults = { coordinator: 'ldap-default', approvedBy: ['ldap-d1', 'ldap-d2'] };
 
-  it('uses the mapped author of the newest PR as coordinator and mapped approvers', () => {
+  it('always uses the default coordinator, even when the PR author is mapped', () => {
     const prs = [
       { author: 'alice', approvers: ['bob'] },
       { author: 'carol', approvers: ['carol', 'bob'] },
     ];
     assert.deepEqual(resolvePeople({ prs, map, defaults }), {
-      coordinator: 'ldap-alice',
+      coordinator: 'ldap-default',
       approvedBy: ['ldap-bob', 'ldap-carol'],
     });
   });
 
-  it('falls back to the default coordinator for an unmapped author (external contributor)', () => {
-    const prs = [{ author: 'stranger', approvers: ['bob'] }];
-    assert.deepEqual(resolvePeople({ prs, map, defaults }), {
-      coordinator: 'ldap-default',
+  it('has no coordinator without a default, even when the PR author is mapped', () => {
+    const prs = [{ author: 'alice', approvers: ['bob'] }];
+    assert.deepEqual(resolvePeople({ prs, map, defaults: { approvedBy: [] } }), {
+      coordinator: undefined,
       approvedBy: ['ldap-bob'],
     });
   });
@@ -94,26 +94,23 @@ describe('resolvePeople', () => {
   it('falls back to the default approvers when no approver is mapped', () => {
     const prs = [{ author: 'alice', approvers: ['stranger'] }];
     assert.deepEqual(resolvePeople({ prs, map, defaults }), {
-      coordinator: 'ldap-alice',
+      coordinator: 'ldap-default',
       approvedBy: ['ldap-d1', 'ldap-d2'],
     });
   });
 
   it('never lists the coordinator as an approver', () => {
-    const prs = [
-      { author: 'alice', approvers: ['bob'] },
-      { author: 'bob', approvers: ['alice'] },
-    ];
+    const prs = [{ author: 'alice', approvers: ['dave', 'bob'] }];
     assert.deepEqual(resolvePeople({ prs, map, defaults }), {
-      coordinator: 'ldap-alice',
+      coordinator: 'ldap-default',
       approvedBy: ['ldap-bob'],
     });
   });
 
-  it('matches logins case-insensitively', () => {
+  it('matches approver logins case-insensitively', () => {
     const prs = [{ author: 'Alice', approvers: ['BOB'] }];
     assert.deepEqual(resolvePeople({ prs, map, defaults }), {
-      coordinator: 'ldap-alice',
+      coordinator: 'ldap-default',
       approvedBy: ['ldap-bob'],
     });
   });

@@ -1,25 +1,11 @@
 /*
- * Resolves the change coordinator and approvers for the iPaaS change request
- * (@adobe/semantic-release-ipaas-chg) from the PRs in the upcoming release.
- *
- * - coordinator: the mapped author of the newest PR, else the default coordinator
- * - approvers:   the mapped approving reviewers of all PRs, else the default approvers
- *
- * Everything comes from one secret, DA_CHG_LDAP_MAP:
- *   {
- *     "_coordinator": "ldap",             // default coordinator
- *     "_approvers": ["ldap1", "ldap2"],    // default approvers
- *     "githubLogin": "ldap", ...           // GitHub login -> Adobe LDAP id
- *   }
- * Keys starting with "_" can never be GitHub logins (letters, digits, hyphens only).
- * Unmapped people (e.g. external contributors) are skipped.
- * Results are written as IPAAS_COORDINATOR / IPAAS_APPROVED_BY to $GITHUB_ENV, which
- * overrides the values from the shared Helix secret. Every LDAP id is masked, because
- * the Actions logs of this public repo are public.
- *
- * This step must never block a release: on any error it falls back to the defaults.
+ * Sets IPAAS_COORDINATOR / IPAAS_APPROVED_BY for the iPaaS change request.
+ * Config: DA_CHG_LDAP_MAP secret, e.g.
+ *   { "_coordinator": "ldap", "_approvers": ["ldap1"], "githubLogin": "ldap" }
+ * Coordinator is always _coordinator; approvers are the mapped PR approvers, else _approvers.
+ * LDAP ids are masked (public logs). Never fails the release.
  */
-/* eslint-disable no-console -- CLI script for GitHub Actions, console is its output */
+/* eslint-disable no-console -- CLI script */
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, realpathSync } from 'node:fs';
 import process from 'node:process';
@@ -70,7 +56,7 @@ export function parseConfig(raw) {
 export function resolvePeople({ prs, map, defaults }) {
   const lookup = (login) => map[login?.toLowerCase()];
 
-  const coordinator = lookup(prs[0]?.author) || defaults.coordinator || undefined;
+  const coordinator = defaults.coordinator || undefined;
 
   const notCoordinator = (ldap) => ldap !== coordinator;
   const mapped = [...new Set(prs.flatMap((pr) => pr.approvers).map(lookup).filter(Boolean))]
@@ -98,13 +84,13 @@ function git(...args) {
   return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
 
-// Commits that go into the next release (newest first), i.e. everything since the last tag.
+// Commits since the last release tag, newest first.
 function releaseCommits() {
   let range = 'HEAD';
   try {
     range = `${git('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', 'HEAD')}..HEAD`;
   } catch {
-    // no tag yet: take the most recent commits
+    // no tag yet
   }
   return git('log', range, '--format=%H', `--max-count=${MAX_COMMITS}`).split('\n').filter(Boolean);
 }
@@ -123,7 +109,7 @@ async function github(path) {
   return resp.json();
 }
 
-// Merged PRs for the release commits, newest first, each with author and approvers.
+// Merged PRs of the release commits with their approvers.
 async function releasePRs(repo, base) {
   const seen = new Set();
   const prs = [];
@@ -133,7 +119,7 @@ async function releasePRs(repo, base) {
       if (pr.merged_at && pr.base.ref === base && !seen.has(pr.number)) {
         seen.add(pr.number);
         const reviews = await github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`);
-        prs.push({ number: pr.number, author: pr.user.login, approvers: latestApprovers(reviews) });
+        prs.push({ number: pr.number, approvers: latestApprovers(reviews) });
       }
     }
   }
@@ -157,7 +143,7 @@ async function main() {
   mask.forEach((value) => console.log(`::add-mask::${value}`));
   if (env.length) appendFileSync(GITHUB_ENV, `${env.join('\n')}\n`);
 
-  // log only GitHub-side facts, never LDAP ids
+  // never log LDAP ids
   console.log(`PRs in release: ${prs.map((pr) => `#${pr.number}`).join(', ') || 'none'}`);
   console.log(`coordinator: ${people.coordinator ? 'set' : 'not set, using shared secret'}`);
   console.log(`approvers: ${people.approvedBy ? people.approvedBy.length : 'not set, using shared secret'}`);
