@@ -1,6 +1,6 @@
 /* eslint-disable object-curly-newline */
 /* eslint-disable no-use-before-define */
-import { HLX_ADMIN, AEM_API, DA_ADMIN, DA_CONTENT, ALLOWED_TOKEN } from './utils.js';
+import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
 export { AEM_API };
@@ -524,6 +524,9 @@ const TYPE_MAP = {
   '.mp4': 'video/mp4',
   '.pdf': 'application/pdf',
 };
+
+// Legacy DA serves media from here; relative media refs resolve against it.
+const DA_CONTENT = 'https://content.da.live';
 
 // Rewrite relative `media_` refs (src/href/srcset) to absolute URLs against
 // `base`. Already-absolute and non-`media_` refs are left untouched.
