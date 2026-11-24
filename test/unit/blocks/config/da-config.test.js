@@ -997,6 +997,63 @@ describe('da-config', () => {
   });
 
   describe('Plugins panel', () => {
+    it('keeps the plugin draft open when the Opens in picker closes, until Add is clicked', async () => {
+      mockFetch({ sitesFor: () => [{ name: 'alpha' }] });
+      el.org = 'plpick';
+      el._sectionId = 'plugins';
+      await ready();
+      buttonIn(q('.config-row-buttons'), 'Add plugin').click();
+      await el.updateComplete;
+      const type = (key, value) => {
+        const input = q(`#config-${key}`);
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+      };
+      type('title', 'Hero PZN Version Creator');
+      type('path', '/tools/pzn-builder/pzn-builder.html');
+      await el.updateComplete;
+      const picker = q('#config-experience');
+      const popover = document.createElement('div');
+      picker.attachShadow({ mode: 'open' }).append(popover);
+      // The shared picker closes its nested popover before emitting the selection change.
+      popover.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+      await el.updateComplete;
+      expect(has('nx-dialog.config-row-dialog')).to.equal(true);
+      expect(q('#config-title').value).to.equal('Hero PZN Version Creator');
+      expect(q('#config-path').value).to.equal('/tools/pzn-builder/pzn-builder.html');
+      picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'fullsize-dialog' }, bubbles: true, composed: true }));
+      await el.updateComplete;
+      expect(has('nx-dialog.config-row-dialog')).to.equal(true);
+      expect(el._draft.row.experience).to.equal('fullsize-dialog');
+      expect(has('.config-savebar')).to.equal(false);
+      q('nx-dialog .nx-form-btn-primary').click();
+      await el.updateComplete;
+      expect(has('nx-dialog.config-row-dialog')).to.equal(false);
+      expect(q('.config-table tbody').textContent).to.include('Hero PZN Version Creator');
+      expect(q('.config-table tbody').textContent).to.include('Full-size dialog');
+      expect(has('.config-savebar')).to.equal(true);
+    });
+
+    it('still cancels the plugin draft on the dialog own close event or Cancel button', async () => {
+      mockFetch({ sitesFor: () => [{ name: 'alpha' }] });
+      el.org = 'plcancel';
+      el._sectionId = 'plugins';
+      await ready();
+      buttonIn(q('.config-row-buttons'), 'Add plugin').click();
+      await el.updateComplete;
+      q('nx-dialog').close();
+      await el.updateComplete;
+      expect(has('nx-dialog')).to.equal(false);
+      expect(el._draft).to.equal(null);
+      buttonIn(q('.config-row-buttons'), 'Add plugin').click();
+      await el.updateComplete;
+      q('nx-dialog .nx-form-btn-secondary').click();
+      await el.updateComplete;
+      expect(has('nx-dialog')).to.equal(false);
+      expect(el._draft).to.equal(null);
+      expect(has('.config-savebar')).to.equal(false);
+    });
+
     it('edits plugin rows and saves them without touching the library entries', async () => {
       const BLOCKS = { title: 'Blocks', path: 'https://x.com/blocks.json' };
       const TOOL = { title: 'Tool', path: '/tools/tool.html' };
