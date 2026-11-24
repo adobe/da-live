@@ -335,9 +335,21 @@
 
 .start-page .start-cards-panel > .default-content {
   margin-block-end: var(--s2-spacing-300);
+  font-family: var(--s2-font-family);
 
   > :is(h1, h2, h3, h4, h5, h6, p) {
     margin: 0;
+  }
+
+  > :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--s2-gray-800);
+    font-size: var(--s2-heading-size-xs);
+    font-weight: var(--s2-component-m-bold-font-weight);
+  }
+
+  > p {
+    color: var(--s2-gray-700);
+    font-size: var(--s2-component-l-regular-font-size);
   }
 }
 
