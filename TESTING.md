@@ -186,7 +186,7 @@ test('Create document', async ({ page }, workerInfo) => {
 
 | Workflow | Trigger | Runs |
 | :--- | :--- | :--- |
-| `lint_test.yaml` | Pull requests, push to `main` | Lint and unit tests |
+| `main.yaml` | Pull requests, push to `main` | Lint, unit tests, release (semantic-release + change request) |
 | `pr-title.yaml` | Pull request opened or edited | Conventional Commits check on the title |
 | `playwright.yml` | Pull requests, push to `main`, manual | E2E against the da-admin backend |
 | `playwright-hlx.yml` | Pull requests, push to `main`, manual | E2E against the Helix backend |
