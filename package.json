@@ -1,6 +1,6 @@
 {
   "name": "@adobecom/dark-alley",
-  "version": "1.34.0",
+  "version": "1.36.0",
   "type": "module",
   "author": "Adobe",
   "license": "Apache License 2.0",
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "^3.0.17",
+    "@adobe/semantic-release-ipaas-chg": "^1.2.12",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@esm-bundle/chai": "4.3.4-fix.0",
