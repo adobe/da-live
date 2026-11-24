@@ -221,21 +221,50 @@ describe('MSM utils', () => {
       setMergeCopy(null);
     });
 
-    it('calls mergeCopy with correct url object and returns editUrl', async () => {
-      let capturedUrl;
-      let capturedTitle;
-      setMergeCopy(async (url, title) => {
-        capturedUrl = url;
-        capturedTitle = title;
+    it('calls mergeCopy with the public loc options and returns editUrl', async () => {
+      let captured;
+      setMergeCopy(async (options) => {
+        captured = options;
         return { ok: true };
       });
 
       const result = await mergeFromBase('org', 'mccs', 'san-diego-mccs', '/about');
       expect(result.ok).to.be.true;
       expect(result.editUrl).to.include('/edit#/org/san-diego-mccs/about');
-      expect(capturedUrl.source).to.equal('/org/mccs/about.html');
-      expect(capturedUrl.destination).to.equal('/org/san-diego-mccs/about.html');
-      expect(capturedTitle).to.equal('MSM Merge');
+      expect(captured.urlSource).to.equal('/org/mccs/about.html');
+      expect(captured.urlTarget).to.equal('/org/san-diego-mccs/about.html');
+      expect(captured.msg).to.equal('MSM Merge');
+      expect(captured.fetch).to.be.a('function');
+      expect(captured.daOrigin).to.be.a('string');
+    });
+
+    it('loads mergeCopy from the public loc SDK by default', async () => {
+      window.locMergeCalls = [];
+      const result = await mergeFromBase('org', 'mccs', 'san-diego-mccs', '/about');
+      expect(result.ok).to.be.true;
+      expect(window.locMergeCalls).to.have.length(1);
+      expect(window.locMergeCalls[0].urlTarget).to.equal('/org/san-diego-mccs/about.html');
+      delete window.locMergeCalls;
+    });
+
+    it('loads the SDK from nx when the page runs on nx2', async () => {
+      setNx('/test/fixtures/nx2', { hostname: 'example.com' });
+      window.locMergeCalls = [];
+      try {
+        const result = await mergeFromBase('org', 'mccs', 'san-diego-mccs', '/about');
+        expect(result.ok).to.be.true;
+        expect(window.locMergeCalls).to.have.length(1);
+      } finally {
+        setNx('/test/fixtures/nx', { hostname: 'example.com' });
+        delete window.locMergeCalls;
+      }
+    });
+
+    it('returns the error details of a failed merge', async () => {
+      setMergeCopy(async () => ({ ok: false, status: 401, error: 'Source read failed (401)' }));
+
+      const result = await mergeFromBase('org', 'mccs', 'san-diego-mccs', '/about');
+      expect(result.error).to.equal('Source read failed (401)');
     });
 
     it('returns error when mergeCopy returns not ok', async () => {
