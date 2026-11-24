@@ -13,6 +13,8 @@ import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const PING = 'https://admin.hlx.page/ping/';
 
+const rejection = (promise) => promise.then(() => undefined, (e) => e);
+
 // Switches nx2's DA environment in the module instance nx2's api.js uses.
 async function setDaAdmin(origin) {
   (await import(`${getNx2()}/utils/utils.js`)).setDaAdmin(origin);
@@ -220,24 +222,14 @@ describe('MSM config', () => {
     it('throws when the HEAD keeps failing', async () => {
       window.fetch = hlx6Fetch(['h6-fail'], () => Promise.reject(new TypeError('Failed to fetch')));
 
-      let error;
-      try {
-        await isPageLocal('org', 'h6-fail', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(isPageLocal('org', 'h6-fail', '/about'));
       expect(error).to.exist;
     });
 
     it('throws when HEAD returns an error other than 404', async () => {
       window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 403 })));
 
-      let error;
-      try {
-        await isPageLocal('org', 'head-403', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(isPageLocal('org', 'head-403', '/about'));
       expect(error?.message).to.include('403');
       expect(error?.message).not.to.include('reload the page');
     });
@@ -250,12 +242,7 @@ describe('MSM config', () => {
         return new Response('', { status: 404 });
       };
 
-      let error;
-      try {
-        await isPageLocal('org', 'ping-fail', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(isPageLocal('org', 'ping-fail', '/about'));
       // nx2 keeps a failed check until the page reloads
       expect(error?.message).to.include('ping-fail');
       expect(error?.message).to.include('reload the page');
@@ -301,15 +288,10 @@ describe('MSM config', () => {
         return Promise.resolve(new Response('', { status }));
       });
 
-      let error;
-      try {
-        await checkOverrides('org', {
-          'check-ok': { label: 'OK' },
-          'check-broken': { label: 'Broken' },
-        }, '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(checkOverrides('org', {
+        'check-ok': { label: 'OK' },
+        'check-broken': { label: 'Broken' },
+      }, '/about'));
       expect(error?.message).to.include('check-broken');
     });
 
@@ -357,12 +339,7 @@ describe('MSM config', () => {
     it('rejects when a backend check fails, instead of guessing', async () => {
       window.fetch = async () => { throw new TypeError('Failed to fetch'); };
 
-      let error;
-      try {
-        await inheritsFromBase('org', 'inh-base4', 'inh-sat4');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(inheritsFromBase('org', 'inh-base4', 'inh-sat4'));
       expect(error?.message).to.include('reload the page');
     });
   });

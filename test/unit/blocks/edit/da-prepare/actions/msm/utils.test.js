@@ -15,6 +15,8 @@ import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const PING = 'https://admin.hlx.page/ping/';
 
+const rejection = (promise) => promise.then(() => undefined, (e) => e);
+
 // Switches nx2's DA environment in the module instance nx2's api.js uses.
 async function setDaAdmin(origin) {
   (await import(`${getNx2()}/utils/utils.js`)).setDaAdmin(origin);
@@ -165,12 +167,7 @@ describe('MSM utils', () => {
         return new Response('', { status: 201 });
       };
 
-      let error;
-      try {
-        await createOverride('org', 'ping-fail', 'ping-fail-sat', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(createOverride('org', 'ping-fail', 'ping-fail-sat', '/about'));
       expect(error?.message).to.include('reload the page');
       expect(calls).to.have.length(0);
     });
@@ -211,24 +208,14 @@ describe('MSM utils', () => {
     it('throws when the status request fails', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
 
-      let error;
-      try {
-        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(getSatellitePageStatus('org', 'san-diego-mccs', '/about'));
       expect(error?.message).to.include('500');
     });
 
     it('throws when the status request keeps failing', async () => {
       window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
 
-      let error;
-      try {
-        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(getSatellitePageStatus('org', 'san-diego-mccs', '/about'));
       expect(error?.message).to.include('Failed to fetch');
     });
 
@@ -240,12 +227,7 @@ describe('MSM utils', () => {
         }), { status: 200 }),
       );
 
-      let error;
-      try {
-        await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(getSatellitePageStatus('org', 'san-diego-mccs', '/about'));
       expect(error?.message).to.include('san-diego-mccs');
     });
 
@@ -297,12 +279,7 @@ describe('MSM utils', () => {
         return new Response(null, { status: 204 });
       };
 
-      let error;
-      try {
-        await deleteOverride('org', 'ping-fail-del', '/about');
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(deleteOverride('org', 'ping-fail-del', '/about'));
       expect(error?.message).to.include('reload the page');
       expect(calls).to.have.length(0);
     });
@@ -622,12 +599,7 @@ describe('MSM utils', () => {
       expect(count).to.equal(1);
       expect(waits).to.deep.equal([]);
 
-      let error;
-      try {
-        await paced(() => Promise.resolve(new Response('', { status: 200 })));
-      } catch (e) {
-        error = e;
-      }
+      const error = await rejection(paced(() => Promise.resolve(new Response('', { status: 200 }))));
       expect(error?.message).to.include('try again');
     });
 

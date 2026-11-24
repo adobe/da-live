@@ -12,8 +12,8 @@
 //
 // A network error doesn't tell whether a write reached the server. Every MSM
 // call can be sent again: preview, publish and status change nothing twice, a
-// copy writes the same base page again, and a delete sent twice fails with a
-// 404 at worst.
+// copy writes the same base page again, and a Helix 6 delete sent twice can
+// report a 404 although the first one worked (legacy DA answers 204).
 const MAX_IN_FLIGHT = 4;
 const MAX_STARTS_PER_SECOND = 8;
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
@@ -37,11 +37,6 @@ export function setPaceOptions(opts = {}) {
   pausedUntil = 0;
 }
 
-function pauseError() {
-  const seconds = Math.ceil((pausedUntil - Date.now()) / 1000);
-  return new Error(`The AEM admin API is rate limited, try again in ${seconds} s`);
-}
-
 // Waits until a start fits the window, measured when the call really starts,
 // so late timers can't bunch starts together.
 async function waitForStart() {
@@ -56,7 +51,9 @@ async function waitForStart() {
       starts.push(now);
       return;
     }
-    if (pausedUntil - now > MAX_RETRY_AFTER_MS) throw pauseError();
+    if (pausedUntil - now > MAX_RETRY_AFTER_MS) {
+      throw new Error(`The AEM admin API is rate limited, try again in ${Math.ceil((pausedUntil - now) / 1000)} s`);
+    }
     // eslint-disable-next-line no-await-in-loop
     await sleep(wait);
   }
