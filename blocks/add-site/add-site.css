@@ -15,6 +15,10 @@ p {
   margin: 0;
 }
 
+.nx-form-field {
+  gap: 0;
+}
+
 form label {
   color: var(--s2-gray-800);
   font-size: var(--s2-heading-size-xs);
@@ -25,11 +29,15 @@ form label {
   font-size: var(--s2-component-l-regular-font-size);
 }
 
+#site-error {
+  margin-top: var(--s2-spacing-100);
+}
+
 .site-entry {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2-spacing-100);
-  margin-top: var(--s2-spacing-100);
+  margin-top: calc(2 * var(--s2-spacing-100));
 
   .nx-input {
     flex: 1 1 240px;

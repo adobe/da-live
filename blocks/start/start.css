@@ -351,10 +351,6 @@
     color: var(--s2-gray-700);
     font-size: var(--s2-component-l-regular-font-size);
   }
-
-  > :where(h1, h2, h3, h4, h5, h6) + p {
-    margin-block-start: var(--s2-spacing-100);
-  }
 }
 
 .start-page .start-cards-panel > .nx-cards.start {

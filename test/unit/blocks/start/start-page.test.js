@@ -119,7 +119,6 @@ describe('authored Start page', () => {
   it('fits a panel with authored text on wide and narrow screens with space around Add Site', () => {
     container.style.cssText = `
       width: 900px;
-      --s2-spacing-100: 8px;
       --s2-spacing-300: 16px;
       --s2-spacing-400: 24px;
       --s2-spacing-600: 40px;
@@ -141,7 +140,7 @@ describe('authored Start page', () => {
     const cards = panel.querySelector('.nx-cards.start');
     const intro = panel.querySelector('.default-content');
     expect(intro.querySelector('p').getBoundingClientRect().top
-      - intro.querySelector('h4').getBoundingClientRect().bottom).to.equal(8);
+      - intro.querySelector('h4').getBoundingClientRect().bottom).to.equal(0);
     const addSite = surface.querySelector('.add-site');
     const greeting = surface.querySelector('.greeting');
     expect(addSite.getBoundingClientRect().top - greeting.getBoundingClientRect().bottom)
