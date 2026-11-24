@@ -269,7 +269,16 @@ export function extractCursors(view) {
 // The node views render a block as a bare table, but prose2aem only turns a
 // table inside a .tableWrapper into a block, so each table gets its wrapper back.
 function unwrapDiffViews(root) {
-  root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
+  root.querySelectorAll('.loc-pair-hidden, .diff-group-member').forEach((el) => el.remove());
+  root.querySelectorAll('.diff-group-card').forEach((card) => {
+    const local = card.querySelector('.diff-group-side.is-local .diff-group-side-content');
+    if (!local) {
+      card.remove();
+      return;
+    }
+    wrapTablesInWrappers(local);
+    card.replaceWith(...local.childNodes);
+  });
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
     const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
     if (!local) {

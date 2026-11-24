@@ -7,6 +7,7 @@ import { getDiffClass } from '../../../../../blocks/edit/prose/diff/diff-utils.j
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+const { createReviewNodeViews } = await import('../../../../../blocks/canvas/editor-utils/diff-review-view.js');
 
 const schema = getSchema();
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -106,6 +107,91 @@ describe('getInstrumentedHTML with merge conflicts', () => {
       expect(html.match(/<div class="hero small"[^>]*>/g) || []).to.have.length(1);
       expect(html).to.include('local headline');
       expect(html).to.not.include('upstream headline');
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('getInstrumentedHTML with grouped merge conflicts', () => {
+  const g = (type, side, kind, content) => ({
+    type,
+    attrs: { diffGroup: 'g1', diffSide: side, diffKind: kind, diffReason: 'both-changed' },
+    content,
+  });
+  const base = (text) => ({ type: 'diff_base', attrs: { diffGroup: 'g1' }, content: [para(text)] });
+
+  function makeGroupedView(content) {
+    const doc = schema.nodeFromJSON({ type: 'doc', content });
+    const dom = document.createElement('div');
+    document.body.appendChild(dom);
+    const fallback = {
+      diff_added(node, v, getPos) {
+        const View = getDiffClass('da-diff-added', () => schema, () => {}, { isUpstream: false });
+        return new View(node, v, getPos);
+      },
+      diff_deleted(node, v, getPos) {
+        const View = getDiffClass('da-diff-deleted', () => schema, () => {}, { isUpstream: true });
+        return new View(node, v, getPos);
+      },
+    };
+    const view = new EditorView(dom, {
+      state: EditorState.create({ schema, doc, plugins: [columnResizing()] }),
+      nodeViews: createReviewNodeViews(fallback),
+    });
+    const cleanup = () => {
+      view.destroy();
+      dom.remove();
+    };
+    return { view, cleanup };
+  }
+
+  it('keeps only the local side of a group and drops the card and the base', () => {
+    const { view, cleanup } = makeGroupedView([
+      para('intro'),
+      base('original text'),
+      g('diff_deleted', 'source', 'changed', [para('upstream text')]),
+      g('diff_added', 'local', 'changed', [para('local text')]),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.include('local text');
+      expect(html).to.not.include('upstream text');
+      expect(html).to.not.include('original text');
+      expect(html).to.not.include('Keep mine');
+      expect(html).to.not.include('diff-group');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('renders the local block of a group as that block', () => {
+    const { view, cleanup } = makeGroupedView([
+      para('intro'),
+      g('diff_deleted', 'source', 'changed', [block('hero (small)', 'upstream headline')]),
+      g('diff_added', 'local', 'changed', [block('hero (small)', 'local headline')]),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.not.include('<table');
+      expect(html.match(/<div class="hero small"[^>]*>/g) || []).to.have.length(1);
+      expect(html).to.include('local headline');
+      expect(html).to.not.include('upstream headline');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('drops a source-only group', () => {
+    const { view, cleanup } = makeGroupedView([
+      para('intro'),
+      g('diff_deleted', 'source', 'added', [para('new upstream text')]),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.include('intro');
+      expect(html).to.not.include('new upstream text');
+      expect(html).to.not.include('Take source');
     } finally {
       cleanup();
     }

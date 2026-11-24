@@ -695,3 +695,14 @@ describe('prose2aem link-images', () => {
     expect(!!editor.querySelector('a[data-edit-as]')).to.equal(false);
   });
 });
+
+describe('prose2aem diff markup', () => {
+  it('removes da-diff-base like da-diff-deleted', () => {
+    const editor = document.createElement('div');
+    editor.innerHTML = '<p>kept</p><da-diff-base data-mdast="ignore" data-diff-group="g1"><p>original</p></da-diff-base><da-diff-deleted data-mdast="ignore"><p>upstream</p></da-diff-deleted>';
+    const html = prose2aem(editor, true, true);
+    expect(html).to.include('kept');
+    expect(html).to.not.include('original');
+    expect(html).to.not.include('upstream');
+  });
+});
