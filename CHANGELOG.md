@@ -1,3 +1,10 @@
+## [1.36.1](https://github.com/adobe/da-live/compare/v1.36.0...v1.36.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* remove support for browse version config ([#1785](https://github.com/adobe/da-live/issues/1785)) ([58a3397](https://github.com/adobe/da-live/commit/58a3397e2e1f54bd57905c92fe6e3a4818cb968b))
+
 # [1.36.0](https://github.com/adobe/da-live/compare/v1.35.0...v1.36.0) (2026-11-24)
 
 
