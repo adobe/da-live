@@ -24,7 +24,7 @@ blocks/form/
     asset-types.js        asset type descriptors (image, file) and their capabilities
     sources.js            asset sources for image and file fields (upload, AEM Assets)
     aem-selector.js       AEM Assets selector dialog
-    media.js              asset URL and file type helpers
+    media.js              asset URL display helpers
   tool-panel/
     host.js               toolPanelHost, the form's delegate for the shared tool panel
     outline/
@@ -84,7 +84,7 @@ The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK 
 
 The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
-Asset types are descriptors in `assets/asset-types.js` that declare what each type can do, such as previews, uploads and the file extensions the SDK delivers as it. Fields, sources and the editor ask a descriptor for a capability instead of comparing type names, so supporting a new SDK asset type means adding one descriptor.
+Asset types are descriptors in `assets/asset-types.js` that declare what each type can do, such as previews and uploads. Fields, sources and the editor ask a descriptor for a capability instead of comparing type names, so supporting a new SDK asset type means adding one descriptor. The SDK validates every asset source and decides how it is written, so the form keeps no copy of those rules.
 
 ---
 

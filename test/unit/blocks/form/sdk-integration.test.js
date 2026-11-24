@@ -144,41 +144,6 @@ describe('SDK state shape', () => {
     expect(engine.getState().validation.errors['/data/heroImage/src']?.message).to.be.a('string');
   });
 
-  it('writes image fields as HTML images with their alt text, and round-trips them', () => {
-    const schema = {
-      type: 'object',
-      properties: { heroImage: { $ref: IMAGE_URL } },
-    };
-    const engine = createEngine({ schema, document: validDoc() });
-    [
-      './media_1a2b3c.png',
-      'https://content.da.live/org/site/drafts/.page/hero.png',
-      'https://delivery.example.com/assets/hero.avif?smartcrop=wide&width=1920',
-    ].forEach((href) => {
-      const asset = { src: href, altText: 'A hero' };
-      engine.setField('/data/heroImage', asset);
-      const { document, model } = engine.getState();
-      const { html, error } = convertJsonToHtml({ json: document, model });
-      expect(error).to.equal(undefined);
-      const img = new DOMParser().parseFromString(html, 'text/html').querySelector('img');
-      expect(img?.getAttribute('src')).to.equal(href);
-      expect(img?.getAttribute('alt')).to.equal('A hero');
-      expect(convertHtmlToJson({ html }).json.data.heroImage).to.deep.equal(asset);
-    });
-
-    engine.setField('/data/heroImage', undefined);
-    const { document, model } = engine.getState();
-    const { html } = convertJsonToHtml({ json: document, model });
-    expect(html).to.not.include('<img');
-    expect(convertHtmlToJson({ html }).json.data.heroImage).to.equal(undefined);
-  });
-
-  it('reads a delivered media bus image without its rendition parameters', () => {
-    const html = convertJsonToHtml({ json: validDoc({ heroImage: { src: 'x' } }) }).html
-      .replace('<p>x</p>', '<picture><img src="./media_1c0072.jpg?width=750&amp;format=jpg&amp;optimize=medium" alt=""></picture>');
-    expect(convertHtmlToJson({ html }).json.data.heroImage).to.deep.equal({ src: './media_1c0072.jpg' });
-  });
-
   it('validation.errors entries carry a .message field (read by editor.js)', () => {
     // Force a required-field error; the schema requires `name` and we omit it.
     const engine = createEngine({ schema: demoSchema, document: validDoc() });

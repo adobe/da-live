@@ -25,7 +25,7 @@ const aem = (overrides = {}) => source({ id: 'aem-assets', label: 'AEM Assets', 
 
 async function mount(options = {}) {
   const field = document.createElement('ew-form-asset');
-  Object.assign(field, { label: 'Hero image', showsPreview: true, sources: [upload(), aem()], ...options });
+  Object.assign(field, { label: 'Hero image', assetType: 'image', sources: [upload(), aem()], ...options });
   document.body.append(field);
   mounted.push(field);
   await field.updateComplete;
@@ -164,36 +164,16 @@ describe('ew-form-asset', () => {
     expect(heightOf(box(field))).to.be.greaterThan(200);
   });
 
-  it('collapses to a single row for files that are not images', async () => {
-    const field = await mount({ value: 'https://x.test/files/spec.pdf' });
+  it('keeps a file field as a single row, even for an image', async () => {
+    const field = await mount({ assetType: 'file', value: './media_abc.png' });
     expect(query(field, '.asset-preview')).to.equal(null);
     expect(box(field).classList.contains('has-preview')).to.be.false;
     expect(heightOf(box(field))).to.be.lessThan(100);
-    expect(query(field, '.asset-url').textContent).to.equal('https://x.test/files/spec.pdf');
-  });
-
-  it('keeps an image as a single row in a field without previews', async () => {
-    const field = await mount({ showsPreview: false, value: './media_abc.png' });
-    expect(query(field, '.asset-preview')).to.equal(null);
-    expect(box(field).classList.contains('has-preview')).to.be.false;
     expect(query(field, '.asset-url').textContent).to.equal('./media_abc.png');
   });
 
-  it('expands again when a file is replaced with an image, and collapses on the way back', async () => {
-    const field = await mount({ value: 'https://x.test/files/spec.pdf' });
-    const rowHeight = heightOf(box(field));
-    field.value = './media_abc.png';
-    await field.updateComplete;
-    expect(query(field, '.asset-preview')).to.exist;
-    expect(heightOf(box(field))).to.be.greaterThan(rowHeight);
-    field.value = 'https://x.test/files/theme.mp3';
-    await field.updateComplete;
-    expect(query(field, '.asset-preview')).to.equal(null);
-    expect(heightOf(box(field))).to.equal(rowHeight);
-  });
-
-  it('keeps a video as a single row in a field with previews', async () => {
-    const field = await mount({ value: 'https://publish-p1-e1.adobeaemcloud.com/content/dam/site/clip.mp4' });
+  it('keeps an image field as a single row while its value has an error', async () => {
+    const field = await mount({ value: 'not a url', error: 'The source is not valid.' });
     expect(query(field, '.asset-preview')).to.equal(null);
     expect(box(field).classList.contains('has-preview')).to.be.false;
   });
@@ -216,7 +196,7 @@ describe('ew-form-asset', () => {
   });
 
   it('shows the stored URL with Copy, Replace and Remove as icons in the row', async () => {
-    const field = await mount({ value: 'https://x.test/files/data%20sheet.pdf' });
+    const field = await mount({ assetType: 'file', value: 'https://x.test/files/data%20sheet.pdf' });
     const row = query(field, '.asset-row');
     expect(query(field, '.asset-url').textContent).to.equal('https://x.test/files/data sheet.pdf');
     expect(query(field, '.asset-url').title).to.equal('https://x.test/files/data sheet.pdf');
@@ -259,7 +239,7 @@ describe('ew-form-asset', () => {
   it('cuts a long URL in its path and file name but keeps the extension visible', async () => {
     const longName = `${'very-long-file-name-'.repeat(10)}final.pdf`;
     const href = `https://x.test/${'folder/'.repeat(10)}${longName}`;
-    const field = await mount({ value: href });
+    const field = await mount({ assetType: 'file', value: href });
     const url = query(field, '.asset-url');
     const stem = query(field, '.asset-url-stem');
     const tail = query(field, '.asset-url-tail');
@@ -275,7 +255,7 @@ describe('ew-form-asset', () => {
 
   it('shows an AEM video player URL cut in its path, with the player name visible', async () => {
     const player = `https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:${'a1b2'.repeat(9)}/play`;
-    const field = await mount({ value: player });
+    const field = await mount({ assetType: 'file', value: player });
     const url = query(field, '.asset-url');
     const stem = query(field, '.asset-url-stem');
     expect(url.textContent).to.equal(player);
@@ -426,7 +406,7 @@ describe('ew-form-asset', () => {
   });
 
   it('rejects a result without a usable URL', async () => {
-    const field = await mount({ sources: [aem({ select: async () => ({ href: 'data:text/html,hi' }) })] });
+    const field = await mount({ sources: [aem({ select: async () => ({ name: 'hero.png' }) })] });
     button(field, 'Select').click();
     await settle(field);
     expect(query(field, '[role="alert"]').textContent).to.equal('The selected file did not return a usable URL.');

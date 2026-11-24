@@ -9,7 +9,7 @@ import '../fields/number.js';
 import '../fields/date.js';
 import '../fields/asset.js';
 import { icon } from '../icons.js';
-import { findAssetType, isAssetType } from '../assets/asset-types.js';
+import { isAssetType } from '../assets/asset-types.js';
 import { isSharedSchemaField, isStructured } from '../utils/model.js';
 import { NAV_ORIGIN } from '../events.js';
 
@@ -375,7 +375,6 @@ class Editor extends LitElement {
         .value=${src}
         .altText=${altText}
         .assetType=${node.sharedSchemaName}
-        .showsPreview=${findAssetType(node.sharedSchemaName).showsPreview}
         .acceptsAltText=${!!altNode}
         .altRequired=${!!altNode?.required}
         .altError=${this._error(`${pointer}/altText`)}

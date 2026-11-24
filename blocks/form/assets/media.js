@@ -1,12 +1,4 @@
-import { LINKED_ASSET_TYPE, deliveredAssetType } from './asset-types.js';
-
-/** The start of every relative media bus path the site serves uploaded images from. */
-const MEDIA_BUS_PREFIX = './media_';
-
-/** Characters that would break the stored value out of its HTML attribute. */
-const UNSAFE_MEDIA_BUS_CHARACTERS = /[\s<>"']/;
-
-/** The protocols of absolute URLs an asset field accepts. */
+/** The protocols of the URLs an asset field previews. */
 const WEB_PROTOCOLS = ['http:', 'https:'];
 
 /** Finds where the path of a URL ends and its query or fragment starts. */
@@ -48,60 +40,17 @@ function lastPathSegment(href) {
 }
 
 /**
- * Checks whether a URL is an absolute web URL.
- * @param {string} href The URL.
- * @returns {boolean} Whether the URL is absolute and uses http or https.
- */
-function isWebHref(href) {
-  return WEB_PROTOCOLS.includes(parseHref(href)?.protocol);
-}
-
-/**
- * Checks whether a URL is a media bus path that can be stored as it is.
- * @param {string} href The URL.
- * @returns {boolean} Whether the URL is a media bus path that is safe to store.
- */
-function isMediaBusHref(href) {
-  return href.startsWith(MEDIA_BUS_PREFIX) && !UNSAFE_MEDIA_BUS_CHARACTERS.test(href);
-}
-
-/**
- * Finds the asset type the SDK delivers a URL as, by the extension of its file name.
- * @param {string} href The URL.
- * @returns {object} The asset type the URL is delivered as.
- */
-function deliveredAssetTypeOfHref(href) {
-  return deliveredAssetType(extensionOf(lastPathSegment(href.trim())));
-}
-
-/**
- * Checks whether a value can be stored in an asset field.
- * @param {unknown} href The value to check.
- * @returns {boolean} Whether the value is a media bus path or a web URL.
- */
-export function isAssetHref(href) {
-  if (typeof href !== 'string' || !href.trim()) {
-    return false;
-  }
-  return isMediaBusHref(href) || isWebHref(href);
-}
-
-/**
  * Resolves the URL an image previews from. Media bus paths only load from the site's
  * preview origin.
  * @param {object} options The asset reference.
  * @param {string} options.href The stored asset URL.
  * @param {string} [options.previewOrigin] The site's preview origin.
- * @returns {string|undefined} The preview URL, or undefined while the origin is unknown.
+ * @returns {string|undefined} The preview URL, or undefined while the origin is unknown
+ *   or for a value that is no web URL.
  */
 function resolvePreviewHref({ href, previewOrigin }) {
-  if (isWebHref(href)) {
-    return href;
-  }
-  if (!previewOrigin) {
-    return undefined;
-  }
-  return parseHref(href, `${previewOrigin}/`)?.href;
+  const url = parseHref(href, previewOrigin ? `${previewOrigin}/` : undefined);
+  return WEB_PROTOCOLS.includes(url?.protocol) ? url.href : undefined;
 }
 
 /**
@@ -119,26 +68,22 @@ function fileNameFromHref(href) {
 }
 
 /**
- * Describes a stored asset value for display. Only asset types that show a preview have
- * a preview URL.
+ * Describes a stored asset value for display. The SDK validates the value, so this only
+ * reads it.
  * @param {object} options The asset reference.
  * @param {string} [options.href] The stored asset URL.
  * @param {string} [options.name] The file name known from the selection.
  * @param {string} [options.previewOrigin] The site's preview origin.
- * @returns {{ name: string, assetType: string, previewHref: (string|undefined) }} The
- *   asset's display name, the name of the asset type it is delivered as, and the
- *   URL to preview.
+ * @returns {{ name: string, previewHref: (string|undefined) }} The asset's display name
+ *   and the URL to preview.
  */
 export function describeAsset({ href, name, previewOrigin }) {
-  if (!isAssetHref(href)) {
-    return { name: name || '', assetType: LINKED_ASSET_TYPE.name, previewHref: undefined };
+  if (!href) {
+    return { name: name || '', previewHref: undefined };
   }
-
-  const assetType = deliveredAssetTypeOfHref(href);
   return {
     name: name || fileNameFromHref(href),
-    assetType: assetType.name,
-    previewHref: assetType.showsPreview ? resolvePreviewHref({ href, previewOrigin }) : undefined,
+    previewHref: resolvePreviewHref({ href, previewOrigin }),
   };
 }
 

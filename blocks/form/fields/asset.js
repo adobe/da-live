@@ -3,12 +3,7 @@ import { getNx2 } from '../../../scripts/utils.js';
 import { icon } from '../icons.js';
 import { findAssetType } from '../assets/asset-types.js';
 import { CANCELLED } from '../assets/sources.js';
-import {
-  describeAsset,
-  extensionOf,
-  isAssetHref,
-  splitHrefForDisplay,
-} from '../assets/media.js';
+import { describeAsset, extensionOf, splitHrefForDisplay } from '../assets/media.js';
 import defaults from './defaults.js';
 
 /** The base URL nx2 modules are loaded from. */
@@ -87,7 +82,6 @@ function renderRequiredMark(required) {
  * @property {string} [value] The stored asset URL.
  * @property {string} [altText] The alt text of the asset.
  * @property {string} [assetType] The name of the accepted asset type, see `ASSET_TYPES`.
- * @property {boolean} showsPreview Whether images expand to a preview panel.
  * @property {boolean} acceptsAltText Whether the field holds alt text.
  * @property {boolean} altRequired Whether the alt text is required.
  * @property {string} [altError] The validation error of the alt text.
@@ -106,7 +100,6 @@ class FormAsset extends LitElement {
     value: { type: String },
     altText: { type: String },
     assetType: { type: String },
-    showsPreview: { type: Boolean },
     acceptsAltText: { type: Boolean },
     altRequired: { type: Boolean },
     altError: { type: String },
@@ -210,15 +203,16 @@ class FormAsset extends LitElement {
   }
 
   /**
-   * Answers whether the field expands to the preview panel. Only images expand, and only in
-   * fields that show previews. Everything else stays a single row.
+   * Answers whether the field expands to the preview panel. Fields of an asset type with
+   * previews expand for a valid value until its preview fails to load. Everything else
+   * stays a single row.
    * @returns {boolean} Whether the preview panel shows.
    */
   get _hasPreviewPanel() {
-    if (!this.showsPreview || !this.value) {
+    if (!findAssetType(this.assetType)?.showsPreview || !this.value || this.error) {
       return false;
     }
-    return !!findAssetType(this._asset.assetType)?.showsPreview && !this._previewFailed;
+    return !this._previewFailed;
   }
 
   /**
@@ -367,7 +361,7 @@ class FormAsset extends LitElement {
     if (result.cancelled) {
       return;
     }
-    if (result.error || !isAssetHref(result.href)) {
+    if (result.error || !result.href) {
       this._selectionError = result.error || MESSAGES.unusableResult;
       return;
     }

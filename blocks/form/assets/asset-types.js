@@ -1,20 +1,18 @@
 /**
  * An asset type the SDK supports, described by what it can do, so consumers ask a type
  * for its capability instead of comparing type names. `name` is the name of the SDK
- * shared schema that schemas reference, and `extensions` lists the file extensions the
- * SDK delivers as the type. `showsPreview` expands its fields to a preview, `uploadable`
- * lets authors upload files for it, and `aemSelectsImagesOnly` limits the AEM Assets
- * selector to images. An optional `noSourceMessage` explains why a field offers no
- * source, when the generic hint does not.
+ * shared schema that schemas reference. `showsPreview` expands its fields to a preview,
+ * `uploadable` lets authors upload files for it, and `aemSelectsImagesOnly` limits the
+ * AEM Assets selector to images. An optional `noSourceMessage` explains why a field
+ * offers no source, when the generic hint does not.
  */
 
 /**
- * Images. The SDK writes these extensions as `<img>`, so a field previews exactly what is
- * delivered as an image. Uploads reach the site through the image media bus.
+ * Images. Fields preview their value, and uploads reach the site through the image media
+ * bus.
  */
 const IMAGE_ASSET_TYPE = Object.freeze({
   name: 'image',
-  extensions: Object.freeze(['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg']),
   showsPreview: true,
   uploadable: true,
   aemSelectsImagesOnly: true,
@@ -26,7 +24,6 @@ const IMAGE_ASSET_TYPE = Object.freeze({
  */
 const FILE_ASSET_TYPE = Object.freeze({
   name: 'file',
-  extensions: Object.freeze([]),
   showsPreview: false,
   uploadable: false,
   aemSelectsImagesOnly: false,
@@ -38,12 +35,6 @@ const FILE_ASSET_TYPE = Object.freeze({
  * here, without changing the fields, sources or previews that consume it.
  */
 export const ASSET_TYPES = Object.freeze([IMAGE_ASSET_TYPE, FILE_ASSET_TYPE]);
-
-/**
- * The type every value is delivered as when no supported type claims its extension,
- * because the SDK writes such values as links.
- */
-export const LINKED_ASSET_TYPE = FILE_ASSET_TYPE;
 
 /**
  * Finds the asset type of an SDK shared schema.
@@ -62,14 +53,4 @@ export function findAssetType(sharedSchemaName) {
  */
 export function isAssetType(sharedSchemaName) {
   return findAssetType(sharedSchemaName) !== undefined;
-}
-
-/**
- * Finds the asset type the SDK delivers a file extension as.
- * @param {string} extension The lowercase file extension, without the dot.
- * @returns {object} The type that claims the extension, or the linked asset type.
- */
-export function deliveredAssetType(extension) {
-  return ASSET_TYPES.find(({ extensions }) => extensions.includes(extension))
-    ?? LINKED_ASSET_TYPE;
 }

@@ -2,7 +2,6 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
 import { refuseOversizedImage } from '../../shared/image-upload.js';
 import { ASSET_TYPES, findAssetType } from './asset-types.js';
-import { isAssetHref } from './media.js';
 
 /** The identifiers of the asset sources, which the source menu reports on selection. */
 const SOURCE_IDS = Object.freeze({ upload: 'upload', aemAssets: 'aem-assets' });
@@ -110,7 +109,7 @@ export async function uploadFile({
   }
 
   const href = await readContentUrl(response);
-  if (!isAssetHref(href)) {
+  if (!href) {
     return { error: UPLOAD_ERRORS.response };
   }
   return { href, name: file.name };

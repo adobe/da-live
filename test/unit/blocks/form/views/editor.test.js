@@ -154,7 +154,6 @@ describe('ew-form-fields primitive controls', () => {
     await el.updateComplete;
     const field = el.shadowRoot.querySelector('ew-form-asset');
     expect(field.assetType).to.equal('image');
-    expect(field.showsPreview).to.equal(true);
     expect(field.acceptsAltText).to.equal(true);
     expect(field.altRequired).to.equal(true);
     expect(field.altError).to.equal('Required');
@@ -170,7 +169,6 @@ describe('ew-form-fields primitive controls', () => {
     const el = await mountEditor(objectRoot([node]));
     const field = el.shadowRoot.querySelector('ew-form-asset');
     expect(field.assetType).to.equal('file');
-    expect(field.showsPreview).to.equal(false);
     expect(field.acceptsAltText).to.equal(false);
     expect(field.altRequired).to.equal(false);
   });
