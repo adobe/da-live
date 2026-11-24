@@ -178,7 +178,7 @@ function hasMatchingContent(nodeA, nodeB) {
   return true;
 }
 
-export function checkForLocNodes(view, hostEl) {
+export function checkForLocNodes(view, hostEl, { showDialog = true } = {}) {
   const { doc } = view.state;
 
   const hasListLocNode = (node) => (node.type.name === 'bullet_list' || node.type.name === 'ordered_list')
@@ -190,7 +190,8 @@ export function checkForLocNodes(view, hostEl) {
 
   if (hasLocNodes) {
     loadLocCss(hostEl);
-    showGlobalDialog(view);
+    if (showDialog) showGlobalDialog(view);
+    else hideGlobalDialog();
   } else {
     hideGlobalDialog();
   }

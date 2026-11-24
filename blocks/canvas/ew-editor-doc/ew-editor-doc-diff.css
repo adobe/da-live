@@ -168,3 +168,128 @@
 .ew-editor-doc-mount .loc-single-container.is-short .loc-sticky-buttons {
   position: sticky;
 }
+
+.ew-editor-doc-mount .diff-review-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--s2-gray-75);
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-400);
+}
+
+.ew-editor-doc-mount .diff-review-count {
+  margin: 0 auto 0 0;
+  font-weight: 700;
+}
+
+.ew-editor-doc-mount :is(.diff-review-btn, .diff-group-action) {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+  font-weight: 600;
+  color: var(--s2-gray-800);
+  background: var(--s2-gray-100);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-400);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--s2-gray-200);
+    color: var(--s2-gray-900);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.ew-editor-doc-mount .diff-group-card {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--s2-gray-25);
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-400);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  white-space: normal;
+
+  &.is-current,
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.ew-editor-doc-mount .diff-group-header p {
+  margin: 0;
+}
+
+.ew-editor-doc-mount .diff-group-title {
+  font-weight: 700;
+}
+
+.ew-editor-doc-mount .diff-group-reason {
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+}
+
+.ew-editor-doc-mount .diff-group-base {
+  margin-top: 8px;
+  color: var(--s2-gray-700);
+
+  & summary {
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.ew-editor-doc-mount .diff-group-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ew-editor-doc-mount .diff-group-side {
+  padding: 8px;
+  border-radius: var(--s2-corner-radius-400);
+  overflow-x: auto;
+
+  &.is-source {
+    background-color: rgb(70 130 180 / 20%);
+  }
+
+  &.is-local {
+    background-color: rgb(144 42 222 / 20%);
+  }
+}
+
+.ew-editor-doc-mount .diff-group-side-label {
+  margin: 0 0 4px;
+  font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+  font-weight: 700;
+}
+
+.ew-editor-doc-mount .diff-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ew-editor-doc-mount li:has(> .diff-group-member) {
+  display: none;
+}
+
+.ew-editor-doc-mount li:has(> .diff-group-card) {
+  list-style: none;
+}
