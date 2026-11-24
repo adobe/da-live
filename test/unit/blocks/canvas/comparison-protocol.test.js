@@ -79,6 +79,43 @@ describe('comparison plugin protocol', () => {
     expect(request.context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
   });
 
+  it('routes two DA source operands without accepting caller-supplied lifecycle context', async () => {
+    const received = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe(resolve);
+    });
+    const details = {
+      candidate: '/example/site/.da/proposals/campaigns/demo.html',
+      baseline: '/example/site/campaigns/demo.html',
+    };
+    clientPort.postMessage({
+      action: 'openComparison',
+      details: { ...details, context: { org: 'other', site: 'other', path: 'other' }, html: '<script>bad</script>' },
+    });
+    const request = await received;
+    expect(request.details).to.deep.equal(details);
+    expect(request.context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
+    expect(request.resolve).to.equal(undefined);
+  });
+
+  it('rejects external URLs and unsafe source operands before routing a valid close', async () => {
+    const requests = [];
+    const closed = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe((request) => {
+        requests.push(request);
+        if (request.action === 'closeComparison') resolve();
+      });
+    });
+    for (const candidate of [
+      'https://example.com/page.html', '/example/site/../secret.html',
+      '/example/site/%2e%2e/secret.html', '/example/site/page.html?unsafe=1',
+    ]) {
+      clientPort.postMessage({ action: 'openComparison', details: { candidate, baseline: '/example/site/page.html' } });
+    }
+    clientPort.postMessage({ action: 'closeComparison' });
+    await closed;
+    expect(requests.map(({ action }) => action)).to.deep.equal(['closeComparison']);
+  });
+
   it('acknowledges save completion over the same port', async () => {
     unsubscribe = canvasBus.comparisonRequest.subscribe(({ action, context, details, resolve }) => {
       expect(action).to.equal('saveDocument');

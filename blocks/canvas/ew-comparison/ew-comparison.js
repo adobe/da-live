@@ -9,6 +9,7 @@ const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 class EwComparison extends LitElement {
   static properties = {
     candidate: { type: String },
+    baseline: { type: String },
     path: { type: String },
     diffDom: { attribute: false },
     loading: { state: true },
@@ -23,6 +24,7 @@ class EwComparison extends LitElement {
   constructor() {
     super();
     this.loading = true;
+    this.baseline = 'live';
     this.split = true;
   }
 
@@ -36,6 +38,7 @@ class EwComparison extends LitElement {
   }
 
   render() {
+    const label = this.candidate?.startsWith('/') ? 'Proposed changes' : 'Preview';
     return html`
       <section class="comparison" aria-label="Page comparison" @keydown=${(e) => {
         if (e.key === 'Escape') {
@@ -58,7 +61,8 @@ class EwComparison extends LitElement {
         </div>
         ${this.diffDom ? html`
           <ew-canvas-compare .embedded=${true} .split=${this.split}
-            .currentLabel=${'Live'} .label=${this.candidate === 'document' ? 'Current document' : 'Preview'}
+            .currentLabel=${this.baseline === 'live' ? 'Live' : 'Current content'}
+            .label=${this.candidate === 'document' ? 'Current document' : label}
             .diffDom=${this.diffDom} .canWrite=${false}
             @close=${() => this.onClose()}
             @toggle-split=${() => { this.split = !this.split; }}></ew-canvas-compare>

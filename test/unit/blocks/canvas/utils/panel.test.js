@@ -186,3 +186,88 @@ describe('shouldAutoOpenAfterPanel', () => {
     expect(open).to.equal(false);
   });
 });
+
+describe('Canvas panel deep links', () => {
+  let originalUrl;
+  let panel;
+  const views = new Set([...IDS, 'proposed-changes']);
+  const linkTo = (id) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('panel', id);
+    url.hash = '/org/site/campaigns/demo';
+    history.replaceState(null, '', url);
+  };
+
+  before(async () => {
+    const { setNx } = await import('../../../../../scripts/utils.js');
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
+  });
+
+  beforeEach(() => {
+    originalUrl = window.location.href;
+    sessionStorage.setItem(SESSION_KEY, 'files');
+  });
+
+  afterEach(() => {
+    panel?.remove();
+    panel = undefined;
+    history.replaceState(null, '', originalUrl);
+    sessionStorage.removeItem(SESSION_KEY);
+  });
+
+  it('opens the requested panel ahead of session and site defaults without loading flags', async () => {
+    linkTo('proposed-changes');
+    const flags = stub().rejects(new Error('Flags should not be needed'));
+    expect(await shouldAutoOpenAfterPanel(ctx(), flags)).to.equal(true);
+    expect(await resolveInitialToolPanelView({ ...ctx(), availableIds: views }, flags))
+      .to.equal('proposed-changes');
+    expect(flags.called).to.equal(false);
+    expect(window.location.hash).to.equal('#/org/site/campaigns/demo');
+  });
+
+  it('falls back to the saved panel for an unregistered ID or URL', async () => {
+    for (const id of ['unconfigured', 'https://example.com/extension.html']) {
+      linkTo(id);
+      // eslint-disable-next-line no-await-in-loop
+      expect(await resolveInitialToolPanelView({ ...ctx(), availableIds: views }))
+        .to.equal('files');
+    }
+  });
+
+  it('does not open for an empty parameter or a missing site context', async () => {
+    linkTo('  ');
+    expect(await shouldAutoOpenAfterPanel(ctx(), flagsLoader({ data: [] }))).to.equal(false);
+    linkTo('proposed-changes');
+    expect(await shouldAutoOpenAfterPanel({})).to.equal(false);
+  });
+
+  it('waits for registered views, loads the requested extension, and permits subsequent tab changes', async () => {
+    linkTo('proposed-changes');
+    const loaded = [];
+    panel = document.createElement('da-tool-panel');
+    panel.host = {
+      getViews: async () => {
+        await Promise.resolve();
+        return ['files', 'proposed-changes'].map((id) => ({
+          id,
+          label: id,
+          load: async () => {
+            loaded.push(id);
+            return Object.assign(document.createElement('div'), { textContent: id });
+          },
+        }));
+      },
+      resolveInitialView: resolveInitialToolPanelView,
+      persistView: persistToolPanelView,
+    };
+    document.body.append(panel);
+    await panel.setContext(ctx());
+    await panel.updateComplete;
+    expect(panel.activeId).to.equal('proposed-changes');
+    expect(loaded).to.deep.equal(['proposed-changes']);
+    await panel.showPanel('files');
+    await panel.setContext({ ...ctx(), path: 'another-page' });
+    expect(panel.activeId).to.equal('files');
+  });
+});

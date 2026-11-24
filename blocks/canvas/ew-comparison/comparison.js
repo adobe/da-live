@@ -5,17 +5,33 @@ import { canvasBus } from '../utils/canvas-bus.js';
 
 const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
 
+function sourceComparisonContext(path) {
+  if (typeof path !== 'string' || !path.startsWith('/') || /[%\\?#\s]/.test(path)
+    || [...path].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) {
+    return null;
+  }
+  const parts = path.slice(1).split('/');
+  if (parts.length < 3 || parts.some((part) => !part || ['.', '..'].includes(part))) return null;
+  const [org, site, ...segments] = parts;
+  return { org, site, path: `/${segments.join('/')}` };
+}
+
+function isComparisonOptions(options) {
+  return (['document', 'preview'].includes(options?.candidate)
+    || sourceComparisonContext(options?.candidate))
+    && (options?.baseline === 'live' || sourceComparisonContext(options?.baseline));
+}
+
 export function comparisonContextKey(context) {
   const { org, site, path } = context || {};
   return org && site && typeof path === 'string'
     ? JSON.stringify([org, site, path.replace(/^\//, '').replace(/\.html$/, '')]) : null;
 }
 
-// Routes a plugin's comparison and save messages. The page comes from the host context, never
-// from the message. Returns false for any other action.
+// Host context owns the request lifecycle; source operands identify their own documents.
 export function routeComparisonMessage({ action, details, requestId }, { context, port }) {
   if (action === 'openComparison') {
-    if (['document', 'preview'].includes(details?.candidate) && details?.baseline === 'live') {
+    if (isComparisonOptions(details)) {
       const { candidate, baseline } = details;
       canvasBus.comparisonRequest.emit({ action, details: { candidate, baseline }, context });
     }
@@ -92,9 +108,18 @@ export async function readDeliveredContent(partition, context, { api, convert } 
   return { html: converter(await response.text()).body.innerHTML };
 }
 
+export async function readSourceContent(context, { api } = {}) {
+  const { source } = api || await getNx2Api();
+  const { org, site } = context;
+  const path = `/${context.path.replace(/^\//, '').replace(/\.html$/, '')}.html`;
+  const response = await source.get({ org, site, path, cachebust: true });
+  if (!response.ok) throw new Error(`Could not load source content for ${path} (${response.status}).`);
+  return { html: await response.text() };
+}
+
 export function installComparison({
   mountRoot, getContext, getDocument,
-  saveDocument, loadContent = readDeliveredContent,
+  saveDocument, loadContent = readDeliveredContent, loadSource = readSourceContent,
 }) {
   let surface;
   let generation = 0;
@@ -125,12 +150,14 @@ export function installComparison({
   };
 
   const open = async (options) => {
-    if (!['document', 'preview'].includes(options?.candidate) || options?.baseline !== 'live') {
+    if (!isComparisonOptions(options)) {
       return { ok: false, error: 'invalid-comparison' };
     }
     const context = getContext();
     const key = comparisonContextKey(context);
     if (!key) return { ok: false, error: 'no-document' };
+    const candidateContext = sourceComparisonContext(options.candidate);
+    const baselineContext = sourceComparisonContext(options.baseline);
     reset();
     const run = generation;
     activeKey = key;
@@ -141,7 +168,8 @@ export function installComparison({
       if (!current()) return { ok: false, error: 'stale-context' };
       surface = document.createElement('ew-comparison');
       surface.candidate = options.candidate;
-      surface.path = `/${context.path.replace(/^\//, '')}`;
+      surface.baseline = options.baseline;
+      surface.path = candidateContext ? options.candidate : `/${context.path.replace(/^\//, '')}`;
       surface.onClose = close;
       surface.onRefresh = () => open(options);
       mountRoot.classList.add('ew-comparison-host');
@@ -155,7 +183,7 @@ export function installComparison({
       await surface.updateComplete;
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.focusHeading();
-      if (saveDocument) {
+      if (saveDocument && !candidateContext) {
         const result = await saveDocument();
         if (!current()) return { ok: false, error: 'stale-context' };
         if (!result?.ok && result?.error !== 'not-writable') {
@@ -166,17 +194,21 @@ export function installComparison({
       if (options.candidate === 'document' && typeof documentHtml !== 'string') {
         throw new Error('The current document is not ready. Try again once it has loaded.');
       }
-      const [live, candidate] = await Promise.all([
-        loadContent('live', context),
-        options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context),
+      const readCandidate = () => {
+        if (candidateContext) return loadSource(candidateContext);
+        return options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context);
+      };
+      const [baseline, candidate] = await Promise.all([
+        baselineContext ? loadSource(baselineContext) : loadContent('live', context),
+        readCandidate(),
       ]);
       if (!current()) return { ok: false, error: 'stale-context' };
-      const htmlA = normalizeComparisonHtml(live.html, context);
-      const htmlB = normalizeComparisonHtml(candidate.html, context);
+      const htmlA = normalizeComparisonHtml(baseline.html, baselineContext || context);
+      const htmlB = normalizeComparisonHtml(candidate.html, candidateContext || context);
       const { dom } = await buildCompareDom({ htmlA, htmlB, closeOnOutsideClick: false });
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.diffDom = dom;
-      surface.missingLive = live.missing;
+      surface.missingLive = baseline.missing;
       surface.identical = !dom.querySelector('ins, del');
       surface.loadedAt = new Date().toLocaleTimeString();
       surface.loading = false;
