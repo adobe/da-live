@@ -89,7 +89,7 @@ describe('ew-form-editor', () => {
       await el.updateComplete;
       await loadContext.lastCall.returnValue;
     }
-    expect(writes).to.deep.equal(['/org/site/docs/first.html', '/org/site/docs/second.html']);
+    expect(writes.map((entry) => entry.path)).to.deep.equal(['/org/site/docs/first.html', '/org/site/docs/second.html']);
   });
 
   it('renders the editor and preview when ready', async () => {

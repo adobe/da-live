@@ -1,3 +1,38 @@
+# [1.36.0](https://github.com/adobe/da-live/compare/v1.35.0...v1.36.0) (2026-11-24)
+
+
+### Features
+
+* link the config editor from the settings menu ([#1778](https://github.com/adobe/da-live/issues/1778)) ([6ee13df](https://github.com/adobe/da-live/commit/6ee13df2ad26d3bb77265cbaa4c06635b2fb6f3b))
+
+# [1.35.0](https://github.com/adobe/da-live/compare/v1.34.0...v1.35.0) (2026-11-24)
+
+
+### Features
+
+* add tiles on landing ([#1777](https://github.com/adobe/da-live/issues/1777)) ([d2698e0](https://github.com/adobe/da-live/commit/d2698e010da7763eaa80dec921fba9ce2659682d))
+
+# [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
+
+
+### Features
+
+* add config editor for org and site settings ([#1667](https://github.com/adobe/da-live/issues/1667)) ([435355d](https://github.com/adobe/da-live/commit/435355d435452b888d23cbab9057103e78d529c3))
+
+## [1.33.3](https://github.com/adobe/da-live/compare/v1.33.2...v1.33.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* enlarge fullsize extension dialogs ([#1774](https://github.com/adobe/da-live/issues/1774)) ([c07f3b0](https://github.com/adobe/da-live/commit/c07f3b031c8d11ef66df114159128efd4ff598b9))
+
+## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **nav:** show the product name only on landing ([#1702](https://github.com/adobe/da-live/issues/1702)) ([2e1f1a6](https://github.com/adobe/da-live/commit/2e1f1a6ca908bc386eac57538a39f3a61385adb1))
+
 ## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
 
 
