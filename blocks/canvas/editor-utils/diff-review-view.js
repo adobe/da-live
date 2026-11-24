@@ -1,6 +1,7 @@
 import { DOMSerializer } from 'da-y-wrapper';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getDiffLabels } from '../../edit/utils/helpers.js';
+import { htmlDiff } from '../../shared/version/htmldiff.js';
 import { CHOICE, findGroup, resolveAll, resolveGroup } from './diff-review.js';
 
 const REASON_TEXT = {
@@ -12,6 +13,26 @@ const REASON_TEXT = {
 };
 
 const NO_ORIGINAL = 'The original is not available.';
+const LAYOUT_KEY = 'da-review-layout';
+const INLINE = 'inline';
+const SIDE = 'side';
+const TEXT_UNITS = new Set(['paragraph', 'heading', 'list_item']);
+
+function readLayout() {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === INLINE ? INLINE : SIDE;
+  } catch {
+    return SIDE;
+  }
+}
+
+function writeLayout(layout) {
+  try {
+    localStorage.setItem(LAYOUT_KEY, layout);
+  } catch {
+    // The choice only lasts for this page.
+  }
+}
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -20,11 +41,12 @@ function el(tag, className, text) {
   return node;
 }
 
-export function groupTitle({ sides = [], reason = null }) {
-  const removed = reason === 'both-changed';
-  if (sides.length > 1) return 'Source changed this · You changed this';
-  if (sides[0] === 'source') return removed ? 'Source changed this · You removed it' : 'Source added this';
-  if (sides[0] === 'local') return removed ? 'You changed this · Source removed it' : 'You added this';
+export function groupTitle({ sides = [], kinds = [] }) {
+  if (sides.length > 1) return 'Source changed this · You changed it';
+  if (sides[0] === 'source') return 'Source added this';
+  if (sides[0] === 'local') {
+    return kinds.includes('removed') ? 'You changed this · Source removed it' : 'You added this';
+  }
   return '';
 }
 
@@ -47,6 +69,27 @@ function serialize(schema, entries) {
   const frag = document.createDocumentFragment();
   entries.forEach(({ node }) => frag.append(serializer.serializeFragment(node.content)));
   return frag;
+}
+
+const isTextSide = (entries) => entries.length > 0 && entries
+  .every(({ node }) => node.content.content.every((unit) => TEXT_UNITS.has(unit.type.name)));
+
+function toHtml(fragment) {
+  const div = document.createElement('div');
+  div.append(fragment);
+  return div.innerHTML.replaceAll(' da-diff-added=""', '');
+}
+
+function setInline(card, inline) {
+  card.classList.toggle('is-inline', inline);
+  card.querySelector('.diff-group-layout')?.setAttribute('aria-pressed', String(inline));
+}
+
+function toolButton(label, className, onClick) {
+  const button = el('button', `diff-group-tool ${className}`, label);
+  button.type = 'button';
+  button.addEventListener('click', onClick);
+  return button;
 }
 
 function actionButton(label, choice, onChoose) {
@@ -82,10 +125,13 @@ class GroupCardView {
     const header = el('div', 'diff-group-header');
     this.titleEl = el('p', 'diff-group-title', groupTitle({
       sides: ['source', 'local'].filter((s) => markers.some(({ side }) => side === s)),
-      reason: markers.map(({ node }) => node.attrs.diffReason).find(Boolean) ?? null,
+      kinds: markers.map(({ node }) => node.attrs.diffKind).filter(Boolean),
     }));
     this.reasonEl = el('p', 'diff-group-reason');
-    header.append(this.titleEl, this.reasonEl);
+    const text = el('div', 'diff-group-heading');
+    text.append(this.titleEl, this.reasonEl);
+    const tools = el('div', 'diff-group-tools');
+    header.append(text, tools);
     card.append(header);
 
     if (bases.length) {
@@ -107,11 +153,44 @@ class GroupCardView {
         const side = el('section', `diff-group-side ${cls}`);
         side.append(el('p', 'diff-group-side-label', label));
         const content = el('div', 'diff-group-side-content');
+        content.tabIndex = 0;
+        content.setAttribute('role', 'region');
+        content.setAttribute('aria-label', label);
         content.append(serialize(schema, entries));
         side.append(content);
         sides.append(side);
       });
     card.append(sides);
+
+    if (isTextSide(sourceEntries) && isTextSide(localEntries)) {
+      card.classList.add('can-inline');
+      const inline = el('div', 'diff-group-inline');
+      inline.tabIndex = 0;
+      inline.setAttribute('role', 'region');
+      inline.setAttribute('aria-label', `Changes from ${labels.upstream} to ${labels.local}`);
+      inline.innerHTML = htmlDiff(
+        toHtml(serialize(schema, sourceEntries)),
+        toHtml(serialize(schema, localEntries)),
+      );
+      const legend = el('p', 'diff-group-legend', `Struck out: only in ${labels.upstream}. Highlighted: only in ${labels.local}.`);
+      card.append(legend, inline);
+      const layout = toolButton('Inline view', 'diff-group-layout', () => {
+        const next = card.classList.contains('is-inline') ? SIDE : INLINE;
+        writeLayout(next);
+        this.view.dom.querySelectorAll('.diff-group-card.can-inline')
+          .forEach((other) => setInline(other, next === INLINE));
+      });
+      tools.append(layout);
+      setInline(card, readLayout() === INLINE);
+    }
+
+    const expand = toolButton('Expand', 'diff-group-expand', () => {
+      const expanded = card.classList.toggle('is-expanded');
+      expand.textContent = expanded ? 'Collapse' : 'Expand';
+      expand.setAttribute('aria-expanded', String(expanded));
+    });
+    expand.setAttribute('aria-expanded', 'false');
+    tools.append(expand);
 
     const choose = (choice) => resolveGroup(this.view, this.id, choice);
     const actions = el('div', 'diff-group-actions');

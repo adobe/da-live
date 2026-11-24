@@ -17,7 +17,9 @@ const PAGE = `<body><header></header><main><div>
 <da-diff-deleted data-mdast="ignore" data-diff-group="g1" data-diff-side="source" data-diff-kind="changed" data-diff-reason="both-changed"><p>Alpha source</p><p>Yankee source</p></da-diff-deleted>
 <p da-diff-added="" data-diff-group="g1" data-diff-side="local" data-diff-kind="changed">Alpha local</p>
 <ul><li><da-diff-deleted data-mdast="ignore" data-diff-group="g2" data-diff-side="source" data-diff-kind="changed" data-diff-reason="differs">Two source</da-diff-deleted></li><li><da-diff-added data-diff-group="g2" data-diff-side="local" data-diff-kind="changed">Two local</da-diff-added></li></ul>
-<p da-diff-added="" data-diff-group="g3" data-diff-side="local" data-diff-kind="added" data-diff-reason="both-changed">Charlie local</p>
+<p da-diff-added="" data-diff-group="g3" data-diff-side="local" data-diff-kind="removed" data-diff-reason="both-changed">Charlie local</p>
+<da-diff-deleted data-mdast="ignore" data-diff-group="g4" data-diff-side="source" data-diff-kind="changed" data-diff-reason="both-changed"><div class="columns"><div><div>Col source</div></div></div></da-diff-deleted>
+<div class="columns" da-diff-added="" data-diff-group="g4" data-diff-side="local" data-diff-kind="changed"><div><div>Col local</div></div></div>
 <da-diff-deleted data-mdast="ignore"><p>Legacy source</p></da-diff-deleted>
 <p>Delta</p>
 </div></main><footer></footer></body>`;
@@ -51,12 +53,11 @@ describe('diff-review-view', () => {
   });
 
   describe('text', () => {
-    it('names which side changed what', () => {
-      expect(groupTitle({ sides: ['source', 'local'], kinds: ['changed'] })).to.equal('Source changed this · You changed this');
+    it('names which side changed what from the sides and kind', () => {
+      expect(groupTitle({ sides: ['source', 'local'], kinds: ['changed'] })).to.equal('Source changed this · You changed it');
       expect(groupTitle({ sides: ['source'], kinds: ['added'] })).to.equal('Source added this');
       expect(groupTitle({ sides: ['local'], kinds: ['added'] })).to.equal('You added this');
-      expect(groupTitle({ sides: ['source'], kinds: ['added'], reason: 'both-changed' })).to.equal('Source changed this · You removed it');
-      expect(groupTitle({ sides: ['local'], kinds: ['added'], reason: 'both-changed' })).to.equal('You changed this · Source removed it');
+      expect(groupTitle({ sides: ['local'], kinds: ['removed'] })).to.equal('You changed this · Source removed it');
     });
 
     it('gives plain words for each reason code', () => {
@@ -72,14 +73,14 @@ describe('diff-review-view', () => {
     });
 
     it('renders one card per group and today\'s view for ungrouped markup', () => {
-      expect(cards(editor.view).map((el) => el.dataset.diffGroup)).to.deep.equal(['g1', 'g2', 'g3']);
+      expect(cards(editor.view).map((el) => el.dataset.diffGroup)).to.deep.equal(['g1', 'g2', 'g3', 'g4']);
       expect(editor.view.dom.querySelectorAll('.legacy-deleted')).to.have.length(1);
       expect(editor.view.dom.querySelector('da-diff-base')).to.equal(null);
     });
 
     it('shows both sides and the collapsed original', () => {
       const g1 = card(editor.view, 'g1');
-      expect(g1.querySelector('.diff-group-title').textContent).to.equal('Source changed this · You changed this');
+      expect(g1.querySelector('.diff-group-title').textContent).to.equal('Source changed this · You changed it');
       expect(g1.querySelector('.is-source').textContent).to.include('Alpha source');
       expect(g1.querySelector('.is-source').textContent).to.include('Yankee source');
       expect(g1.querySelector('.is-local').textContent).to.include('Alpha local');
@@ -98,9 +99,60 @@ describe('diff-review-view', () => {
 
     it('resolves a group from its card', () => {
       card(editor.view, 'g1').querySelector('.is-choose-mine').click();
-      expect(cards(editor.view).map((el) => el.dataset.diffGroup)).to.deep.equal(['g2', 'g3']);
+      expect(cards(editor.view).map((el) => el.dataset.diffGroup)).to.deep.equal(['g2', 'g3', 'g4']);
       expect(editor.view.dom.textContent).to.include('Alpha local');
       expect(editor.view.dom.textContent).to.not.include('Alpha source');
+    });
+  });
+
+  describe('layout', () => {
+    const KEY = 'da-review-layout';
+    const toggle = (el) => el.querySelector('.diff-group-layout');
+
+    beforeEach(async () => {
+      localStorage.removeItem(KEY);
+      editor = await openEditor(PAGE);
+    });
+
+    afterEach(() => localStorage.removeItem(KEY));
+
+    it('offers inline only when both sides are text units', () => {
+      expect(toggle(card(editor.view, 'g1'))).to.not.equal(null);
+      expect(toggle(card(editor.view, 'g2'))).to.not.equal(null);
+      expect(toggle(card(editor.view, 'g3'))).to.equal(null);
+      expect(toggle(card(editor.view, 'g4'))).to.equal(null);
+    });
+
+    it('shows one version with removed words struck out and added words highlighted', () => {
+      const g1 = card(editor.view, 'g1');
+      toggle(g1).click();
+      expect(g1.classList.contains('is-inline')).to.equal(true);
+      const inline = g1.querySelector('.diff-group-inline');
+      expect(inline.querySelector('del').textContent).to.include('source');
+      expect(inline.querySelector('ins').textContent).to.include('local');
+      expect(buttons(g1)).to.deep.equal(['Keep mine', 'Take source', 'Keep both']);
+    });
+
+    it('remembers the choice and applies it to text groups only', async () => {
+      toggle(card(editor.view, 'g1')).click();
+      expect(localStorage.getItem(KEY)).to.equal('inline');
+      expect(card(editor.view, 'g2').classList.contains('is-inline')).to.equal(true);
+      destroyEditor(editor);
+      editor = await openEditor(PAGE);
+      expect(card(editor.view, 'g1').classList.contains('is-inline')).to.equal(true);
+      expect(card(editor.view, 'g4').classList.contains('is-inline')).to.equal(false);
+      toggle(card(editor.view, 'g1')).click();
+      expect(localStorage.getItem(KEY)).to.equal('side');
+      expect(card(editor.view, 'g1').classList.contains('is-inline')).to.equal(false);
+    });
+
+    it('expands a card to full height', () => {
+      const g4 = card(editor.view, 'g4');
+      const expand = g4.querySelector('.diff-group-expand');
+      expect(expand.getAttribute('aria-expanded')).to.equal('false');
+      expand.click();
+      expect(g4.classList.contains('is-expanded')).to.equal(true);
+      expect(expand.getAttribute('aria-expanded')).to.equal('true');
     });
   });
 
@@ -113,7 +165,7 @@ describe('diff-review-view', () => {
     const bar = () => editor.view.dom.parentNode.querySelector('.diff-review-bar');
 
     it('shows the group count and fills card text from diffSummary', () => {
-      expect(bar().querySelector('.diff-review-count').textContent).to.equal('3 conflicts to review');
+      expect(bar().querySelector('.diff-review-count').textContent).to.equal('4 conflicts to review');
       const g1 = card(editor.view, 'g1');
       expect(g1.querySelector('.diff-group-reason').textContent).to.equal(reasonText('both-changed'));
       expect(g1.querySelector('summary').textContent).to.equal('Was: Alpha base');
@@ -130,7 +182,7 @@ describe('diff-review-view', () => {
       expect(card(editor.view, 'g1').classList.contains('is-current')).to.equal(false);
       bar().querySelector('.is-prev').click();
       bar().querySelector('.is-prev').click();
-      expect(card(editor.view, 'g3').classList.contains('is-current')).to.equal(true);
+      expect(card(editor.view, 'g4').classList.contains('is-current')).to.equal(true);
     });
 
     it('accept all source resolves everything and removes the bar', async () => {
@@ -144,7 +196,7 @@ describe('diff-review-view', () => {
     it('updates the count after one group is resolved', async () => {
       card(editor.view, 'g2').querySelector('.is-choose-source').click();
       await waitFor(600);
-      expect(bar().querySelector('.diff-review-count').textContent).to.equal('2 conflicts to review');
+      expect(bar().querySelector('.diff-review-count').textContent).to.equal('3 conflicts to review');
     });
   });
 });

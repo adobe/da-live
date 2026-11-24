@@ -189,7 +189,7 @@
   font-weight: 700;
 }
 
-.ew-editor-doc-mount :is(.diff-review-btn, .diff-group-action) {
+.ew-editor-doc-mount :is(.diff-review-btn, .diff-group-action, .diff-group-tool) {
   padding: 4px 12px;
   font: inherit;
   font-size: var(--s2-component-s-regular-font-size, 0.875rem);
@@ -227,8 +227,31 @@
   }
 }
 
-.ew-editor-doc-mount .diff-group-header p {
-  margin: 0;
+.ew-editor-doc-mount .diff-group-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+
+  & p {
+    margin: 0;
+  }
+}
+
+.ew-editor-doc-mount .diff-group-tools {
+  display: flex;
+  gap: 8px;
+}
+
+.ew-editor-doc-mount .diff-group-tool {
+  padding: 2px 10px;
+  font-weight: 400;
+
+  &[aria-pressed='true'] {
+    background: var(--s2-gray-300);
+    color: var(--s2-gray-900);
+  }
 }
 
 .ew-editor-doc-mount .diff-group-title {
@@ -273,6 +296,57 @@
   }
 }
 
+.ew-editor-doc-mount :is(.diff-group-side-content, .diff-group-inline) {
+  max-height: 320px;
+  overflow: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.ew-editor-doc-mount .diff-group-card.is-expanded :is(.diff-group-side-content, .diff-group-inline) {
+  max-height: none;
+}
+
+.ew-editor-doc-mount :is(.diff-group-inline, .diff-group-legend) {
+  display: none;
+}
+
+.ew-editor-doc-mount .diff-group-card.is-inline {
+  & .diff-group-sides {
+    display: none;
+  }
+
+  & .diff-group-inline {
+    display: block;
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--s2-gray-75);
+    border-radius: var(--s2-corner-radius-400);
+  }
+
+  & .diff-group-legend {
+    display: block;
+    margin: 8px 0 0;
+    color: var(--s2-gray-700);
+    font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+  }
+}
+
+.ew-editor-doc-mount .diff-group-inline {
+  & del {
+    background-color: var(--s2-red-200);
+    text-decoration: line-through;
+  }
+
+  & ins {
+    background-color: var(--s2-green-200);
+    text-decoration: none;
+  }
+}
+
 .ew-editor-doc-mount .diff-group-side-label {
   margin: 0 0 4px;
   font-size: var(--s2-component-s-regular-font-size, 0.875rem);
@@ -280,10 +354,14 @@
 }
 
 .ew-editor-doc-mount .diff-group-actions {
+  position: sticky;
+  bottom: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+  padding: 8px 0 0;
+  background: var(--s2-gray-25);
 }
 
 .ew-editor-doc-mount li:has(> .diff-group-member) {
