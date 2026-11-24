@@ -29,6 +29,8 @@ jobs:
         run: npm run lint
       - name: Run the tests
         run: npm test
+      - name: Run the CI script tests
+        run: node --test '.github/scripts/*.test.mjs'
 
   release-dry-run:
     name: Semantic Release (Dry Run)
@@ -96,6 +98,13 @@ jobs:
           # leading comma = secret keys exported without a prefix (IPAAS_* for change management)
           secret-ids: |
             ,/helix/github-action-secrets
+      - name: Resolve change request coordinator and approvers
+        run: node .github/scripts/chg-people.mjs
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DA_CHG_LDAP_MAP: ${{ secrets.DA_CHG_LDAP_MAP }}
       - name: Semantic Release
         run: npm run semantic-release
         env:
