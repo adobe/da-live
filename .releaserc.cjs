@@ -11,7 +11,7 @@ module.exports = {
     }],
     // Opens a no-impact change request in Adobe change management (iPaaS) for every release.
     // Credentials, coordinator, approvers and instances come from the shared Helix AWS secret
-    // (see the release jobs in .github/workflows/lint_test.yaml).
+    // (see the release jobs in .github/workflows/main.yaml).
     ['@adobe/semantic-release-ipaas-chg', { serviceId: 620732 /* DA */ }],
     '@semantic-release/github',
   ],
