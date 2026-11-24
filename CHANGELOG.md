@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/adobe/da-live/compare/v1.34.0...v1.35.0) (2026-11-24)
+
+
+### Features
+
+* add tiles on landing ([#1777](https://github.com/adobe/da-live/issues/1777)) ([d2698e0](https://github.com/adobe/da-live/commit/d2698e010da7763eaa80dec921fba9ce2659682d))
+
 # [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
 
 
