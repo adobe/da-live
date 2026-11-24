@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import sinon from 'sinon';
 import '../../../../../blocks/form/fields/asset.js';
-import { CANCELLED } from '../../../../../blocks/form/assets/sources.js';
+import { CANCELLED } from '../../../../../blocks/form/assets/constants.js';
 
 const mounted = [];
 

@@ -22,9 +22,11 @@ blocks/form/
   fields/                 Spectrum 2 field components (ew-form-input, ew-form-picker, ew-form-checkbox, ew-form-asset, ...)
   assets/
     asset-types.js        asset type descriptors (image, file) and their capabilities
+    setup.js              loadAssetSetup, the sources and writer config from the site's AEM Assets configuration
     sources.js            asset sources for image and file fields (upload, AEM Assets)
     aem-selector.js       AEM Assets selector dialog
     media.js              asset URL display helpers
+    constants.js          source labels and the cancelled selection result
   tool-panel/
     host.js               toolPanelHost, the form's delegate for the shared tool panel
     outline/
@@ -65,6 +67,8 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+editor.js          →  assets/setup.js     (asset sources and writer config)
+assets/setup.js    →  nx2 aem-assets      (repository configuration, loaded on demand)
 assets/sources.js  →  blocks/shared/      (Canvas image types and size limit)
 assets/sources.js  →  nx2 aem-assets      (AEM Assets source, loaded on demand)
 utils/preview.js   →  blocks/shared/      (Canvas preview login)

@@ -2,15 +2,10 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
 import { refuseOversizedImage } from '../../shared/image-upload.js';
 import { ASSET_TYPES, findAssetType } from './asset-types.js';
+import { CANCELLED, SOURCE_LABELS } from './constants.js';
 
 /** The identifiers of the asset sources, which the source menu reports on selection. */
 const SOURCE_IDS = Object.freeze({ upload: 'upload', aemAssets: 'aem-assets' });
-
-/** The names of the asset sources as shown to authors. */
-export const SOURCE_LABELS = Object.freeze({ upload: 'Upload', aemAssets: 'AEM Assets' });
-
-/** The result of a selection that ended without a value or an error. */
-export const CANCELLED = Object.freeze({ cancelled: true });
 
 /** The names of the asset types authors can upload files for. */
 const UPLOADABLE_ASSET_TYPE_NAMES = Object.freeze(ASSET_TYPES

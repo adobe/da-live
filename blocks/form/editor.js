@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
 import { getNx2 } from '../../scripts/utils.js';
-import { createAssetSources } from './assets/sources.js';
+import { loadAssetSetup } from './assets/setup.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
 import { loadPreviewOrigin } from './utils/preview.js';
@@ -33,9 +33,6 @@ const HTML_EXTENSION = '.html';
 
 /** The pointer of the document's data, which is selected when a form starts. */
 const DATA_POINTER = '/data';
-
-/** The nx2 module that reads the site's AEM Assets repository configuration. */
-const REPOSITORY_CONFIG_MODULE = `${getNx2()}/utils/aem-assets/repository-config.js`;
 
 /** The form statuses that edit or pick a schema, so asset fields can appear. */
 const ASSET_CONTEXT_STATUSES = new Set(['ready', 'select-schema']);
@@ -90,30 +87,6 @@ function contextFromHashState(state) {
 }
 
 /**
- * Loads the site's AEM Assets configuration and the asset sources it allows. Without a
- * usable configuration the form offers Upload only.
- * @param {object} options The document to load the sources for.
- * @param {object} options.details The document details, see `detailsFromContext`.
- * @param {() => boolean} options.isCurrent Whether the document is still the one loaded.
- * @returns {Promise<{ repositoryConfig: object|null, sources: object[] }>} The
- *   configuration, null when unavailable, and the sources, see `createAssetSources`.
- */
-async function loadAssetSources({ details, isCurrent }) {
-  try {
-    const { getRepositoryConfig } = await import(REPOSITORY_CONFIG_MODULE);
-    const repositoryConfig = await getRepositoryConfig(details.owner, details.repo);
-    return {
-      repositoryConfig,
-      sources: createAssetSources({ details, repositoryConfig, isCurrent }),
-    };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('AEM Assets configuration unavailable. Offering Upload only.', error);
-    return { repositoryConfig: null, sources: createAssetSources({ details, isCurrent }) };
-  }
-}
-
-/**
  * The structured content form of a DA document. It loads the document's schema and
  * content, renders the editor and preview, and saves every change.
  * @property {{ org: string, repo: string, path: string }} [ctx] The editor context, where
@@ -144,8 +117,8 @@ class Form extends LitElement {
   /** The details of the loaded document, see `detailsFromContext`. */
   _details = null;
 
-  /** The site's AEM Assets repository configuration, or null when unavailable. */
-  _repositoryConfig = null;
+  /** The SDK writer config asset fields are saved with, see `loadAssetSetup`. */
+  _writerConfig = undefined;
 
   /** The engine of the loaded document, see `createEngine`. */
   _editor = null;
@@ -258,12 +231,10 @@ class Form extends LitElement {
     // do not save. Empty rows do not count toward minItems and are pruned on save.
     this._seedRequiredArrays();
     this._state = this._editor.getState();
-    // Like Canvas, AEM images are saved as links when the site sets
-    // `aem.assets.image.type` to `link`. The configuration is read on every save, because
-    // it loads after the form starts.
+    // The writer config is read on every save, because it loads after the form starts.
     this._persistence = attachPersistence(this._editor, {
       path: this._details?.fullpath,
-      getConfig: () => ({ externalImagesAsLinks: this._repositoryConfig?.insertAsLink === true }),
+      getConfig: () => this._writerConfig,
     });
     this._navigation = { pointer: DATA_POINTER, origin: null, seq: 0 };
   }
@@ -312,7 +283,7 @@ class Form extends LitElement {
 
     this._assetSources = undefined;
     this._previewOrigin = undefined;
-    this._repositoryConfig = null;
+    this._writerConfig = undefined;
 
     this._details = detailsFromContext(this.ctx);
 
@@ -344,7 +315,7 @@ class Form extends LitElement {
   }
 
   /**
-   * Loads the asset sources and the preview origin of the document. They load
+   * Loads the asset setup and the preview origin of the document. They load
    * independently, so a slow preview login never delays the sources.
    * @param {number} version The load version the context belongs to.
    * @returns {Promise<void>} Settles once the sources are loaded.
@@ -360,13 +331,10 @@ class Form extends LitElement {
       }
     });
 
-    const { repositoryConfig, sources } = await loadAssetSources({
-      details: this._details,
-      isCurrent,
-    });
+    const { sources, writerConfig } = await loadAssetSetup({ details: this._details, isCurrent });
     if (isCurrent()) {
-      this._repositoryConfig = repositoryConfig;
       this._assetSources = sources;
+      this._writerConfig = writerConfig;
     }
   }
 

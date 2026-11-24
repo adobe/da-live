@@ -1,5 +1,5 @@
 import { getNx2 } from '../../../scripts/utils.js';
-import { CANCELLED, SOURCE_LABELS } from './sources.js';
+import { CANCELLED, SOURCE_LABELS } from './constants.js';
 
 /** The base URL nx2 modules are loaded from. */
 const nx2 = getNx2();

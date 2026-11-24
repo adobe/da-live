@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../scripts/utils.js';
 import { icon } from '../icons.js';
 import { findAssetType } from '../assets/asset-types.js';
-import { CANCELLED } from '../assets/sources.js';
+import { CANCELLED } from '../assets/constants.js';
 import { describeAsset, extensionOf, splitHrefForDisplay } from '../assets/media.js';
 import defaults from './defaults.js';
 
