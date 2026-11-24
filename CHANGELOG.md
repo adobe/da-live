@@ -1,3 +1,10 @@
+## [1.36.2](https://github.com/adobe/da-live/compare/v1.36.1...v1.36.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* align select all ([#1784](https://github.com/adobe/da-live/issues/1784)) ([c71a2ce](https://github.com/adobe/da-live/commit/c71a2ced9a34b3e76ea7b831bc22e7c32086ed86))
+
 ## [1.36.1](https://github.com/adobe/da-live/compare/v1.36.0...v1.36.1) (2026-11-24)
 
 
