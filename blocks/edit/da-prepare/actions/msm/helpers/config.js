@@ -69,14 +69,15 @@ export async function getBaseSite(org, satellite) {
   return null;
 }
 
+// Only a 404 means the satellite has no page of its own. Any other failure
+// throws: reading it as "inherited" would offer Cancel inheritance, which
+// overwrites the page.
 export async function isPageLocal(org, site, pagePath) {
   const { source } = await getNx2Api();
-  try {
-    const resp = await paced(() => source.getMetadata({ org, site, path: `${pagePath}.html` }));
-    return !!resp.ok;
-  } catch {
-    return false;
-  }
+  const resp = await paced(() => source.getMetadata({ org, site, path: `${pagePath}.html` }));
+  if (resp?.status === 404) return false;
+  if (!resp?.ok) throw new Error(`Could not check the page on ${site} (${resp?.status ?? 0})`);
+  return true;
 }
 
 export async function inheritsFromBase(org, base, satellite) {

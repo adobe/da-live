@@ -58,6 +58,7 @@ class DaMsm extends LitElement {
     _hasOverride: { state: true },
     _satStatus: { state: true },
     _satMessage: { state: true },
+    _loadError: { state: true },
     _openPicker: { state: true },
   };
 
@@ -71,7 +72,7 @@ class DaMsm extends LitElement {
     this._busy = false;
     this._openPicker = null;
     this._handleOutsidePickerClick = this._handleOutsidePickerClick.bind(this);
-    this.loadSatellites();
+    this.load();
   }
 
   disconnectedCallback() {
@@ -100,6 +101,18 @@ class DaMsm extends LitElement {
     setter(value);
     this._openPicker = null;
     document.removeEventListener('pointerdown', this._handleOutsidePickerClick);
+  }
+
+  // A failed read stops the panel: a satellite whose page couldn't be checked
+  // must not show up as inherited, where Cancel inheritance would overwrite it.
+  async load() {
+    this._loadError = undefined;
+    try {
+      await this.loadSatellites();
+    } catch (e) {
+      this._loadError = `Could not load satellites: ${e.message || 'Request failed'}`;
+      this._loading = undefined;
+    }
   }
 
   async loadSatellites() {
@@ -549,6 +562,14 @@ class DaMsm extends LitElement {
   render() {
     if (this._loading) {
       return html`<p class="loading">${this._loading}</p>`;
+    }
+
+    if (this._loadError) {
+      return html`
+        <p class="sat-message load-error">${this._loadError}</p>
+        <div class="form-actions">
+          <sl-button class="primary outline" @click=${() => this.load()}>Try again</sl-button>
+        </div>`;
     }
 
     if (this._role === 'satellite') {
