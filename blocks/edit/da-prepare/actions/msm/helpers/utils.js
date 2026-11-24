@@ -1,7 +1,7 @@
 import { getNx, getNx2, getNx2Api } from '../../../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../../shared/constants.js';
 import { daFetch } from '../../../../../shared/utils.js';
-import { legacySource } from './config.js';
+import { inheritsFromBase, legacySource } from './config.js';
 import paced from './pace.js';
 
 async function call(task, fallback) {
@@ -103,12 +103,7 @@ export function setMergeCopy(fn) { mergeCopyFn = fn; }
 
 export async function mergeFromBase(org, base, satellite, pagePath) {
   try {
-    const { isHlx6 } = await getNx2Api();
-    const [baseHlx6, satelliteHlx6] = await Promise.all([
-      isHlx6(org, base),
-      isHlx6(org, satellite),
-    ]);
-    if (baseHlx6 || satelliteHlx6) {
+    if (!await inheritsFromBase(org, base, satellite)) {
       return { error: 'Merge isn\'t available for Helix 6 sites yet, use Override' };
     }
 

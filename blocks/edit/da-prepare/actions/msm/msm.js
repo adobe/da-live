@@ -250,18 +250,14 @@ class DaMsm extends LitElement {
         return { error: result.error };
       }
 
-      case 'break': {
-        const result = await createOverride(org, site, sat.site, path);
-        return result.error ? result : { hasOverride: true };
-      }
-
+      case 'break':
       case 'sync': {
-        if (this._syncMode === SYNC_MODE.merge) {
+        if (action === 'sync' && this._syncMode === SYNC_MODE.merge) {
           const result = await mergeFromBase(org, site, sat.site, path);
           return result.error ? result : { editUrl: result.editUrl };
         }
         const result = await createOverride(org, site, sat.site, path);
-        return { error: result.error };
+        return result.error ? result : { hasOverride: true };
       }
 
       case 'reset': {
