@@ -7,6 +7,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  id-token: write # AWS OIDC login to fetch the iPaaS change management secrets
   contents: write # semantic-release-dry verifies the write permissions
   issues: read # needed by semantic-release
   pull-requests: write # needed by semantic-release
@@ -48,6 +49,18 @@ jobs:
           node-version: '24.x'
       - name: Install dependencies
         run: npm ci
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::118435662149:role/helix-gh-deploy-config-service
+      - name: Fetch AWS Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          # leading comma = secret keys exported without a prefix (IPAAS_* for change management)
+          secret-ids: |
+            ,/helix/github-action-secrets
       - name: Semantic Release (Dry Run)
         run: npm run semantic-release-dry
         env:
@@ -71,6 +84,18 @@ jobs:
           node-version: '24.x'
       - name: Install dependencies
         run: npm ci
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::118435662149:role/helix-gh-deploy-config-service
+      - name: Fetch AWS Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          # leading comma = secret keys exported without a prefix (IPAAS_* for change management)
+          secret-ids: |
+            ,/helix/github-action-secrets
       - name: Semantic Release
         run: npm run semantic-release
         env:
