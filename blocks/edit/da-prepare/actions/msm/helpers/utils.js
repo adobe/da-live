@@ -26,9 +26,10 @@ export async function publishSatellite(org, satellite, pagePath) {
   return resp.json();
 }
 
+// noRedirect: a 401 from one site must not send the editor to /not-found.
 export async function createOverride(org, base, satellite, pagePath) {
   const basePath = `${DA_ORIGIN}/source/${org}/${base}${pagePath}.html`;
-  const resp = await daFetch(basePath);
+  const resp = await daFetch(basePath, { noRedirect: true });
   if (!resp.ok) return { error: `Failed to fetch base content (${resp.status})` };
 
   const html = await resp.text();
@@ -37,7 +38,7 @@ export async function createOverride(org, base, satellite, pagePath) {
   formData.append('data', blob);
 
   const satPath = `${DA_ORIGIN}/source/${org}/${satellite}${pagePath}.html`;
-  const saveResp = await daFetch(satPath, { method: 'PUT', body: formData });
+  const saveResp = await daFetch(satPath, { method: 'PUT', body: formData, noRedirect: true });
   if (!saveResp.ok) return { error: `Failed to create override (${saveResp.status})` };
   return { ok: true };
 }
@@ -56,7 +57,7 @@ export async function getSatellitePageStatus(org, satellite, pagePath) {
 
 export async function deleteOverride(org, satellite, pagePath) {
   const satPath = `${DA_ORIGIN}/source/${org}/${satellite}${pagePath}.html`;
-  const resp = await daFetch(satPath, { method: 'DELETE' });
+  const resp = await daFetch(satPath, { method: 'DELETE', noRedirect: true });
   if (!resp.ok) return { error: `Failed to delete override (${resp.status})` };
   return { ok: true };
 }

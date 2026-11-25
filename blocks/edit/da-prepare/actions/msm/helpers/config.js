@@ -68,10 +68,11 @@ export async function getBaseSite(org, satellite) {
   return null;
 }
 
+// noRedirect: a 401 from one satellite must not send the editor to /not-found.
 export async function isPageLocal(org, site, pagePath) {
   const resp = await daFetch(
     `${DA_ORIGIN}/source/${org}/${site}${pagePath}.html`,
-    { method: 'HEAD' },
+    { method: 'HEAD', noRedirect: true },
   );
   return resp.ok;
 }
