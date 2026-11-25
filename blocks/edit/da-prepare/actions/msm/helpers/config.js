@@ -68,12 +68,17 @@ export async function getBaseSite(org, satellite) {
   return null;
 }
 
+// Only a 404 means the satellite has no page of its own. Any other failure
+// throws: reading it as "inherited" would offer Cancel inheritance, which
+// overwrites the page.
 export async function isPageLocal(org, site, pagePath) {
   const resp = await daFetch(
     `${DA_ORIGIN}/source/${org}/${site}${pagePath}.html`,
     { method: 'HEAD' },
   );
-  return resp.ok;
+  if (resp.status === 404) return false;
+  if (!resp.ok) throw new Error(`Could not check the page on ${site} (${resp.status})`);
+  return true;
 }
 
 export async function checkOverrides(org, satellites, pagePath) {

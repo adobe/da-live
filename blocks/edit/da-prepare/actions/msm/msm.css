@@ -322,6 +322,12 @@
   flex-shrink: 0;
 }
 
+.load-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--s2-red-900, #d31510);
+}
+
 .result-icon.success { color: #0d6e31; }
 .result-icon.error { color: var(--s2-red-900, #d31510); }
 .result-icon.pending {
