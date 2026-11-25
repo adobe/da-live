@@ -1,3 +1,10 @@
+## [1.36.4](https://github.com/adobe/da-live/compare/v1.36.3...v1.36.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ew:** detect image changes in version comparisons ([#1758](https://github.com/adobe/da-live/issues/1758)) ([d663f43](https://github.com/adobe/da-live/commit/d663f43b5a309c1a4ffe8f23f92125587782e348))
+
 ## [1.36.3](https://github.com/adobe/da-live/compare/v1.36.2...v1.36.3) (2026-11-25)
 
 
