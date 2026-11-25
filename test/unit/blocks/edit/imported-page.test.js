@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
 import { sanitizeImportedPage, serializeImportedPage, LIMITS, ImportedPageError } from '../../../../blocks/edit/imported-page/sanitize.js';
+import { FRAME_CSS } from '../../../../blocks/edit/imported-page/styles.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const {
@@ -40,6 +41,70 @@ describe('imported page sanitizer', () => {
     expect(images).to.deep.equal([{ path: '/o/s/img/a b.jpg', id: 'img-0' }]);
   });
 
+  it('keeps component disclosures closed initially and toggles only their configuration', () => {
+    const { root } = clean(`<section class="aem-component aem-component--dynamic" aria-labelledby="c1">
+      <details open><summary class="aem-component__header" id="c1" onclick="evil()"><code>wknd/components/list</code></summary>
+      <dl class="aem-component__properties"><dt>maxItems</dt><dd>4</dd></dl></details>
+      <div class="aem-component__content"><p>Visible content</p></div>
+      <div class="aem-component__children"><p>Visible child</p></div></section>`);
+    document.body.append(root);
+    try {
+      const details = root.querySelector('details');
+      const summary = details.querySelector('summary.aem-component__header');
+      const properties = details.querySelector('dl');
+      const child = root.querySelector('.aem-component__children');
+      expect(details.open).to.equal(false);
+      expect(summary.textContent).to.equal('wknd/components/list');
+      expect(summary.hasAttribute('onclick')).to.equal(false);
+      expect(properties.checkVisibility()).to.equal(false);
+      expect(child.checkVisibility()).to.equal(true);
+      summary.click();
+      expect(details.open).to.equal(true);
+      expect(properties.checkVisibility()).to.equal(true);
+      expect(child.checkVisibility()).to.equal(true);
+      summary.click();
+      expect(details.open).to.equal(false);
+      expect(properties.checkVisibility()).to.equal(false);
+    } finally {
+      root.remove();
+    }
+  });
+
+  it('subtly outlines cards and highlights them on hover and keyboard focus', () => {
+    const style = document.createElement('style');
+    style.textContent = FRAME_CSS;
+    const { root } = clean(`<section class="aem-component aem-component--dynamic">
+      <details><summary class="aem-component__header"><code>wknd/components/list</code></summary>
+      <dl class="aem-component__properties"><dt>maxItems</dt><dd>4</dd></dl></details>
+      <div class="aem-component__content"><p>Visible content</p></div>
+      <div class="aem-component__children"><p>Visible child</p></div></section>`);
+    document.head.append(style);
+    document.body.append(root);
+    try {
+      const card = root.querySelector('section');
+      const header = card.querySelector('summary');
+      const border = getComputedStyle(card).borderColor;
+      const background = getComputedStyle(header).backgroundColor;
+      expect(getComputedStyle(document.body).backgroundColor).to.equal('rgb(255, 255, 255)');
+      expect(getComputedStyle(card).backgroundColor).to.equal('rgb(255, 255, 255)');
+      expect(background).to.equal('rgb(243, 243, 243)');
+      expect(getComputedStyle(header.querySelector('code')).fontSize).to.equal('10px');
+      expect(getComputedStyle(root.querySelector('dt')).fontSize).to.equal('10px');
+      expect(getComputedStyle(root.querySelector('dd')).fontSize).to.equal('10px');
+      expect(getComputedStyle(root.querySelector('.aem-component__content p')).fontSize).to.equal('10px');
+      expect(getComputedStyle(root.querySelector('.aem-component__children p')).fontSize).to.equal('15px');
+      expect(FRAME_CSS).to.include('.aem-component:hover');
+      header.focus();
+      expect(getComputedStyle(card).borderColor).not.to.equal(border);
+      expect(getComputedStyle(header).backgroundColor).not.to.equal(background);
+      expect(getComputedStyle(root.querySelector('p')).opacity).to.equal('1');
+      expect(getComputedStyle(root.querySelector('.aem-component__content'), '::before').content).to.equal('none');
+    } finally {
+      root.remove();
+      style.remove();
+    }
+  });
+
   it('strips active content, handlers, styles, urls and unknown classes', () => {
     const html = out(`<script>alert(1)</script><style>*{}</style><iframe src="//x"></iframe><form action="x"><input></form>
       <svg onload="x()"></svg><p onclick="x()" style="color:red" class="evil" title="t">hi<a href="javascript:x()">link</a></p>
@@ -67,6 +132,24 @@ describe('imported page sanitizer', () => {
     expect(root.querySelector('a')).to.equal(null);
     expect(references.map((r) => `${r.kind}:${r.path}`)).to.deep.equal(['sheet:/o/s/m/model', 'page:/o/s/p/q.html']);
     expect(references[0].label).to.equal('Model');
+  });
+
+  it('only restores app-generated routes for validated reference anchors', () => {
+    const { root, references } = clean(`<a href="javascript:evil()" data-da-source-path="/o/s/model.json" data-da-source-kind="sheet">Sheet</a>
+      <a href="https://evil" data-da-source-path="/o/s/model.json" data-da-source-kind="sheet">Again</a>
+      <a href="https://evil" data-da-source-path="/o/other/model.json" data-da-source-kind="sheet">Other</a>
+      <span data-ref-id="ref-0">Forged</span>`);
+    expect(references).to.have.length(1);
+    const html = serializeImportedPage(root, new Map(), undefined, new Map([['ref-0', '/sheet#/o/s/model']]));
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const links = [...doc.querySelectorAll('a')];
+    expect(links).to.have.length(2);
+    expect(links.every((link) => link.getAttribute('href') === '/sheet#/o/s/model'
+      && link.getAttribute('target') === '_top')).to.equal(true);
+    expect(doc.body.textContent).to.contain('Other');
+    expect(doc.body.textContent).to.contain('Forged');
+    expect(html).not.to.match(/javascript:|https:\/\/evil|data-ref-id/);
+    expect(serializeImportedPage(root, new Map())).not.to.contain('<a ');
   });
 
   it('is limit-bounded', () => {
@@ -322,10 +405,10 @@ describe('imported page route', () => {
     expect(await findImportedPageCaps(details)).to.equal(null);
   });
 
-  it('mounts a banner, sandboxed iframe and references, then cleans up', async () => {
+  it('mounts a sandboxed iframe and references without a banner, then cleans up', async () => {
     const gets = [];
     const body = `<section class="aem-component"><header class="aem-component__header"><code>t</code></header>
-      <img data-da-source-path="/o/s/i.png" data-da-source-kind="image" alt="i"><span data-da-source-path="/o/s/m/model a" data-da-source-kind="sheet">Model</span></section>`;
+      <img data-da-source-path="/o/s/i.png" data-da-source-kind="image" alt="i"><a href="https://evil" data-da-source-path="/o/s/m/model a.json" data-da-source-kind="sheet">Model</a></section>`;
     routeDeps.source = async () => ({
       get: async (path) => {
         gets.push(path);
@@ -338,11 +421,16 @@ describe('imported page route', () => {
     });
     document.body.append(el);
     await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
-    expect(el.querySelector('.da-imported-page-banner').textContent).to.equal('Imported AEM Page · Read-only · Component inspection');
+    expect(el.querySelector('.da-imported-page-banner')).to.equal(null);
     expect(el.querySelector('da-title').readOnly).to.equal(true);
     const frame = el.querySelector('iframe');
-    expect(frame.getAttribute('sandbox')).to.equal('');
+    expect(frame.getAttribute('sandbox')).to.equal('allow-top-navigation-by-user-activation');
     expect(frame.srcdoc).to.contain(`src="${PNG_URL}"`);
+    const frameDoc = new DOMParser().parseFromString(frame.srcdoc, 'text/html');
+    const sheetLink = frameDoc.querySelector('a.aem-ref');
+    expect(sheetLink.getAttribute('href')).to.match(/^\/sheet(\?[^#]*)?#\/o\/s\/m\/model%20a$/);
+    expect(sheetLink.getAttribute('target')).to.equal('_top');
+    expect(frame.srcdoc).not.to.contain('https://evil');
     if (frame.contentDocument) {
       await new Promise((resolve) => { frame.addEventListener('load', resolve, { once: true }); });
     }
@@ -353,6 +441,16 @@ describe('imported page route', () => {
     unmountImportedPage(el);
     expect(frame.isConnected).to.equal(false);
     expect(el.querySelector('[data-imported-page]')).to.equal(null);
+  });
+
+  it('keeps reference text inert if sheet navigation is not supported', async () => {
+    const body = '<a data-da-source-path="/o/s/model.json" data-da-source-kind="sheet" href="https://evil">Open model Sheet</a>';
+    routeDeps.source = async () => ({ get: async () => new Response(body, { headers: { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } }) });
+    await mountImportedPage({ el, details, caps: { ...CAPS, openKinds: ['page'] }, isCurrent: () => true });
+    const frame = el.querySelector('iframe');
+    expect(frame.srcdoc).to.contain('Open model Sheet');
+    expect(frame.srcdoc).not.to.contain('<a ');
+    expect(frame.srcdoc).not.to.contain('https://evil');
   });
 
   it('aborts the page and image requests when unmounted and never falls back to a URL', async () => {

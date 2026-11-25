@@ -17,7 +17,7 @@ export class ImportedPageError extends Error {
   }
 }
 
-const CARD_TAGS = ['section', 'header', 'div', 'dl'];
+const CARD_TAGS = ['section', 'header', 'div', 'dl', 'details', 'summary'];
 const TAGS = new Set([
   ...CARD_TAGS, 'dt', 'dd', 'p', 'span', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'u', 's', 'sub', 'sup', 'small', 'br', 'hr', 'figure', 'figcaption',
@@ -34,6 +34,7 @@ const TRANSPARENT = new Set(['html', 'body', 'main']);
 const CLASS_BY_TAG = {
   section: /^aem-component(?: aem-component--[a-z0-9-]{1,40})?$/,
   header: /^aem-component__header$/,
+  summary: /^aem-component__header$/,
   dl: /^aem-component__properties$/,
   div: /^aem-component__(?:content|children)$/,
   p: /^aem-empty-page$/,
@@ -107,9 +108,10 @@ export function sanitizeImportedPage(html, scope) {
   function addReference(identity, label) {
     const key = `${identity.kind}:${identity.path}`;
     if (!references.has(key)) {
-      if (references.size >= LIMITS.maxReferences) return;
-      references.set(key, { ...identity, label: label || identity.path });
+      if (references.size >= LIMITS.maxReferences) return null;
+      references.set(key, { id: `ref-${references.size}`, reference: { ...identity, label: label || identity.path } });
     }
+    return references.get(key).id;
   }
 
   function convertImage(el, parent) {
@@ -145,9 +147,8 @@ export function sanitizeImportedPage(html, scope) {
       if (DROP.has(tag)) return;
       count();
       const identity = tag === 'img' ? null : validIdentity(child, scope);
-      if (identity && identity.kind !== 'image') {
-        addReference(identity, clean(child.textContent, LIMITS.maxLabel));
-      }
+      const refId = identity && identity.kind !== 'image'
+        ? addReference(identity, clean(child.textContent, LIMITS.maxLabel)) : null;
       if (tag === 'img') {
         convertImage(child, parent);
         return;
@@ -166,6 +167,7 @@ export function sanitizeImportedPage(html, scope) {
         const holder = tag === 'a' ? out.createElement('span') : parent;
         if (tag === 'a') {
           holder.setAttribute('class', identity ? 'aem-ref' : 'aem-link');
+          if (refId) holder.setAttribute('data-ref-id', refId);
           parent.append(holder);
         }
         walk(child, holder, depth + 1);
@@ -187,7 +189,7 @@ export function sanitizeImportedPage(html, scope) {
   return {
     root: body,
     images: [...images].map(([path, id]) => ({ path, id })),
-    references: [...references.values()],
+    references: [...references.values()].map(({ reference }) => reference),
   };
 }
 
@@ -196,8 +198,8 @@ export function sanitizeImportedPage(html, scope) {
 const MAX_INLINE_IMAGE_CHARS = 86 * 1024 * 1024;
 
 // Applies only viewer-generated data URLs, never any src from authored HTML.
-export function serializeImportedPage(root, dataUrls, maxImageChars = MAX_INLINE_IMAGE_CHARS) {
-  let remaining = maxImageChars;
+export function serializeImportedPage(root, dataUrls, maxImageChars, routes = new Map()) {
+  let remaining = maxImageChars === undefined ? MAX_INLINE_IMAGE_CHARS : maxImageChars;
   const allowed = new Map();
   dataUrls.forEach((url, id) => {
     if (url && url.length <= remaining
@@ -208,6 +210,17 @@ export function serializeImportedPage(root, dataUrls, maxImageChars = MAX_INLINE
   });
   const emitted = new Set();
   const clone = root.cloneNode(true);
+  clone.querySelectorAll('span[data-ref-id]').forEach((span) => {
+    const href = routes.get(span.getAttribute('data-ref-id'));
+    span.removeAttribute('data-ref-id');
+    if (!href) return;
+    const link = clone.ownerDocument.createElement('a');
+    link.setAttribute('class', 'aem-ref');
+    link.setAttribute('href', href);
+    link.setAttribute('target', '_top');
+    link.append(...span.childNodes);
+    span.replaceWith(link);
+  });
   clone.querySelectorAll('img').forEach((img) => {
     const id = img.getAttribute('data-img-id');
     const url = allowed.get(id);

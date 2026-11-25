@@ -12,8 +12,6 @@ export const IMAGE_LIMITS = Object.freeze({
   maxImageBytes: 10 * 1024 * 1024,
   maxTotalBytes: 64 * 1024 * 1024,
 });
-export const BANNER_TEXT = 'Imported AEM Page · Read-only · Component inspection';
-
 // Test seam: capability discovery and the authenticated Source client.
 export const routeDeps = {
   discover: (org, site) => discoverDaRsCapabilities(org, site),
@@ -255,7 +253,7 @@ export function buildSrcdoc(bodyHtml) {
 
 function buildFrame(bodyHtml) {
   const frame = document.createElement('iframe');
-  frame.setAttribute('sandbox', '');
+  frame.setAttribute('sandbox', 'allow-top-navigation-by-user-activation');
   frame.setAttribute('referrerpolicy', 'no-referrer');
   frame.setAttribute('title', 'Imported AEM page component inspection');
   frame.srcdoc = buildSrcdoc(bodyHtml);
@@ -282,15 +280,10 @@ export async function mountImportedPage({ el, details, caps, isCurrent }) {
   daTitle.setAttribute(MARK, '');
   daTitle.details = { parent: details.parent, parentName: details.parentName, name: details.name };
   daTitle.readOnly = true;
-  const banner = document.createElement('div');
-  banner.setAttribute(MARK, '');
-  banner.className = 'da-imported-page-banner';
-  banner.setAttribute('role', 'status');
-  banner.textContent = BANNER_TEXT;
   const container = document.createElement('div');
   container.setAttribute(MARK, '');
   container.className = 'da-imported-page';
-  el.replaceChildren(daTitle, banner, container);
+  el.replaceChildren(daTitle, container);
   document.title = `View page ${details.name} - DA`;
 
   try {
@@ -302,8 +295,9 @@ export async function mountImportedPage({ el, details, caps, isCurrent }) {
     const { root, images, references } = sanitizeImportedPage(text, scope);
     const dataUrls = await hydrateImages(images, { source, isCurrent: current, signal });
     if (!current()) return;
+    const routes = new Map(references.map((ref, index) => [`ref-${index}`, routeFor(caps, ref)]));
     container.replaceChildren(
-      buildFrame(serializeImportedPage(root, dataUrls)),
+      buildFrame(serializeImportedPage(root, dataUrls, undefined, routes)),
       referenceList(references, caps),
     );
   } catch (error) {

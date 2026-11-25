@@ -46,7 +46,7 @@ describe('Canvas imported Page inspection without route navigation', () => {
       // eslint-disable-next-line no-await-in-loop
       expect(await mountCanvasInspection({ mountRoot, isCurrent: () => true })).to.equal(true);
       expect(window.location.href).to.equal(url);
-      expect(mountRoot.querySelector('iframe').getAttribute('sandbox')).to.equal('');
+      expect(mountRoot.querySelector('iframe').getAttribute('sandbox')).to.equal('allow-top-navigation-by-user-activation');
       expect(mountRoot.querySelector('da-title').readOnly).to.equal(true);
       expect(mountRoot.querySelector('ew-editor-doc,ew-editor-wysiwyg,da-content')).to.equal(null);
       unmountCanvasInspection(mountRoot);
