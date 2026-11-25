@@ -3,6 +3,7 @@
   gap: var(--s2-spacing-200, var(--spacing-200));
   margin-bottom: var(--s2-spacing-200, var(--spacing-200));
   flex-wrap: wrap;
+  color: var(--s2-gray-900);
 }
 
 svg {
@@ -19,7 +20,7 @@ ul {
 }
 
 li {
-  background: rgb(220 220 220);
+  background: var(--s2-gray-100);
   border-radius: 6px;
   line-height: 32px;
   padding: 0 0 0 12px;
@@ -33,16 +34,17 @@ li.is-read-only {
 input {
   border: none;
   padding: 0 6px;
-  background: rgb(255 255 255 / 40%);
+  background: var(--s2-gray-75);
 }
 
 button,
 input[type="text"] {
   font-family: var(--s2-font-family, var(--body-font-family));
+  color: inherit;
 }
 
 li.active {
-  background: rgb(180 180 180);
+  background: var(--s2-gray-400);
 }
 
 li button {
@@ -62,7 +64,7 @@ form {
 }
 
 button:hover {
-  color: #FFF;
+  color: var(--s2-gray-25);
   background-color: var(--s2-blue-900);
 }
 
@@ -71,14 +73,14 @@ li.is-read-only .da-sheet-edit-button {
 }
 
 .icon {
-  color: rgb(0 0 0 / 40%);
+  color: var(--s2-gray-800);
   display: block;
   width: 18px;
   height: 18px;
 }
 
 button:hover .icon {
-  color: #FFF;
+  color: inherit;
 }
 
 .action-container {
