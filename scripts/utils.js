@@ -30,6 +30,17 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
     .replace(/-$/g, '');
 }
 
+export const PRODUCT_NAME = 'Experience Workspace';
+
+/**
+ * Sets the document title as `<name> | Experience Workspace`,
+ * or just the product name when no page name is given.
+ * @param {string} [name] - The action or page name.
+ */
+export function setPageTitle(name) {
+  document.title = name ? `${name} | ${PRODUCT_NAME}` : PRODUCT_NAME;
+}
+
 export function sanitizePathParts(path) {
   const parts = path.slice(1)
     .toLowerCase()

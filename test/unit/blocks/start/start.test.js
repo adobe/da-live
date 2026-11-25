@@ -23,6 +23,13 @@ describe('start page', () => {
     main.remove();
   });
 
+  it('sets the page title', () => {
+    const { title } = document;
+    init(main.querySelector('.start'));
+    expect(document.title).to.equal('Start | Experience Workspace');
+    document.title = title;
+  });
+
   it('uses the dark gradient', () => {
     const el = main.querySelector('.start');
     init(el);

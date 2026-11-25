@@ -189,7 +189,7 @@ describe('media loading', () => {
     await media.updateComplete;
     expect(media.shadowRoot.querySelector('img').getAttribute('src'))
       .to.equal('https://content.da.live/mediaorg/legacysite/images/second.png');
-    expect(document.title).to.equal('View second.png - Experience Workspace');
+    expect(document.title).to.equal('View second.png | Experience Workspace');
     media.remove();
   });
 
@@ -229,7 +229,7 @@ describe('media loading', () => {
     await media.updateComplete;
     expect(media.shadowRoot.querySelector('video source').getAttribute('src'))
       .to.equal('https://content.da.live/mediaorg/legacysite/videos/movie.mp4');
-    expect(document.title).to.equal('View movie.mp4 - Experience Workspace');
+    expect(document.title).to.equal('View movie.mp4 | Experience Workspace');
 
     await navigate('/mediaorg/legacysite/images/second.png');
     media = container.querySelector('da-media');

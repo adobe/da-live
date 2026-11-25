@@ -34,7 +34,7 @@ describe('sheet entry point', () => {
       await init(el);
       await loaded;
       expect(writes[0]['/org/site'][0]).to.equal('/org/site/data/products.json');
-      expect(document.title).to.equal('Edit sheet products - Experience Workspace');
+      expect(document.title).to.equal('Edit sheet products | Experience Workspace');
     } finally {
       listeners.forEach((spy) => spy.getCalls()
         .forEach(({ thisValue, args }) => thisValue.removeEventListener(...args)));

@@ -37,7 +37,7 @@ describe('edit entry point', () => {
       await init(el);
       await closed;
       expect(writes[0]['/org/site'][0]).to.equal('/org/site/docs/page.html');
-      expect(document.title).to.equal('Edit page - Experience Workspace');
+      expect(document.title).to.equal('Edit page | Experience Workspace');
     } finally {
       addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));
       clock.uninstall();

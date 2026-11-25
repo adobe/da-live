@@ -3,7 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { getNx2Api, sanitizePathParts, setPageTitle } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
@@ -365,6 +365,7 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default function init(el) {
+  setPageTitle('Start');
   const start = document.createElement('da-start');
   el.append(start);
   const section = el.closest('.section')?.nextElementSibling;

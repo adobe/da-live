@@ -68,6 +68,7 @@ describe('Browse Content opt-in', () => {
       window.history.replaceState(null, '', url);
       hashChange._set(details);
       await init(ordinary);
+      expect(document.title).to.equal('Browse | Experience Workspace');
       expect(ordinary.firstElementChild).to.equal(browse);
       expect(browse.details.site).to.equal('site');
       expect(ordinary.querySelector('da-landing')).to.equal(null);
@@ -76,6 +77,7 @@ describe('Browse Content opt-in', () => {
       const mounted = whenMounted('da-landing');
       hashChange._set(undefined);
       const landing = await mounted;
+      expect(document.title).to.equal('Experience Workspace');
       await initialize.lastCall.returnValue;
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);

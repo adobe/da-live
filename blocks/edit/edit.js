@@ -2,7 +2,7 @@ import { render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
-import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags, setPageTitle } from '../../scripts/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS, NOT_PERMITTED } from '../shared/empty-list.js';
 
 import './da-title/da-title.js';
@@ -88,7 +88,7 @@ async function setUI(el) {
     (mod) => mod.createConnection(details.sourceUrl),
   );
 
-  document.title = `Edit ${details.name} - Experience Workspace`;
+  setPageTitle(`Edit ${details.name}`);
 
   const { owner, repo } = details;
   const contentCookiePromise = contentLogin(owner, repo);
