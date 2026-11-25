@@ -285,8 +285,8 @@ class EwCanvasVersions extends LitElement {
       return null;
     }
     return buildCompareDom({
-      htmlA: docToHtml(view),
-      htmlB: domToHtml(versionBody),
+      htmlA: domToHtml(versionBody),
+      htmlB: docToHtml(view),
       closeOnOutsideClick: false,
     });
   }

@@ -66,7 +66,7 @@ describe('version-history comparison consumer', () => {
     versions._compareSplit = false;
     versions._compareCtx = {
       previewDom: new DOMParser().parseFromString('<p>Saved content</p>', 'text/html').body,
-      diffDom: new DOMParser().parseFromString('<p><del>Current content</del><ins>Saved content</ins></p>', 'text/html').body,
+      diffDom: new DOMParser().parseFromString('<p><del>Saved content</del><ins>Current content</ins></p>', 'text/html').body,
       label: 'Saved version',
       entry: {},
       cleanup: () => { cleaned = true; },
@@ -92,7 +92,7 @@ describe('version-history comparison consumer', () => {
     await view.updateComplete;
     expect(view.split).to.equal(true);
     expect([...view.shadowRoot.querySelectorAll('.ew-cc-pane')].map((pane) => pane.textContent))
-      .to.deep.equal(['Current content', 'Saved content']);
+      .to.deep.equal(['Saved content', 'Current content']);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await versions.updateComplete;
     expect(versions.shadowRoot.querySelector('ew-canvas-compare')).to.equal(null);
@@ -137,26 +137,28 @@ describe('embedded existing comparison view', () => {
     expect([...element.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent)).to.deep.equal(['Live', 'Current document']);
   });
 
-  it('matches the candidate pill to the addition highlight', async () => {
-    element = document.createElement('ew-canvas-compare');
-    element.embedded = true;
-    element.split = true;
-    element.currentLabel = 'Live';
-    element.label = 'Preview';
-    element.diffDom = new DOMParser().parseFromString('<p><del class="diffdel">Old</del><ins class="diffins">New</ins></p>', 'text/html').body;
-    element.style.setProperty('--s2-green-200', '#d7f7e1');
-    element.style.setProperty('--s2-red-200', '#ffebe8');
-    element.style.setProperty('--s2-blue-200', '#e5f0fe');
-    document.body.append(element);
-    await element.updateComplete;
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
-    element.shadowRoot.adoptedStyleSheets = [sheet];
-    const color = (selector) => getComputedStyle(
-      element.shadowRoot.querySelector(selector),
-    ).backgroundColor;
-    expect(color('.ew-cc-chip:not(.is-neutral)')).to.equal(color('ins'));
-    expect(color('.ew-cc-chip.is-neutral')).to.equal(color('del'));
+  [true, false].forEach((embedded) => {
+    it(`matches labels to change colors in ${embedded ? 'embedded' : 'version-history'} comparison`, async () => {
+      element = document.createElement('ew-canvas-compare');
+      element.embedded = embedded;
+      element.split = true;
+      element.currentLabel = 'Live';
+      element.label = 'Preview';
+      element.diffDom = new DOMParser().parseFromString('<p><del class="diffdel">Old</del><ins class="diffins">New</ins></p>', 'text/html').body;
+      element.style.setProperty('--s2-green-200', '#d7f7e1');
+      element.style.setProperty('--s2-red-200', '#ffebe8');
+      element.style.setProperty('--s2-blue-200', '#e5f0fe');
+      document.body.append(element);
+      await element.updateComplete;
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+      element.shadowRoot.adoptedStyleSheets = [sheet];
+      const color = (selector) => getComputedStyle(
+        element.shadowRoot.querySelector(selector),
+      ).backgroundColor;
+      expect(color('.ew-cc-chip:not(.is-neutral)')).to.equal(color('ins'));
+      expect(color('.ew-cc-chip.is-neutral')).to.equal(color('del'));
+    });
   });
 
   it('aligns unchanged table rows when the preceding live content is taller', async () => {

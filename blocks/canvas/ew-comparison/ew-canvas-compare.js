@@ -155,7 +155,7 @@ class EwCanvasCompare extends LitElement {
           clone.querySelectorAll?.(tag).forEach((el) => el.remove());
           return clone;
         };
-        return { current: cloneWithout('ins'), version: cloneWithout('del') };
+        return { baseline: cloneWithout('ins'), candidate: cloneWithout('del') };
       });
     this._panesCache = { source: this.diffDom, path: this.path, rows };
     return this._panesCache;
@@ -167,8 +167,8 @@ class EwCanvasCompare extends LitElement {
         <div class="ew-cc-header">
           ${panes || (this.embedded && this.diffDom) ? html`
             <div class="ew-cc-chip-row">
-              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">${this.currentLabel || 'Current'}</span></div>
-              <div class="ew-cc-chip-slot"><span class="ew-cc-chip">${this.label}</span></div>
+              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">${this.embedded ? this.currentLabel || 'Current' : this.label}</span></div>
+              <div class="ew-cc-chip-slot"><span class="ew-cc-chip">${this.embedded ? this.label : this.currentLabel || 'Current'}</span></div>
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
           <div class="ew-cc-actions">
@@ -190,8 +190,8 @@ class EwCanvasCompare extends LitElement {
         ${panes ? html`
           <div class="ew-cc-split">
             ${panes.rows.map((row) => html`
-              <div class="ew-cc-pane ProseMirror">${row.current}</div>
-              <div class="ew-cc-pane ProseMirror">${row.version}</div>
+              <div class="ew-cc-pane ProseMirror">${row.baseline}</div>
+              <div class="ew-cc-pane ProseMirror">${row.candidate}</div>
             `)}
           </div>
         ` : html`

@@ -12,8 +12,8 @@ function loadCompareSheet() {
 export async function compare({ shadowRoot, versionDom, onClose, onResult }) {
   const [{ dom, cleanup }, compareSheet] = await Promise.all([
     buildCompareDom({
-      htmlA: docToHtml(window.view),
-      htmlB: versionDom ? domToHtml(versionDom) : '',
+      htmlA: versionDom ? domToHtml(versionDom) : '',
+      htmlB: docToHtml(window.view),
       onClose,
     }),
     loadCompareSheet(),
@@ -27,8 +27,8 @@ export async function compare({ shadowRoot, versionDom, onClose, onResult }) {
 export function renderModal(versionLabel, compareDom, onClose) {
   return renderCompareModal({
     title: 'Compare with current document',
-    labelA: 'Current Document',
-    labelB: `Version: ${versionLabel || ''}`,
+    labelA: `Version: ${versionLabel || ''}`,
+    labelB: 'Current Document',
     compareDom,
     onClose,
   });
