@@ -1,9 +1,9 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../../scripts/utils.js';
+import { setNx, getNx2 } from '../../../../../../../scripts/utils.js';
 import { setMergeCopy } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
 import { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
-import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
+import { AEM_ORIGIN, DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const waitForLoad = () => new Promise((resolve) => { setTimeout(resolve, 100); });
@@ -947,6 +947,77 @@ describe('DaMsm component', () => {
       expect(writes.map((c) => `${c.method} ${c.url}`)).to.deep.equal([
         `PUT ${DA_ORIGIN}/source/test/ping-sat/about.html`,
       ]);
+    });
+  });
+
+  // da-nx hlx6probe (merged before this branch) reads a ping that gets no
+  // answer as legacy. A legacy site then sends the requests it sent before
+  // Helix 6 support, plus the ping attempts.
+  describe('with an isHlx6 that reads a failed ping as legacy', () => {
+    const PAGE = '/source/msm-probe/mccs-sat/about.html';
+    let setPingErrorIsLegacy;
+
+    before(async () => {
+      ({ setPingErrorIsLegacy } = await import(`${getNx2()}/utils/api.js`));
+      setPingErrorIsLegacy(true);
+    });
+
+    after(() => setPingErrorIsLegacy(false));
+
+    function probeMock(calls) {
+      const base = createFetchMock({
+        orgConfigs: {
+          'msm-probe': {
+            msm: {
+              data: [
+                { base: 'mccs', satellite: '', title: 'MCCS' },
+                { base: 'mccs', satellite: 'mccs-sat', title: 'Sat' },
+              ],
+            },
+          },
+        },
+      });
+      return async (url, opts = {}) => {
+        if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
+        calls.push(`${opts.method || 'GET'} ${url}`);
+        return base(url, opts);
+      };
+    }
+
+    it('lists the satellite from legacy DA', async () => {
+      const calls = [];
+      await fixture({ org: 'msm-probe', site: 'mccs', path: '/about' }, probeMock(calls));
+
+      expect(el._satellites.map((s) => [s.site, s.hasOverride])).to.deep.equal([['mccs-sat', false]]);
+      expect(calls.filter((c) => !c.includes('/config/'))).to.deep.equal([`HEAD ${DA_ORIGIN}${PAGE}`]);
+    });
+
+    it('previews, cancels and resumes inheritance like before Helix 6', async () => {
+      const calls = [];
+      await fixture({ org: 'msm-probe', site: 'mccs', path: '/about' }, probeMock(calls));
+      calls.length = 0;
+
+      el._selected = new Set(['mccs-sat']);
+      el._action = 'preview';
+      await el.runAction('preview');
+      el._selected = new Set(['mccs-sat']);
+      el._action = 'break';
+      await el.runAction('break');
+      el._selected = new Set(['mccs-sat']);
+      el._action = 'reset';
+      await el.runAction('reset');
+
+      expect(calls).to.deep.equal([
+        `POST ${AEM_ORIGIN}/preview/msm-probe/mccs-sat/main/about`,
+        `GET ${DA_ORIGIN}/source/msm-probe/mccs/about.html`,
+        `PUT ${DA_ORIGIN}${PAGE}`,
+        `GET ${AEM_ORIGIN}/status/msm-probe/mccs-sat/main/about`,
+        `DELETE ${DA_ORIGIN}${PAGE}`,
+        `POST ${AEM_ORIGIN}/preview/msm-probe/mccs-sat/main/about`,
+        `POST ${AEM_ORIGIN}/live/msm-probe/mccs-sat/main/about`,
+      ]);
+      const sat = el._satellites[0];
+      expect([sat.status, sat.hasOverride]).to.deep.equal(['success', false]);
     });
   });
 

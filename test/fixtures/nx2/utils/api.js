@@ -468,6 +468,11 @@ export const daFetch = async ({ url, opts = { method: 'GET' }, redirect = false 
   return resp;
 };
 
+// Tests can switch the ping to how adobe/da-nx hlx6probe answers it: a ping
+// that gets no answer at all reads as legacy and isn't cached.
+let pingErrorIsLegacy = false;
+export function setPingErrorIsLegacy(on) { pingErrorIsLegacy = on; }
+
 export const isHlx6 = (() => {
   const cache = {};
 
@@ -488,7 +493,11 @@ export const isHlx6 = (() => {
     if (!site) return false;
 
     const path = `/${org}/${site}`;
-    cache[path] ??= fetchUpgradeStatus(path);
+    cache[path] ??= fetchUpgradeStatus(path).catch((e) => {
+      if (!pingErrorIsLegacy) throw e;
+      delete cache[path];
+      return false;
+    });
     return cache[path];
   };
 })();
