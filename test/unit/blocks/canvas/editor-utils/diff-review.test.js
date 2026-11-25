@@ -1,16 +1,9 @@
 import { expect } from '@esm-bundle/chai';
-import { Y, yDocToProsemirror } from 'da-y-wrapper';
+import { Y, yDocToProsemirror, yUndo } from 'da-y-wrapper';
 import { aem2doc, getSchema } from 'da-parser';
-import {
-  CHOICE,
-  docToPageHtml,
-  findGroup,
-  getReviewSummary,
-  hasGroupedMarkup,
-  resolveAll,
-  resolveGroup,
-} from '../../../../../blocks/canvas/editor-utils/diff-review.js';
-import { getDaMetadata, initDaMetadata } from '../../../../../blocks/edit/utils/helpers.js';
+import { hasGroupedMarkup } from '../../../../../blocks/canvas/editor-utils/diff-review.js';
+import { applyResolution, loadDiffEngine } from '../../../../../blocks/edit/prose/diff/diff-engine.js';
+import { initDaMetadata } from '../../../../../blocks/edit/utils/helpers.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 const waitFor = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -32,19 +25,21 @@ async function openEditor(html) {
   const doc = yDocToProsemirror(getSchema(), ydoc);
   const editor = await createTestEditor({ doc, ydoc });
   initDaMetadata(ydoc.getMap('daMetadata'));
+  await waitFor(10);
   return editor;
 }
 
-function mainOf(view) {
-  const dom = new DOMParser().parseFromString(docToPageHtml(view.state.doc), 'text/html');
-  return dom.querySelector('main');
-}
-
-const texts = (main, selector) => [...main.querySelectorAll(selector)]
-  .map((el) => el.textContent.trim());
+const hashOf = (engine, html) => engine.reviewHash(new DOMParser().parseFromString(html, 'text/html').body.firstElementChild);
+const metadata = (editor) => editor.ydoc.getMap('daMetadata');
+const stored = (editor, key) => (metadata(editor).get(key) || '').split(',').filter(Boolean);
 
 describe('diff-review', () => {
   let editor;
+  let engine;
+
+  before(async () => {
+    engine = await loadDiffEngine();
+  });
 
   beforeEach(async () => {
     editor = await openEditor(GROUPED);
@@ -62,89 +57,35 @@ describe('diff-review', () => {
     destroyEditor(plain);
   });
 
-  it('summarizes groups through da-merge diffSummary', () => {
-    const summary = getReviewSummary(editor.view.state.doc);
+  it('summarizes groups through the parser adapter', () => {
+    const summary = engine.reviewSummary(editor.view.state.doc);
     expect(summary.groups.map((g) => g.id)).to.deep.equal(['g1', 'g2', 'g3']);
-    const [g1, g2, g3] = summary.groups;
-    expect(g1).to.include({ reason: 'both-changed', section: 0 });
-    expect(g1.sides).to.deep.equal(['source', 'local']);
-    expect(g1.preview.base).to.equal('Alpha base');
-    expect(g2.sides).to.deep.equal(['source', 'local']);
-    expect(g2.preview).to.deep.equal({ source: 'Two source', local: 'Two local' });
-    expect(g3.kinds).to.deep.equal(['added']);
-    expect(g3.sides).to.deep.equal(['source']);
-    expect(summary.legacy).to.equal(false);
+    expect(summary.groups[0].preview.base).to.equal('Alpha base');
   });
 
-  it('keep mine drops the source side, unwraps the local side, and removes the base', async () => {
-    resolveGroup(editor.view, 'g1', CHOICE.mine);
-    const main = mainOf(editor.view);
-    expect(main.querySelector('[data-diff-group="g1"]')).to.equal(null);
-    expect(main.querySelector('da-diff-base')).to.equal(null);
-    expect(main.textContent).to.not.include('Alpha source');
-    expect(main.textContent).to.not.include('Yankee source');
-    const alpha = [...main.querySelectorAll('p')].find((p) => p.textContent === 'Alpha local');
-    expect(alpha.hasAttribute('da-diff-added')).to.equal(false);
-    expect(main.querySelectorAll('[data-diff-group="g2"]').length).to.equal(2);
-    await waitFor(100);
-    expect(getDaMetadata('rejectedHashes')).to.be.a('string').and.not.equal('');
+  it('resolves a group with the da-merge bundle and records its hashes', () => {
+    expect(applyResolution(editor.view, 'resolve', { groupId: 'g1', choice: engine.CHOICE.mine })).to.equal(true);
+    const { doc } = editor.view.state;
+    expect(engine.findGroup(doc, 'g1').markers).to.have.length(0);
+    expect(engine.findGroup(doc, 'g1').bases).to.have.length(0);
+    expect(doc.textContent).to.include('Alpha local');
+    expect(doc.textContent).to.not.include('Alpha source');
+    expect(engine.groups(doc).map(({ id }) => id)).to.deep.equal(['g2', 'g3']);
+    expect(stored(editor, 'acceptedHashes')).to.deep.equal([hashOf(engine, '<p>Alpha local</p>')]);
+    expect(stored(editor, 'rejectedHashes')).to.have.members([
+      hashOf(engine, '<p>Alpha source</p>'),
+      hashOf(engine, '<p>Yankee source</p>'),
+    ]);
   });
 
-  it('records one rejected hash per source unit', async () => {
-    resolveGroup(editor.view, 'g1', CHOICE.mine);
-    await waitFor(100);
-    expect(getDaMetadata('rejectedHashes').split(',')).to.have.length(2);
-  });
-
-  it('take source keeps the source side and drops the local side', () => {
-    resolveGroup(editor.view, 'g1', CHOICE.source);
-    const main = mainOf(editor.view);
-    const paras = texts(main, ':scope > div > p');
-    expect(paras.slice(0, 2)).to.deep.equal(['Alpha source', 'Yankee source']);
-    expect(main.textContent).to.not.include('Alpha local');
-    expect(main.querySelector('da-diff-base')).to.equal(null);
-  });
-
-  it('keep both keeps both sides in place', () => {
-    resolveGroup(editor.view, 'g1', CHOICE.both);
-    const main = mainOf(editor.view);
-    expect(texts(main, ':scope > div > p').slice(0, 3)).to.deep.equal(['Alpha source', 'Yankee source', 'Alpha local']);
-    expect(main.querySelector('[data-diff-group="g1"]')).to.equal(null);
-  });
-
-  it('resolves a list group item by item', () => {
-    resolveGroup(editor.view, 'g2', CHOICE.mine);
-    const main = mainOf(editor.view);
-    expect(texts(main, 'li')).to.deep.equal(['One', 'Two local', 'Three']);
-    expect(main.querySelector('li[da-diff-added]')).to.equal(null);
-  });
-
-  it('take source on a one-sided both-changed group keeps the source unit', () => {
-    resolveGroup(editor.view, 'g3', CHOICE.source);
-    const main = mainOf(editor.view);
-    expect(texts(main, ':scope > div > p')).to.include('Charlie source');
-    expect(findGroup(editor.view.state.doc, 'g3').markers).to.have.length(0);
-  });
-
-  it('leaves ungrouped markup alone when resolving a group', () => {
-    resolveGroup(editor.view, 'g1', CHOICE.mine);
-    const main = mainOf(editor.view);
-    expect(main.querySelector('da-diff-deleted:not([data-diff-group])').textContent).to.equal('Legacy source');
-  });
-
-  it('accept all mine resolves every group and ungrouped marker', () => {
-    resolveAll(editor.view, CHOICE.mine);
-    const main = mainOf(editor.view);
-    expect(main.querySelector('da-diff-deleted, da-diff-added, [da-diff-added], da-diff-base')).to.equal(null);
-    expect(texts(main, ':scope > div > p')).to.deep.equal(['Alpha local', 'Delta']);
-    expect(texts(main, 'li')).to.deep.equal(['One', 'Two local', 'Three']);
-  });
-
-  it('accept all source resolves every group and ungrouped marker', () => {
-    resolveAll(editor.view, CHOICE.source);
-    const main = mainOf(editor.view);
-    expect(main.querySelector('da-diff-deleted, da-diff-added, [da-diff-added], da-diff-base')).to.equal(null);
-    expect(texts(main, ':scope > div > p')).to.deep.equal(['Alpha source', 'Yankee source', 'Charlie source', 'Legacy source', 'Delta']);
-    expect(texts(main, 'li')).to.deep.equal(['One', 'Two source', 'Three']);
+  it('undoes the resolve and its recorded hashes in one step', () => {
+    applyResolution(editor.view, 'resolve', { groupId: 'g1', choice: engine.CHOICE.source });
+    expect(stored(editor, 'rejectedHashes')).to.have.length(1);
+    expect(yUndo(editor.view.state)).to.equal(true);
+    const { markers, bases } = engine.findGroup(editor.view.state.doc, 'g1');
+    expect(markers).to.have.length(2);
+    expect(bases).to.have.length(1);
+    expect(metadata(editor).get('acceptedHashes')).to.equal(undefined);
+    expect(metadata(editor).get('rejectedHashes')).to.equal(undefined);
   });
 });

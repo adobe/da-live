@@ -8,6 +8,7 @@ import {
   reasonText,
 } from '../../../../../blocks/canvas/editor-utils/diff-review-view.js';
 import { createMergeConflictsPlugin } from '../../../../../blocks/canvas/editor-utils/prose-merge-conflicts.js';
+import { loadDiffEngine } from '../../../../../blocks/edit/prose/diff/diff-engine.js';
 import { initDaMetadata } from '../../../../../blocks/edit/utils/helpers.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
@@ -31,6 +32,7 @@ const fallback = {
 };
 
 async function openEditor(html, { withPlugin = false } = {}) {
+  await loadDiffEngine();
   const ydoc = new Y.Doc();
   aem2doc(html, ydoc);
   const doc = yDocToProsemirror(getSchema(), ydoc);

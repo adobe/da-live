@@ -9,7 +9,8 @@ import { getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getDiffLabels } from '../../edit/utils/helpers.js';
 import { htmlDiff } from '../../shared/version/htmldiff.js';
-import { CHOICE, findGroup, resolveAll, resolveGroup } from './diff-review.js';
+import { applyResolution, getDiffEngine, loadDiffEngine } from '../../edit/prose/diff/diff-engine.js';
+import { hasGroupedMarkup } from './diff-review.js';
 
 const REASON_TEXT = {
   'no-baseline': 'Last rollout not available',
@@ -25,7 +26,7 @@ export const SHOW = Object.freeze({ source: 'source', both: 'both', local: 'loca
 const TEXT_LEAVES = new Set(['paragraph', 'heading', 'code_block']);
 const TEXT_CONTAINERS = new Set(['blockquote', 'bullet_list', 'ordered_list', 'list_item']);
 const MARKERS = new Set(['diff_added', 'diff_deleted']);
-const ROLE = Object.freeze({ card: 'card', member: 'member' });
+const ROLE = Object.freeze({ card: 'card', member: 'member', pending: 'pending' });
 const rolesKey = new PluginKey('diffReviewRoles');
 
 function read(key) {
@@ -100,19 +101,25 @@ function hiddenView(role) {
   };
 }
 
-function roleDecorations(doc) {
-  const seen = new Set();
+const roleDecoration = ({ node, pos }, diffRole) => Decoration
+  .node(pos, pos + node.nodeSize, {}, { diffRole });
+
+function pendingDecorations(doc) {
   const decorations = [];
   doc.descendants((node, pos) => {
     if (!MARKERS.has(node.type.name)) return true;
-    const id = node.attrs.diffGroup;
-    if (id) {
-      const diffRole = seen.has(id) ? ROLE.member : ROLE.card;
-      decorations.push(Decoration.node(pos, pos + node.nodeSize, {}, { diffRole }));
-      seen.add(id);
-    }
+    if (node.attrs.diffGroup) decorations.push(roleDecoration({ node, pos }, ROLE.pending));
     return false;
   });
+  return decorations;
+}
+
+function roleDecorations(doc) {
+  const engine = getDiffEngine();
+  const decorations = engine
+    ? engine.groups(doc).flatMap(({ markers }) => markers
+      .map((marker, idx) => roleDecoration(marker, idx ? ROLE.member : ROLE.card)))
+    : pendingDecorations(doc);
   return DecorationSet.create(doc, decorations);
 }
 
@@ -121,9 +128,26 @@ export function createReviewPlugin() {
     key: rolesKey,
     state: {
       init: (_, state) => roleDecorations(state.doc),
-      apply: (tr, set, _, state) => (tr.docChanged ? roleDecorations(state.doc) : set),
+      apply: (tr, set, _, state) => (tr.docChanged || tr.getMeta(rolesKey)
+        ? roleDecorations(state.doc) : set),
     },
     props: { decorations: (state) => rolesKey.getState(state) },
+    view(editorView) {
+      let destroyed = false;
+      const load = (view) => {
+        if (getDiffEngine() || !hasGroupedMarkup(view.state.doc)) return;
+        loadDiffEngine().then(() => {
+          if (!destroyed) view.dispatch(view.state.tr.setMeta(rolesKey, true).setMeta('addToHistory', false));
+        }).catch(() => {});
+      };
+      load(editorView);
+      return {
+        update: load,
+        destroy() {
+          destroyed = true;
+        },
+      };
+    },
   });
 }
 
@@ -173,6 +197,7 @@ function diffView(before, after, label) {
 }
 
 function actionButton(label, choice, onChoose) {
+  const { CHOICE } = getDiffEngine();
   const variant = choice === CHOICE.both ? 'nx-action-btn-quiet' : 'nx-action-btn';
   const button = el('button', `diff-group-action ${variant} nx-btn-sm is-choose-${choice}`);
   if (choice !== CHOICE.both) {
@@ -214,7 +239,7 @@ class GroupCardView {
       Object.assign(this, hiddenView(role));
       return;
     }
-    const { markers, bases } = findGroup(view.state.doc, this.id);
+    const { markers, bases } = getDiffEngine().findGroup(view.state.doc, this.id);
     this.dom = this.build(markers, bases);
     this.unsubscribe = canvasBus.diffReviewState.subscribe((detail) => {
       if (detail?.view === view) this.renderSummary(detail.summary);
@@ -222,6 +247,7 @@ class GroupCardView {
   }
 
   build(markers, bases) {
+    const { CHOICE } = getDiffEngine();
     const { schema } = this.view.state;
     const labels = getDiffLabels();
     const card = el('div', 'diff-group-card');
@@ -287,7 +313,7 @@ class GroupCardView {
 
     const choose = (choice) => {
       const refocus = focusAfterResolve(this.view, card);
-      resolveGroup(this.view, this.id, choice);
+      applyResolution(this.view, 'resolve', { groupId: this.id, choice });
       refocus();
     };
     const actions = el('div', 'diff-group-actions');
@@ -432,6 +458,7 @@ function iconButton(label, iconName, cls, onClick) {
 }
 
 function buildAcceptAll(view, labels) {
+  const { CHOICE } = getDiffEngine();
   const menu = el('nx-menu', 'diff-review-accept-all');
   menu.setAttribute('placement', 'below-end');
   menu.items = [
@@ -440,7 +467,7 @@ function buildAcceptAll(view, labels) {
   ];
   menu.addEventListener('select', (e) => {
     if (![CHOICE.source, CHOICE.mine].includes(e.detail?.id)) return;
-    resolveAll(view, e.detail.id);
+    applyResolution(view, 'resolveAll', { choice: e.detail.id });
     view.focus();
   });
   const trigger = el('button', 'diff-review-btn nx-action-btn nx-btn-sm');
