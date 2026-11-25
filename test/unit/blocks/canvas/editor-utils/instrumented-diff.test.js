@@ -7,7 +7,8 @@ import { getDiffClass } from '../../../../../blocks/edit/prose/diff/diff-utils.j
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
-const { createReviewNodeViews } = await import('../../../../../blocks/canvas/editor-utils/diff-review-view.js');
+const { createReviewNodeViews, createReviewPlugin } = await import('../../../../../blocks/canvas/editor-utils/diff-review-view.js');
+const { loadDiffEngine } = await import('../../../../../blocks/edit/prose/diff/diff-engine.js');
 
 const schema = getSchema();
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -121,6 +122,8 @@ describe('getInstrumentedHTML with grouped merge conflicts', () => {
   });
   const base = (text) => ({ type: 'diff_base', attrs: { diffGroup: 'g1' }, content: [para(text)] });
 
+  before(() => loadDiffEngine());
+
   function makeGroupedView(content) {
     const doc = schema.nodeFromJSON({ type: 'doc', content });
     const dom = document.createElement('div');
@@ -136,7 +139,7 @@ describe('getInstrumentedHTML with grouped merge conflicts', () => {
       },
     };
     const view = new EditorView(dom, {
-      state: EditorState.create({ schema, doc, plugins: [columnResizing()] }),
+      state: EditorState.create({ schema, doc, plugins: [columnResizing(), createReviewPlugin()] }),
       nodeViews: createReviewNodeViews(fallback),
     });
     const cleanup = () => {
