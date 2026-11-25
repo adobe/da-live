@@ -1,25 +1,9 @@
 // Global dialog management - only needed when multiple LOC nodes exist
-import { Fragment, Slice } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip, getDiffLabels } from '../../utils/helpers.js';
-import {
-  addToHashMetadata,
-  stripDaDiffAddedAttrs,
-  ACCEPTED_KEY,
-  REJECTED_KEY,
-} from './diff-actions.js';
-import { markerGroups, removeResolvedBases } from './diff-bases.js';
+import { applyResolution, loadDiffEngine } from './diff-engine.js';
 
-const KEEP = 'keep';
-const DELETE = 'delete';
-const IGNORE = 'ignore';
-const KEEP_BOTH = 'keep-both';
-const KEEP_LOCAL = 'keep-local';
-const KEEP_UPSTREAM = 'keep-upstream';
-
-const NODE = {
-  DELETED: 'diff_deleted',
-  ADDED: 'diff_added',
-};
+const KEEP_LOCAL = 'mine';
+const KEEP_UPSTREAM = 'source';
 
 let globalDialog = null;
 export function hideGlobalDialog() {
@@ -32,98 +16,17 @@ export function hideGlobalDialog() {
   globalDialog = null;
 }
 
-function getAllLocNodes(view, isLocNode) {
-  const { doc } = view.state;
-  const locNodes = [];
-
-  doc.descendants((node, pos) => {
-    if (isLocNode(node)) {
-      locNodes.push({ node, pos });
-    }
+async function handleGlobalAction(choice, activeViews) {
+  try {
+    await loadDiffEngine();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Error loading the diff engine:', error);
+    return;
+  }
+  activeViews.forEach((view) => {
+    if (!view.isDestroyed) applyResolution(view, 'resolveAll', { choice });
   });
-
-  // Sort by position (descending) so we can process from end to beginning
-  // This prevents position shifts from affecting later operations
-  return locNodes.sort((a, b) => b.pos - a.pos);
-}
-
-function getNodeAction(action, nodeType) {
-  if (action === KEEP_BOTH) return KEEP;
-  if (action === KEEP_LOCAL && nodeType === NODE.ADDED) return KEEP;
-  if (action === KEEP_UPSTREAM && nodeType === NODE.DELETED) return KEEP;
-  if (action === KEEP_LOCAL && nodeType === NODE.DELETED) return DELETE;
-  if (action === KEEP_UPSTREAM && nodeType === NODE.ADDED) return DELETE;
-  return IGNORE;
-}
-
-function findListItemDepth($pos) {
-  for (let { depth } = $pos; depth > 0; depth -= 1) {
-    if ($pos.node(depth).type.name === 'list_item') return depth;
-  }
-  return null;
-}
-
-function processLocNode(tr, node, pos, action) {
-  const nodeAction = getNodeAction(action, node.type.name);
-  if (nodeAction === IGNORE) return null;
-
-  const $pos = tr.doc.resolve(pos);
-
-  if (nodeAction === KEEP) {
-    addToHashMetadata(node, ACCEPTED_KEY);
-
-    if (node.content.size === 0) return tr.delete(pos, pos + node.nodeSize);
-
-    // Strip `daDiffAdded` from direct children so accepted content doesn't
-    // serialize with `da-diff-added=""` (no-op for diff_deleted children).
-    const children = [];
-    node.content.forEach((child) => children.push(child));
-    const strippedContent = Fragment.fromArray(stripDaDiffAddedAttrs(children));
-
-    const isInListItem = $pos.parent.type.name === 'list_item';
-    const openDepth = isInListItem ? 1 : 0;
-    const slice = new Slice(strippedContent, openDepth, openDepth);
-    return tr.replace(pos, pos + node.nodeSize, slice);
-  }
-
-  // DELETE action - track as rejected
-  addToHashMetadata(node, REJECTED_KEY);
-
-  const listItemDepth = findListItemDepth($pos);
-  if (listItemDepth !== null) {
-    return tr.delete($pos.before(listItemDepth), $pos.after(listItemDepth));
-  }
-  return tr.delete(pos, pos + node.nodeSize);
-}
-
-function processViewNodes(view, action, isLocNode) {
-  const locNodes = getAllLocNodes(view, isLocNode);
-  if (locNodes.length === 0) return false;
-
-  let { tr } = view.state;
-  const groups = markerGroups(tr.doc);
-
-  locNodes.forEach(({ pos }) => {
-    try {
-      const mappedPos = tr.mapping.map(pos);
-      const node = tr.doc.nodeAt(mappedPos);
-
-      if (isLocNode(node)) {
-        const result = processLocNode(tr, node, mappedPos, action);
-        if (result) tr = result;
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('Error processing loc node:', error);
-    }
-  });
-
-  view.dispatch(removeResolvedBases(tr, groups));
-  return true;
-}
-
-function handleGlobalAction(action, activeViews, isLocNode) {
-  activeViews.forEach((view) => processViewNodes(view, action, isLocNode));
   hideGlobalDialog();
 }
 
@@ -133,7 +36,6 @@ function createGlobalAction(
   action,
   tooltipText,
   activeViews,
-  isLocNode,
 ) {
   const button = createElement('div', `da-diff-btn da-diff-btn-base is-${type}`);
 
@@ -141,7 +43,7 @@ function createGlobalAction(
   label.textContent = text;
 
   const confirm = createButton('nx-action-btn-icon confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
-  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, isLocNode));
+  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews));
   confirm.appendChild(createTooltip(tooltipText, 'diff-tooltip'));
 
   button.appendChild(label);
@@ -149,14 +51,14 @@ function createGlobalAction(
   return button;
 }
 
-function createGlobalOverlay(activeViews, isLocNode) {
+function createGlobalOverlay(activeViews) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
   const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
   const labels = getDiffLabels();
 
-  const localButton = createGlobalAction('local', `Keep All ${labels.local}`, KEEP_LOCAL, `Accept All ${labels.local}`, activeViews, isLocNode);
-  const upstreamButton = createGlobalAction('upstream', `Keep All ${labels.upstream}`, KEEP_UPSTREAM, `Accept All ${labels.upstream}`, activeViews, isLocNode);
+  const localButton = createGlobalAction('local', `Keep All ${labels.local}`, KEEP_LOCAL, `Accept All ${labels.local}`, activeViews);
+  const upstreamButton = createGlobalAction('upstream', `Keep All ${labels.upstream}`, KEEP_UPSTREAM, `Accept All ${labels.upstream}`, activeViews);
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
@@ -170,7 +72,7 @@ function findProseMirrorContainer(view) {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNode) {
+export function showGlobalDialog(view, activeViews) {
   if (globalDialog?.parentNode) return; // Dialog already shown
 
   const pmContainer = findProseMirrorContainer(view);
@@ -184,7 +86,7 @@ export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNo
   if (!pmEl) return;
 
   if (!globalDialog) {
-    globalDialog = createGlobalOverlay(activeViews, isLocNode);
+    globalDialog = createGlobalOverlay(activeViews);
   }
 
   pmContainer.insertBefore(globalDialog, pmEl);

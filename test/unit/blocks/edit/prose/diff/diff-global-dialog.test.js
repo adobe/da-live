@@ -60,9 +60,8 @@ describe('diff-global-dialog - createGlobalOverlay', () => {
 
   it('creates dialog with default labels', () => {
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
 
     const { dialog, localBtn, upstreamBtn } = getDialogButtons();
 
@@ -81,9 +80,8 @@ describe('diff-global-dialog - createGlobalOverlay', () => {
     setDaMetadata('diff-label-upstream', 'Langstore');
 
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
 
     const { localBtn, upstreamBtn } = getDialogButtons();
 
@@ -99,9 +97,8 @@ describe('diff-global-dialog - createGlobalOverlay', () => {
     setDaMetadata('diff-label-upstream', 'My Upstream');
 
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
 
     const { localBtn, upstreamBtn } = getDialogButtons();
 
@@ -114,18 +111,16 @@ describe('diff-global-dialog - createGlobalOverlay', () => {
 
   it('adds has-regional-edits class to container when shown', () => {
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
 
     expect(proseMirrorContainer.classList.contains('has-regional-edits')).to.be.true;
   });
 
   it('removes has-regional-edits class when hidden', () => {
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
     expect(proseMirrorContainer.classList.contains('has-regional-edits')).to.be.true;
 
     hideGlobalDialog();
@@ -134,10 +129,9 @@ describe('diff-global-dialog - createGlobalOverlay', () => {
 
   it('does not create duplicate dialogs', () => {
     const activeViews = new Set([mockView]);
-    const isLocNode = () => false;
 
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
-    showGlobalDialog(mockView, activeViews, () => [], isLocNode);
+    showGlobalDialog(mockView, activeViews);
+    showGlobalDialog(mockView, activeViews);
 
     const dialogs = proseMirrorContainer.querySelectorAll('.da-regional-edits-overlay');
     expect(dialogs.length).to.equal(1);

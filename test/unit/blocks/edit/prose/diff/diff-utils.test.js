@@ -260,23 +260,6 @@ describe('diff-utils getDiffClass — paired node views', () => {
     expect(instance.canFormLocPair(node, otherDeleted)).to.be.false;
   });
 
-  it('dispatchContentTransaction dispatches a delete when filteredContent is empty', async () => {
-    const deletedPos = insertPair();
-    const { schema } = editor.view.state;
-    const NodeViewClass = getDiffClass('da-loc-deleted', () => schema, () => {}, { isUpstream: true });
-    const node = editor.view.state.doc.nodeAt(deletedPos);
-    const instance = new NodeViewClass(node, editor.view, () => deletedPos);
-
-    const dispatched = [];
-    const realDispatch = editor.view.dispatch.bind(editor.view);
-    editor.view.dispatch = (tr) => {
-      dispatched.push(tr);
-      realDispatch(tr);
-    };
-    instance.dispatchContentTransaction(deletedPos, deletedPos + node.nodeSize, []);
-    expect(dispatched.length).to.equal(1);
-  });
-
   it('callUserAction loads diff-actions and invokes the named function', async () => {
     const deletedPos = insertPair();
     const { schema } = editor.view.state;

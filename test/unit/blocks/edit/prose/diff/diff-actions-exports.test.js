@@ -1,83 +1,12 @@
 import { expect } from '@esm-bundle/chai';
 import {
-  stripDaDiffAddedAttrs,
-  getPairRange,
   getCurrentLocNodePair,
   handleDeleteSingleNode,
   handleKeepSingleNode,
   handleKeepDeleted,
   handleKeepAdded,
   handleKeepBoth,
-  applyKeepOperation,
-  REJECTED_KEY,
-  ACCEPTED_KEY,
 } from '../../../../../../blocks/edit/prose/diff/diff-actions.js';
-
-describe('diff-actions stripDaDiffAddedAttrs', () => {
-  it('Strips daDiffAdded attribute from nodes that carry it', () => {
-    const created = [];
-    const node = {
-      attrs: { daDiffAdded: '', other: 'x' },
-      content: 'c',
-      marks: ['m'],
-      type: {
-        create: (attrs, content, marks) => {
-          created.push({ attrs, content, marks });
-          return { attrs };
-        },
-      },
-    };
-    const result = stripDaDiffAddedAttrs([node]);
-    expect(created).to.have.length(1);
-    expect(created[0].attrs.daDiffAdded).to.equal(null);
-    expect(created[0].attrs.other).to.equal('x');
-    expect(result[0].attrs.other).to.equal('x');
-  });
-
-  it('Returns the node unchanged when it has no daDiffAdded attribute', () => {
-    const node = {
-      attrs: { other: 'x' },
-      content: 'c',
-      marks: [],
-      type: { create: () => 'should-not-be-called' },
-    };
-    const result = stripDaDiffAddedAttrs([node]);
-    expect(result[0]).to.equal(node);
-  });
-
-  it('Skips nodes without attrs', () => {
-    const node = { content: 'c', marks: [], type: { create: () => 'no' } };
-    const result = stripDaDiffAddedAttrs([node]);
-    expect(result[0]).to.equal(node);
-  });
-
-  it('REJECTED_KEY and ACCEPTED_KEY constants are stable strings', () => {
-    expect(REJECTED_KEY).to.equal('rejectedHashes');
-    expect(ACCEPTED_KEY).to.equal('acceptedHashes');
-  });
-});
-
-describe('diff-actions getPairRange', () => {
-  it('Picks the lower start position and the higher end position', () => {
-    const range = getPairRange({
-      deletedPos: 10,
-      addedPos: 20,
-      deletedNode: { nodeSize: 5 },
-      addedNode: { nodeSize: 7 },
-    });
-    expect(range).to.deep.equal({ startPos: 10, endPos: 27 });
-  });
-
-  it('Handles reversed order (added before deleted)', () => {
-    const range = getPairRange({
-      deletedPos: 30,
-      addedPos: 10,
-      deletedNode: { nodeSize: 5 },
-      addedNode: { nodeSize: 4 },
-    });
-    expect(range).to.deep.equal({ startPos: 10, endPos: 35 });
-  });
-});
 
 describe('diff-actions getCurrentLocNodePair', () => {
   function buildContext({ pos, parent, nodeSize = 4 }) {
@@ -161,7 +90,7 @@ describe('diff-actions getCurrentLocNodePair', () => {
 });
 
 describe('diff-actions handleDeleteSingleNode', () => {
-  it('Logs and returns when getPos is invalid', () => {
+  it('Logs and returns when getPos is invalid', async () => {
     let dispatched = false;
     const view = {
       state: {
@@ -170,11 +99,12 @@ describe('diff-actions handleDeleteSingleNode', () => {
       },
       dispatch: () => {},
     };
-    handleDeleteSingleNode(view, () => null, (p) => p !== null && p !== undefined, () => true);
+    const isValid = (p) => p !== null && p !== undefined;
+    await handleDeleteSingleNode(view, () => null, isValid, () => true);
     expect(dispatched).to.be.false;
   });
 
-  it('Returns when current node is not a loc node', () => {
+  it('Returns when current node is not a loc node', async () => {
     let dispatched = false;
     const node = { type: { name: 'paragraph' }, nodeSize: 1 };
     const view = {
@@ -185,33 +115,23 @@ describe('diff-actions handleDeleteSingleNode', () => {
             return {};
           },
         },
-        doc: {
-          resolve: () => ({
-            index: () => 0,
-            parent: { type: { name: 'doc' }, child: () => node },
-            depth: 1,
-            before: () => 0,
-          }),
-        },
+        doc: { nodeAt: () => node },
       },
-      dispatch: () => {},
+      dispatch: () => { dispatched = true; },
     };
-    handleDeleteSingleNode(view, () => 0, (p) => p !== null && p !== undefined, () => false);
+    await handleDeleteSingleNode(view, () => 0, (p) => p !== null && p !== undefined, () => false);
     expect(dispatched).to.be.false;
   });
 });
 
 describe('diff-actions handleKeepSingleNode', () => {
-  it('Returns early when position is invalid', () => {
+  it('Returns early when position is invalid', async () => {
     let called = false;
-    const dispatchContentTransaction = () => { called = true; };
-    handleKeepSingleNode(
-      { state: { tr: {}, doc: { resolve: () => null } } },
+    await handleKeepSingleNode(
+      { state: { tr: {}, doc: { resolve: () => null } }, dispatch: () => { called = true; } },
       () => null,
       (p) => p !== null && p !== undefined,
       () => true,
-      () => [],
-      dispatchContentTransaction,
     );
     expect(called).to.be.false;
   });
@@ -240,92 +160,10 @@ describe('diff-actions handleKeepDeleted/Added/Both', () => {
       isValidPosition: (p) => p !== null && p !== undefined,
       isLocNode: () => false,
       canFormLocPair: () => true,
-      filterNodeContent: () => [],
-      dispatchContentTransaction: () => {},
     };
     await handleKeepDeleted(ctx);
-    handleKeepAdded(ctx);
-    handleKeepBoth(ctx);
+    await handleKeepAdded(ctx);
+    await handleKeepBoth(ctx);
     // No exceptions; warn-only paths covered
-  });
-});
-
-describe('diff-actions applyKeepOperation', () => {
-  it('Replaces with filtered content when non-empty', () => {
-    const calls = [];
-    const tr = {
-      replace: (s, e, slice) => { calls.push({ op: 'replace', s, e, size: slice.size }); },
-      delete: () => { calls.push({ op: 'delete' }); },
-    };
-    const node = { content: { content: [{ x: 1 }, { y: 2 }] }, nodeSize: 5 };
-    applyKeepOperation(tr, node, 10, (arr) => arr);
-    expect(calls.length).to.equal(1);
-    expect(calls[0].op).to.equal('replace');
-  });
-
-  it('Deletes the range when filtered content is empty', () => {
-    const calls = [];
-    const tr = {
-      replace: () => { calls.push({ op: 'replace' }); },
-      delete: (s, e) => { calls.push({ op: 'delete', s, e }); },
-    };
-    const node = { content: { content: [{}] }, nodeSize: 4 };
-    applyKeepOperation(tr, node, 5, () => []);
-    expect(calls).to.deep.equal([{ op: 'delete', s: 5, e: 9 }]);
-  });
-});
-
-describe('diff-actions addToHashMetadata without a global view', () => {
-  it('Records the hash of a node using the node schema', async () => {
-    const { getSchema } = await import('da-parser');
-    const { initDaMetadata, getDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
-    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
-    const storage = new Map();
-    initDaMetadata({
-      get: (key) => storage.get(key) || null,
-      set: (key, value) => storage.set(key, value),
-      delete: (key) => storage.delete(key),
-      [Symbol.iterator]: () => storage.entries(),
-    });
-    const savedView = window.view;
-    delete window.view;
-    try {
-      const schema = getSchema();
-      const node = schema.nodeFromJSON({
-        type: 'diff_added',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'local text' }] }],
-      });
-      await addToHashMetadata(node, ACCEPTED_KEY);
-      expect(getDaMetadata(ACCEPTED_KEY)).to.be.a('string').and.not.equal('');
-    } finally {
-      if (savedView) window.view = savedView;
-      initDaMetadata(null);
-    }
-  });
-
-  it('Adds to a key stored in another case instead of starting a second one', async () => {
-    const { getSchema } = await import('da-parser');
-    const { initDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
-    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
-    const storage = new Map([['rejectedhashes', 'aaaaaaaaaaaa']]);
-    initDaMetadata({
-      get: (key) => storage.get(key) || null,
-      set: (key, value) => storage.set(key, value),
-      delete: (key) => storage.delete(key),
-      [Symbol.iterator]: () => storage.entries(),
-    });
-    try {
-      const node = getSchema().nodeFromJSON({
-        type: 'diff_deleted',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'source text' }] }],
-      });
-      await addToHashMetadata(node, REJECTED_KEY);
-      expect([...storage.keys()]).to.deep.equal(['rejectedhashes']);
-      const hashes = storage.get('rejectedhashes').split(',');
-      expect(hashes).to.have.length(2);
-      expect(hashes[0]).to.equal('aaaaaaaaaaaa');
-    } finally {
-      initDaMetadata(null);
-    }
   });
 });
