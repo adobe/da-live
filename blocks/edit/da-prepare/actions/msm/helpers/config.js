@@ -74,7 +74,7 @@ export async function getBaseSite(org, satellite) {
 // editor use too. nx2 picks its own DA_ADMIN, which differs on da.page and on
 // branch hosts.
 export function legacySource(org, site, path, opts = {}) {
-  return daFetch(`${DA_ORIGIN}/source/${org}/${site}${path}`, { ...opts, noRedirect: true });
+  return daFetch(`${DA_ORIGIN}/source/${org}/${site}${path}`, opts);
 }
 
 // A site whose backend check fails is read as legacy DA, which is what the
