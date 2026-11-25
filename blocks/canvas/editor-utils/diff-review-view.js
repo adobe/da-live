@@ -190,7 +190,15 @@ class GroupCardView {
       expand.setAttribute('aria-expanded', String(expanded));
     });
     expand.setAttribute('aria-expanded', 'false');
+    expand.hidden = true;
     tools.append(expand);
+    const panels = card.querySelectorAll('.diff-group-side-content, .diff-group-inline');
+    const overflows = () => [...panels].some((p) => p.scrollHeight > p.clientHeight + 1);
+    this.updateExpand = () => {
+      expand.hidden = !card.classList.contains('is-expanded') && !overflows();
+    };
+    this.resizeObserver = new ResizeObserver(() => this.updateExpand());
+    panels.forEach((panel) => this.resizeObserver.observe(panel));
 
     const choose = (choice) => resolveGroup(this.view, this.id, choice);
     const actions = el('div', 'diff-group-actions');
@@ -206,6 +214,7 @@ class GroupCardView {
   }
 
   renderSummary(summary) {
+    this.updateExpand?.();
     const group = summary?.groups?.find(({ id }) => id === this.id);
     if (!group) return;
     this.titleEl.textContent = groupTitle(group);
@@ -227,6 +236,7 @@ class GroupCardView {
 
   destroy() {
     this.unsubscribe?.();
+    this.resizeObserver?.disconnect();
   }
 }
 

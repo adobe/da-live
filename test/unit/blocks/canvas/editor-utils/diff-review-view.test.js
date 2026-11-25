@@ -12,6 +12,10 @@ import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.j
 
 const waitFor = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
+const panelStyle = document.createElement('style');
+panelStyle.textContent = '.diff-group-side-content, .diff-group-inline { max-height: 100px; overflow: auto; }';
+document.head.append(panelStyle);
+
 const PAGE = `<body><header></header><main><div>
 <da-diff-base data-mdast="ignore" data-diff-group="g1"><p>Alpha base</p></da-diff-base>
 <da-diff-deleted data-mdast="ignore" data-diff-group="g1" data-diff-side="source" data-diff-kind="changed" data-diff-reason="both-changed"><p>Alpha source</p><p>Yankee source</p></da-diff-deleted>
@@ -146,13 +150,28 @@ describe('diff-review-view', () => {
       expect(card(editor.view, 'g1').classList.contains('is-inline')).to.equal(false);
     });
 
-    it('expands a card to full height', () => {
-      const g4 = card(editor.view, 'g4');
-      const expand = g4.querySelector('.diff-group-expand');
+    it('hides Expand when nothing overflows', async () => {
+      destroyEditor(editor);
+      editor = await openEditor(PAGE, { withPlugin: true });
+      await waitFor(600);
+      expect(card(editor.view, 'g4').querySelector('.diff-group-expand').hidden).to.equal(true);
+    });
+
+    it('shows Expand for a long unit and expands the card to full height', async () => {
+      destroyEditor(editor);
+      const long = Array.from({ length: 30 }, (_, i) => `<p>Long source ${i}</p>`).join('');
+      editor = await openEditor(PAGE.replace('<p>Alpha source</p>', long), { withPlugin: true });
+      await waitFor(600);
+      const g1 = card(editor.view, 'g1');
+      const expand = g1.querySelector('.diff-group-expand');
+      expect(expand.hidden).to.equal(false);
       expect(expand.getAttribute('aria-expanded')).to.equal('false');
       expand.click();
-      expect(g4.classList.contains('is-expanded')).to.equal(true);
+      expect(g1.classList.contains('is-expanded')).to.equal(true);
       expect(expand.getAttribute('aria-expanded')).to.equal('true');
+      editor.view.dispatch(editor.view.state.tr.insertText('x', 1));
+      await waitFor(600);
+      expect(expand.hidden).to.equal(false);
     });
   });
 
