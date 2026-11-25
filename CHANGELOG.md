@@ -1,3 +1,10 @@
+## [1.36.5](https://github.com/adobe/da-live/compare/v1.36.4...v1.36.5) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve sheet editor dark-mode styling ([#1767](https://github.com/adobe/da-live/issues/1767)) ([80cdbf9](https://github.com/adobe/da-live/commit/80cdbf9987026aee72b9c40cd793dc111f8c14d8))
+
 ## [1.36.4](https://github.com/adobe/da-live/compare/v1.36.3...v1.36.4) (2026-11-25)
 
 
