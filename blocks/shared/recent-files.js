@@ -10,9 +10,13 @@ function readAll() {
   }
 }
 
+function getEntryPath(entry) {
+  return typeof entry === 'string' ? entry : entry?.path;
+}
+
 export function getRecentFiles(sitePath) {
-  const paths = readAll()[sitePath];
-  return Array.isArray(paths) ? paths.filter((path) => typeof path === 'string') : [];
+  const recent = readAll()[sitePath];
+  return Array.isArray(recent) ? recent.map(getEntryPath).filter((path) => typeof path === 'string') : [];
 }
 
 export function addRecentFile(path) {
@@ -22,7 +26,10 @@ export function addRecentFile(path) {
   const sitePath = parts.slice(0, 3).join('/');
   const all = readAll();
   const recent = Array.isArray(all[sitePath]) ? all[sitePath] : [];
-  all[sitePath] = [path, ...recent.filter((recentPath) => typeof recentPath === 'string' && recentPath !== path)]
+  all[sitePath] = [{ path, timestamp: Date.now() }, ...recent.filter((entry) => {
+    const recentPath = getEntryPath(entry);
+    return typeof recentPath === 'string' && recentPath !== path;
+  })]
     .slice(0, MAX_FILES);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));

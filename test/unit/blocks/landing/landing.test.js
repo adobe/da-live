@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
-import { DaLanding } from '../../../../blocks/landing/landing.js';
+import init, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
@@ -282,6 +282,29 @@ describe('landing Content section', () => {
     expect(loadIms.called).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
     expect(loadSite.called).to.equal(false);
+  });
+
+  it('personalizes authored greetings only after authentication using the same profile as Content', async () => {
+    el.remove();
+    loadIms.resetHistory();
+    const container = document.createElement('main');
+    container.innerHTML = '<div class="greeting"><div><div><h1>Welcome, [firstname]</h1></div></div></div><div class="browse"></div>';
+    document.body.append(container);
+    let finish;
+    loadIms.returns(new Promise((resolve) => { finish = resolve; }));
+    try {
+      el = init(container.querySelector('.browse'));
+      expect(container.querySelector('da-greeting')).to.equal(null);
+      finish({ accessToken: { token: 'test-token' }, first_name: 'Ada' });
+      await initialize.lastCall.returnValue;
+      const greeting = container.querySelector('da-greeting');
+      await greeting.updateComplete;
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(greeting.querySelector('h1').textContent).to.equal('Welcome, Ada');
+      expect(loadIms.calledOnce).to.equal(true);
+    } finally {
+      container.remove();
+    }
   });
 
   it('waits for IMS and starts sign-in only once for a returning signed-out user', async () => {
