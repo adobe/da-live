@@ -33,7 +33,8 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
 export function parseSubdomain(siteUrl) {
   try {
     const url = new URL(siteUrl);
-    if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) return null;
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
+    if (!/^[a-z0-9-]+\.(?:hlx|aem)\.(?:live|page)$/.test(url.hostname)) return null;
     const helixString = url.hostname.split('.')[0];
     if (!helixString) return null;
     const [, site, org] = helixString.split('--');
