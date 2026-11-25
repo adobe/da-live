@@ -33,7 +33,7 @@ describe('sheet entry point', () => {
       window.history.replaceState(null, '', '/sheet#/org/site/data/products');
       await init(el);
       await loaded;
-      expect(writes[0]['/org/site'][0]).to.equal('/org/site/data/products.json');
+      expect(writes[0]['/org/site'][0].path).to.equal('/org/site/data/products.json');
       expect(document.title).to.equal('Edit sheet products | Experience Workspace');
     } finally {
       listeners.forEach((spy) => spy.getCalls()

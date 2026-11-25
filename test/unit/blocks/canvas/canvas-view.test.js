@@ -100,7 +100,7 @@ describe('canvas editor view visibility', () => {
         await decorate(block);
         hashChange._set({ org: 'org', site: 'site', path: 'docs/other.html' });
         hashChange._set({ org: 'org', site: 'site', path: 'docs/page' });
-        expect(writes).to.include.members(['/org/site/docs/other.html', '/org/site/docs/page.html']);
+        expect(writes.map((entry) => entry.path)).to.include.members(['/org/site/docs/other.html', '/org/site/docs/page.html']);
         await Promise.all([notPermitted, configsLoaded]);
       } finally {
         observer.disconnect();

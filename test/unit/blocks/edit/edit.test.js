@@ -36,7 +36,7 @@ describe('edit entry point', () => {
       window.history.replaceState(null, '', '/edit#/org/site/docs/page');
       await init(el);
       await closed;
-      expect(writes[0]['/org/site'][0]).to.equal('/org/site/docs/page.html');
+      expect(writes[0]['/org/site'][0].path).to.equal('/org/site/docs/page.html');
       expect(document.title).to.equal('Edit page | Experience Workspace');
     } finally {
       addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));

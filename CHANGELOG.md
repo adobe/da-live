@@ -1,3 +1,52 @@
+## [1.36.3](https://github.com/adobe/da-live/compare/v1.36.2...v1.36.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve classic editor dark mode support ([#1759](https://github.com/adobe/da-live/issues/1759)) ([acb9421](https://github.com/adobe/da-live/commit/acb942173eb79e5853ca1603f0a28f7fb4e86cd6))
+
+## [1.36.2](https://github.com/adobe/da-live/compare/v1.36.1...v1.36.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* align select all ([#1784](https://github.com/adobe/da-live/issues/1784)) ([c71a2ce](https://github.com/adobe/da-live/commit/c71a2ced9a34b3e76ea7b831bc22e7c32086ed86))
+
+## [1.36.1](https://github.com/adobe/da-live/compare/v1.36.0...v1.36.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* remove support for browse version config ([#1785](https://github.com/adobe/da-live/issues/1785)) ([58a3397](https://github.com/adobe/da-live/commit/58a3397e2e1f54bd57905c92fe6e3a4818cb968b))
+
+# [1.36.0](https://github.com/adobe/da-live/compare/v1.35.0...v1.36.0) (2026-11-24)
+
+
+### Features
+
+* link the config editor from the settings menu ([#1778](https://github.com/adobe/da-live/issues/1778)) ([6ee13df](https://github.com/adobe/da-live/commit/6ee13df2ad26d3bb77265cbaa4c06635b2fb6f3b))
+
+# [1.35.0](https://github.com/adobe/da-live/compare/v1.34.0...v1.35.0) (2026-11-24)
+
+
+### Features
+
+* add tiles on landing ([#1777](https://github.com/adobe/da-live/issues/1777)) ([d2698e0](https://github.com/adobe/da-live/commit/d2698e010da7763eaa80dec921fba9ce2659682d))
+
+# [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
+
+
+### Features
+
+* add config editor for org and site settings ([#1667](https://github.com/adobe/da-live/issues/1667)) ([435355d](https://github.com/adobe/da-live/commit/435355d435452b888d23cbab9057103e78d529c3))
+
+## [1.33.3](https://github.com/adobe/da-live/compare/v1.33.2...v1.33.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* enlarge fullsize extension dialogs ([#1774](https://github.com/adobe/da-live/issues/1774)) ([c07f3b0](https://github.com/adobe/da-live/commit/c07f3b031c8d11ef66df114159128efd4ff598b9))
+
 ## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
 
 

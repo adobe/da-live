@@ -6,7 +6,6 @@ const METADATA_CONCURRENCY = 4;
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
   url.searchParams.set('landing', 'home');
-  url.searchParams.set('browse', '2');
   url.hash = path ? `#${path}` : '';
   return url.href;
 }

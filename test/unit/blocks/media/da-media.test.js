@@ -151,7 +151,7 @@ describe('media loading', () => {
       expect(createObjectURL.calledOnce).to.equal(true);
       expect(await createObjectURL.firstCall.args[0].text()).to.equal('media-data');
       expect(container.querySelector('da-media').details.contentUrl).to.equal('blob:media-test');
-      expect(recentWrites[0]['/kptdobe/sample-content-hlx6-migrated'][0]).to.equal(path);
+      expect(recentWrites[0]['/kptdobe/sample-content-hlx6-migrated'][0].path).to.equal(path);
     });
   });
 
@@ -180,7 +180,7 @@ describe('media loading', () => {
       .to.equal('https://content.da.live/mediaorg/legacysite/images/second.png');
     expect(container.querySelector('da-title').details.name).to.equal('second.png');
     expect(container.children.length).to.equal(2);
-    expect(recentWrites.map((recent) => recent['/mediaorg/legacysite'][0])).to.deep.equal([
+    expect(recentWrites.map((recent) => recent['/mediaorg/legacysite'][0].path)).to.deep.equal([
       '/mediaorg/legacysite/images/first.svg',
       '/mediaorg/legacysite/images/second.png',
     ]);
