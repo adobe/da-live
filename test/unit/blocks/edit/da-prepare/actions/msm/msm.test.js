@@ -163,6 +163,51 @@ describe('DaMsm component', () => {
       expect(el._role).to.equal('satellite');
       expect(el._baseSite).to.equal('mccs');
     });
+
+    it('shows an error with a retry when an override check fails', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-loaderr': BASE_CONFIG } });
+      const broken = async (url, opts = {}) => {
+        if (opts.method === 'HEAD' && url.includes('/san-diego/')) return new Response('', { status: 500 });
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-loaderr', site: 'mccs', path: '/about' }, broken);
+
+      // primitives only: a failing assert on a DOM node hangs the run
+      expect(el._satellites).to.equal(undefined);
+      expect(el.shadowRoot.querySelector('.load-error')?.textContent).to.include('san-diego');
+      expect(el.shadowRoot.querySelectorAll('.satellite-list').length).to.equal(0);
+
+      window.fetch = good;
+      el.shadowRoot.querySelector('.form-actions sl-button').click();
+      await waitForLoad();
+
+      expect(el._loadError).to.equal(undefined);
+      expect(el._satellites.length).to.equal(2);
+    });
+
+    it('shows an error when a satellite check doesn\'t get an answer', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-neterr': BASE_CONFIG } });
+      const broken = async (url, opts = {}) => {
+        if (opts.method === 'HEAD') throw new TypeError('Failed to fetch');
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-neterr', site: 'mccs', path: '/about' }, broken);
+
+      expect(el._loading).to.equal(undefined);
+      expect(el.shadowRoot.querySelector('.load-error')?.textContent).to.include('Failed to fetch');
+    });
+
+    it('shows an error when the satellite cannot check its own page', async () => {
+      const good = createFetchMock({ orgConfigs: { 'msm-saterr': BASE_CONFIG } });
+      const broken = async (url, opts = {}) => {
+        if (opts.method === 'HEAD') return new Response('', { status: 403 });
+        return good(url, opts);
+      };
+      await fixture({ org: 'msm-saterr', site: 'san-diego', path: '/about' }, broken);
+
+      expect(el._hasOverride).to.equal(undefined);
+      expect(el.shadowRoot.querySelector('.load-error')?.textContent).to.include('403');
+    });
   });
 
   describe('rendering — base view', () => {

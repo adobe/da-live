@@ -176,9 +176,30 @@ describe('MSM config', () => {
       const result = await isPageLocal('org', 'san-diego-mccs', '/about');
       expect(result).to.be.false;
     });
+
+    it('throws when HEAD returns an error other than 404', async () => {
+      window.fetch = () => Promise.resolve(new Response('', { status: 403 }));
+
+      const error = await isPageLocal('org', 'san-diego-mccs', '/about').then(() => undefined, (e) => e);
+      expect(error?.message).to.include('san-diego-mccs');
+      expect(error?.message).to.include('403');
+    });
   });
 
   describe('checkOverrides', () => {
+    it('rejects when a satellite cannot be checked', async () => {
+      window.fetch = (url) => {
+        const status = url.includes('/check-broken/') ? 500 : 404;
+        return Promise.resolve(new Response('', { status }));
+      };
+
+      const error = await checkOverrides('org', {
+        'check-ok': { label: 'OK' },
+        'check-broken': { label: 'Broken' },
+      }, '/about').then(() => undefined, (e) => e);
+      expect(error?.message).to.include('check-broken');
+    });
+
     it('returns override status for all satellites', async () => {
       window.fetch = (url) => {
         if (url.includes('san-diego-mccs')) {
