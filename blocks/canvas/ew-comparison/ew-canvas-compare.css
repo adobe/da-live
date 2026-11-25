@@ -164,6 +164,13 @@ nx-popover {
   padding: var(--s2-spacing-50) var(--s2-spacing-100);
 }
 
+:is(.ew-cc-body, .ew-cc-pane) [data-diffmod] {
+  background-color: #fff3e0;
+  outline: 1px dashed #b45309;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
 :is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),

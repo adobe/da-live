@@ -127,6 +127,13 @@
   border-color: #ffcc02;
 }
 
+.da-compare-body [data-diffmod] {
+  background-color: #fff3e0;
+  outline: 1px dashed #b45309;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
 /* When ins/del wraps block content (tables, table wrappers, paragraphs),
    render as a block with a colored side bar instead of an inline pill. */
 .da-compare-body ins.diffins:has(table),

@@ -383,6 +383,13 @@ da-loc-added,
   border-color: #ffcc02;
 }
 
+.diff-tab-pane [data-diffmod] {
+  background-color: #fff3e0;
+  outline: 1px dashed #b45309;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
 .diff-tab-pane ins.diffmod {
   background-color: #e3f2fd;
   color: #1565c0;
