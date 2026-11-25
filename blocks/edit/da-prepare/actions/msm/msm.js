@@ -15,6 +15,17 @@ const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const STATUS = { pending: 'pending', success: 'success', error: 'error' };
 const SYNC_MODE = { override: 'override', merge: 'merge' };
 
+// Re-previews and re-publishes what was out before the override was deleted.
+async function republish(org, site, path, pageStatus) {
+  if (pageStatus.live) {
+    const preview = await previewSatellite(org, site, path);
+    if (preview.error) return preview;
+    return publishSatellite(org, site, path);
+  }
+  if (pageStatus.preview) return previewSatellite(org, site, path);
+  return {};
+}
+
 const ACTION_SCOPE = {
   preview: 'inherited',
   publish: 'inherited',
@@ -238,15 +249,10 @@ class DaMsm extends LitElement {
           if (result.error) {
             this.updateSatStatus(sat.site, STATUS.error);
           } else {
-            if (pageStatus.live) {
-              await previewSatellite(org, sat.site, path);
-              await publishSatellite(org, sat.site, path);
-            } else if (pageStatus.preview) {
-              await previewSatellite(org, sat.site, path);
-            }
+            const synced = await republish(org, sat.site, path, pageStatus);
             this._satellites = this._satellites.map(
               (s) => (s.site === sat.site
-                ? { ...s, hasOverride: false, status: STATUS.success }
+                ? { ...s, hasOverride: false, status: synced.error ? STATUS.error : STATUS.success }
                 : s),
             );
           }
@@ -290,12 +296,8 @@ class DaMsm extends LitElement {
         const pageStatus = await getSatellitePageStatus(org, site, path);
         result = await deleteOverride(org, site, path);
         if (!result?.error) {
-          if (pageStatus.live) {
-            await previewSatellite(org, site, path);
-            await publishSatellite(org, site, path);
-          } else if (pageStatus.preview) {
-            await previewSatellite(org, site, path);
-          }
+          this._hasOverride = false;
+          result = await republish(org, site, path, pageStatus);
         }
       }
 
