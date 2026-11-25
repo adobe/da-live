@@ -69,6 +69,14 @@ describe('diff-review-view', () => {
         .forEach((code) => expect(reasonText(code)).to.not.equal(''));
       expect(reasonText('unknown')).to.equal('');
     });
+
+    it('words both-changed from the sides and kind', () => {
+      const both = (sides, kinds) => reasonText('both-changed', { sides, kinds });
+      expect(both(['source', 'local'], ['changed'])).to.equal('Source and you both changed this.');
+      expect(both(['local'], ['removed'])).to.equal('Source removed this after you edited it.');
+      expect(both(['source'], ['added'])).to.equal('Source added this where you removed content.');
+      expect(reasonText('differs', { sides: ['source'], kinds: ['added'] })).to.equal(reasonText('differs'));
+    });
   });
 
   describe('cards', () => {
@@ -186,10 +194,10 @@ describe('diff-review-view', () => {
     it('shows the group count and fills card text from diffSummary', () => {
       expect(bar().querySelector('.diff-review-count').textContent).to.equal('4 conflicts to review');
       const g1 = card(editor.view, 'g1');
-      expect(g1.querySelector('.diff-group-reason').textContent).to.equal(reasonText('both-changed'));
+      expect(g1.querySelector('.diff-group-reason').textContent).to.equal('Source and you both changed this.');
       expect(g1.querySelector('summary').textContent).to.equal('Was: Alpha base');
       expect(card(editor.view, 'g3').querySelector('.diff-group-reason').textContent)
-        .to.include('The original is not available.');
+        .to.equal('Source removed this after you edited it. The original is not available.');
     });
 
     it('moves between groups', () => {

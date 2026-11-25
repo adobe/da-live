@@ -5,7 +5,7 @@ import { htmlDiff } from '../../shared/version/htmldiff.js';
 import { CHOICE, findGroup, resolveAll, resolveGroup } from './diff-review.js';
 
 const REASON_TEXT = {
-  'both-changed': 'The source and this page both changed it since the last copy.',
+  'both-changed': 'Source and you both changed this.',
   differs: 'The source and this page are different here.',
   'no-baseline': 'There is no record of the last copy, so all differences show.',
   'page-too-large': 'The page is too large to compare with the last copy, so all differences show.',
@@ -50,7 +50,16 @@ export function groupTitle({ sides = [], kinds = [] }) {
   return '';
 }
 
-export function reasonText(reason) {
+const ONE_SIDED_TEXT = {
+  'local:removed': 'Source removed this after you edited it.',
+  'source:added': 'Source added this where you removed content.',
+};
+
+export function reasonText(reason, { sides = [], kinds = [] } = {}) {
+  if (reason === 'both-changed' && sides.length === 1) {
+    const text = kinds.map((kind) => ONE_SIDED_TEXT[`${sides[0]}:${kind}`]).find(Boolean);
+    if (text) return text;
+  }
   return REASON_TEXT[reason] ?? '';
 }
 
@@ -218,7 +227,7 @@ class GroupCardView {
     const group = summary?.groups?.find(({ id }) => id === this.id);
     if (!group) return;
     this.titleEl.textContent = groupTitle(group);
-    const reason = reasonText(group.reason);
+    const reason = reasonText(group.reason, group);
     const missing = !this.hasBase && group.reason === 'both-changed' ? ` ${NO_ORIGINAL}` : '';
     this.reasonEl.textContent = `${reason}${missing}`.trim();
     if (this.baseSummaryEl && group.preview?.base) {
