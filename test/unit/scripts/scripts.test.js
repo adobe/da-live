@@ -45,12 +45,9 @@ describe('startup branding', () => {
     }
   }
 
-  it('configures the product logo and label for NX2', async () => {
+  it('leaves NX2 branding to the authored navigation fragment', async () => {
     const config = await loadConfig(true);
-    expect(config.navBrand).to.deep.equal({
-      logoHref: new URL('/img/logos/aem.svg', window.location.href).href,
-      label: 'Adobe Experience Manager',
-    });
+    expect(config).not.to.have.property('navBrand');
   });
 
   it('preserves legacy NX branding', async () => {
