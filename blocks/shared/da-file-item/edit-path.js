@@ -12,9 +12,11 @@ export function getConfiguredEditor(path, editorConfs, defaultEditor) {
   return matchedConf.split('=')[1];
 }
 
-export default function getEditPath({ path, ext, editor }) {
+export default function getEditPath({ path, ext, editor, capabilities }) {
   if (ext === 'html' || ext === 'json') {
-    const route = ext === 'html' ? editor : '/sheet#';
+    // Imported pages only open in the read-only viewer, whatever the editor preference.
+    const pageRoute = capabilities?.view === 'page-readonly' ? '/edit#' : editor;
+    const route = ext === 'html' ? pageRoute : '/sheet#';
     const lastIndex = path.lastIndexOf(`.${ext}`);
 
     if (route.includes('experience.adobe.com')) {

@@ -169,7 +169,7 @@ export async function getDaRsApi(basePromise, branch = null, expectedHref = wind
     return response;
   };
   const source = {
-    get: (arg, extra) => sourceRequest(arg, extra),
+    get: (arg, extra, { signal } = {}) => sourceRequest(arg, extra, signal ? { signal } : {}),
     getMetadata: (arg, extra) => sourceRequest(arg, extra, { method: 'HEAD' }),
     list: async (arg, extra) => {
       const args = validate(argsFor(arg, extra), branch?.context);

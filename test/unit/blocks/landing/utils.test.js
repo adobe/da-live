@@ -195,3 +195,85 @@ describe('Content data and destinations on main', () => {
     expect(getMetadata.called).to.equal(false);
   });
 });
+
+describe('imported saved items on the landing page', () => {
+  const CAPS = {
+    apiVersion: 1, transport: 'helix6', contentProfile: 'aem-import', readOnly: true, openKinds: ['page', 'image', 'sheet'], collaboration: false, branching: false, generation: 'g',
+  };
+  const IMPORTED = { 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page' };
+  let href;
+  let invalidate;
+  let discoveries;
+  const setup = async (capsResponse) => {
+    ({ invalidateDaRsDiscovery: invalidate } = await import('../../../../blocks/shared/da-rs-provider.js'));
+    href = window.location.href;
+    window.history.replaceState(null, '', '/?da-source=da-rs#/org/site');
+    invalidate();
+    discoveries = 0;
+    sinon.stub(window, 'fetch').callsFake(async (target) => {
+      const url = String(target);
+      if (url.includes('/ping/')) return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      if (url.endsWith('/source-capabilities')) {
+        discoveries += 1;
+        return capsResponse();
+      }
+      return new Response('', { status: 404 });
+    });
+  };
+  afterEach(() => {
+    sinon.restore();
+    window.history.replaceState(null, '', href);
+    invalidate?.();
+  });
+
+  const load = (paths, headersFor, signal = new AbortController().signal) => loadFilesByPath({
+    paths,
+    source: { getMetadata: async (path) => new Response(null, { headers: headersFor(path) }) },
+    signal,
+  });
+
+  it('routes imported recents and favorites to /edit from the hydrated item despite a Canvas preference', async () => {
+    await setup(() => Response.json(CAPS));
+    const paths = ['/org/site/a.html', '/org/site/b.html'];
+    const files = await load(paths, () => IMPORTED);
+    expect(files.every((file) => file.capabilities.view === 'page-readonly')).to.equal(true);
+    expect(discoveries).to.equal(1);
+    const items = getListItems({ files, favorites: new Set([paths[1]]), editor: '/canvas#' });
+    items.forEach((item) => expect(new URL(item.href).pathname).to.equal('/edit'));
+  });
+
+  it('keeps native results and a configured Canvas editor exact', async () => {
+    await setup(() => Response.json(CAPS));
+    const files = await load(['/org/site/a.html'], () => ({ 'x-da-content-profile': 'native-da', 'x-da-source-kind': 'page' }));
+    expect(files[0]).to.not.have.property('capabilities');
+    expect(new URL(getListItems({ files, editor: '/canvas#' })[0].href).pathname).to.equal('/canvas');
+    window.history.replaceState(null, '', '/#/org/site');
+    const unbound = await load(['/org/site/a.html'], () => IMPORTED);
+    expect(unbound[0]).to.not.have.property('capabilities');
+    expect(discoveries).to.equal(0);
+  });
+
+  it('fails closed on discovery failure, profile mismatch and stale requests', async () => {
+    await setup(() => new Response('', { status: 500 }));
+    expect(await load(['/org/site/a.html'], () => IMPORTED)).to.deep.equal([]);
+    invalidate();
+    sinon.restore();
+    await setup(() => Response.json({
+      ...CAPS, contentProfile: 'native-da', readOnly: false, collaboration: true, branching: true, generation: null,
+    }));
+    expect(await load(['/org/site/a.html'], () => IMPORTED)).to.deep.equal([]);
+    invalidate();
+    sinon.restore();
+    await setup(() => Response.json(CAPS));
+    const controller = new AbortController();
+    const pending = load(['/org/site/a.html'], () => IMPORTED, controller.signal);
+    controller.abort();
+    let error;
+    try {
+      await pending;
+    } catch (e) {
+      error = e;
+    }
+    expect(error?.name).to.equal('AbortError');
+  });
+});

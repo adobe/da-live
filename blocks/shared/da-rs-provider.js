@@ -208,6 +208,7 @@ export function siteItemCapabilities(siteCaps, kind, permissions) {
     let view = 'none';
     if (folder) view = 'browse';
     else if (open && kind === 'image') view = 'media';
+    else if (open && kind === 'page') view = 'page-readonly';
     else if (open && kind === 'sheet') view = 'sheet-readonly';
     if (view === 'none') return NONE;
     return {

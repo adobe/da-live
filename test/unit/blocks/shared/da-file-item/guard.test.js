@@ -51,6 +51,16 @@ describe('checkEditorAccess', () => {
     expect((await checkEditorAccess('demo', 'harbor')).allowed).to.equal(true);
   });
 
+  it('keeps direct Canvas imported Pages editor-denied without generating a redirect', async () => {
+    window.history.replaceState(null, '', '/canvas?da-source=da-rs&da-admin=local&theme=dark#/demo/wknd/us/en/adventures/climbing-new-zealand');
+    window.fetch = stub(() => Response.json({ ...caps('aem-import'), openKinds: ['page', 'sheet', 'image'] }));
+    expect(await checkEditorAccess('demo', 'wknd')).to.deep.equal({
+      allowed: false,
+      message: IMPORTED_EDITOR_MESSAGE,
+    });
+    expect(calls.some((target) => target.includes('/source/'))).to.equal(false);
+  });
+
   it('fails closed when discovery errors', async () => {
     window.fetch = stub(() => new Response('', { status: 500 }));
     expect(await checkEditorAccess('demo', 'wknd'))

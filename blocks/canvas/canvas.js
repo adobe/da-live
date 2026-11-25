@@ -41,6 +41,7 @@ import { addRecentFile } from '../shared/recent-files.js';
 import { isDaRsBinding } from '../shared/da-rs-provider.js';
 import { checkEditorAccess, editorAccessRequired } from '../shared/da-file-item/guard.js';
 import { installDaRsNavigation } from '../shared/da-rs-navigation.js';
+import { mountCanvasInspection, unmountCanvasInspection } from './utils/imported-page.js';
 import {
   TOOL_PANEL_SECTION,
   createToolPanelSection,
@@ -195,6 +196,7 @@ async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount
 async function syncCanvasEditorsToHash({ mountRoot, header, state, onAccess }) {
   editorLoadCount += 1;
   const loadCount = editorLoadCount;
+  unmountCanvasInspection(mountRoot);
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
@@ -207,9 +209,12 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state, onAccess }) {
   onAccess(access.allowed);
   if (!access.allowed) {
     removeCanvasEditors(mountRoot);
-    showNotPermitted(mountRoot, access.message);
     header.authorized = false;
     header.canWrite = false;
+    const isCurrent = () => loadCount === editorLoadCount;
+    if (fullPath && await mountCanvasInspection({ mountRoot, isCurrent })) return;
+    if (!isCurrent()) return;
+    showNotPermitted(mountRoot, access.message);
     return;
   }
   if (!fullPath) {

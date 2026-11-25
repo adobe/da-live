@@ -180,7 +180,7 @@ export default class DaListBase extends LitElement {
 
   async resolveReadOnlyContent(path, items = []) {
     const readOnly = await this.isReadOnlySite(path)
-      || items.some((item) => item?.capabilities?.view === 'sheet-readonly');
+      || items.some((item) => ['sheet-readonly', 'page-readonly'].includes(item?.capabilities?.view));
     if (this.fullpath === path) this._readOnlyContent = readOnly;
   }
 

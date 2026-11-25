@@ -1,6 +1,8 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 import { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
 import { pathMatchesActiveBranch } from '../shared/branch-selector/context.js';
+import { discoverDaRsCapabilities, siteItemCapabilities } from '../shared/da-rs-provider.js';
+import { isDaRsSelected } from '../shared/da-rs-bootstrap.js';
 
 const METADATA_CONCURRENCY = 4;
 
@@ -38,8 +40,28 @@ export function getListItems({ files, favorites, editor = '/edit#', editorConfs 
   }));
 }
 
+// The Source profile is only a cue; the site capabilities decide. A cue/capability mismatch or
+// failed discovery drops the item instead of granting the imported viewer.
+async function importedPageCapabilities({ path, response, discover, signal }) {
+  const profile = response.headers.get('x-da-content-profile');
+  if (!isDaRsSelected() || profile !== 'aem-import'
+    || response.headers.get('x-da-source-kind') !== 'page') return null;
+  const [, org, site] = path.split('/');
+  if (!org || !site || site.includes('~')) throw new Error('Invalid imported page path');
+  const caps = await discover(org, site);
+  signal.throwIfAborted();
+  if (caps?.contentProfile !== 'aem-import') throw new Error('Imported profile mismatch');
+  return siteItemCapabilities(caps, 'page', []);
+}
+
 export async function loadFilesByPath({ paths, source, signal }) {
   const files = [];
+  const sites = new Map();
+  const discover = (org, site) => {
+    const key = `${org}/${site}`;
+    if (!sites.has(key)) sites.set(key, discoverDaRsCapabilities(org, site));
+    return sites.get(key);
+  };
   for (let offset = 0; offset < paths.length; offset += METADATA_CONCURRENCY) {
     const batch = await Promise.all(paths.slice(offset, offset + METADATA_CONCURRENCY)
       .map(async (path) => {
@@ -55,10 +77,15 @@ export async function loadFilesByPath({ paths, source, signal }) {
           signal.throwIfAborted();
           if (!response.ok) return undefined;
           const lastModified = Date.parse(response.headers.get('last-modified'));
-          return {
+          const hydrated = {
             ...item,
             lastModified: Number.isNaN(lastModified) ? undefined : lastModified,
           };
+          const capabilities = item.ext === 'html'
+            ? await importedPageCapabilities({ path, response, discover, signal })
+            : null;
+          if (capabilities) hydrated.capabilities = capabilities;
+          return hydrated;
         } catch (error) {
           signal.throwIfAborted();
           if (error?.name === 'AbortError') throw error;

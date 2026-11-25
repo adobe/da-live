@@ -9,6 +9,7 @@ import '../shared/branch-selector/branch-selector.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 import { checkEditorAccess, editorAccessRequired } from '../shared/da-file-item/guard.js';
 import { withDaRsBinding } from '../shared/da-rs-navigation.js';
+import * as importedPage from './imported-page/imported-page.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -73,9 +74,18 @@ async function setUI(el) {
   let details;
   let access;
   try {
+    importedPage.unmountImportedPage(el);
     details = getPathDetails();
     const context = branchContext();
     if (!details) return;
+    // Imported Pages open read-only before editor denial/native init.
+    const importedCaps = await importedPage.findImportedPageCaps(details);
+    if (generation !== uiGeneration) return;
+    if (importedCaps) {
+      const isCurrent = () => generation === uiGeneration;
+      await importedPage.mountImportedPage({ el, details, caps: importedCaps, isCurrent });
+      return;
+    }
     access = editorAccessRequired(details.org, details.site)
       ? await checkEditorAccess(details.org, details.site)
       : { allowed: true };

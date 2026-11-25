@@ -205,7 +205,7 @@ export default class DaListItem extends LitElement {
 
   renderItem() {
     const openable = isFileItemOpenable(this);
-    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
+    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor, capabilities: this.capabilities }) : `#${this.path}`;
     let externalUrlPromise;
     if (this.ext === 'link' && openable) {
       path = nothing;

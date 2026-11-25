@@ -8,7 +8,7 @@ import { listDaRsCatalog } from '../../../../blocks/shared/da-rs-api.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const IMPORTED = {
-  apiVersion: 1, transport: 'helix6', contentProfile: 'aem-import', readOnly: true, openKinds: ['image', 'sheet'], collaboration: false, branching: false, generation: 'g-test',
+  apiVersion: 1, transport: 'helix6', contentProfile: 'aem-import', readOnly: true, openKinds: ['page', 'image', 'sheet'], collaboration: false, branching: false, generation: 'g-test',
 };
 const NATIVE = {
   apiVersion: 1, transport: 'helix6', contentProfile: 'native-da', readOnly: false, openKinds: ['page', 'sheet', 'image', 'asset'], collaboration: true, branching: true, generation: null,
@@ -61,7 +61,9 @@ describe('siteItemCapabilities', () => {
     expect(siteItemCapabilities(imported, 'folder', ['read', 'write'])).to.deep.equal({ ...READ_ONLY, canOpen: true, view: 'browse' });
     expect(siteItemCapabilities(imported, 'image', ['read', 'write'])).to.deep.equal({ ...READ_ONLY, canOpen: true, view: 'media' });
     expect(siteItemCapabilities(imported, 'sheet', ['write'])).to.deep.equal({ ...READ_ONLY, canOpen: true, view: 'sheet-readonly' });
-    ['page', 'asset', 'bogus'].forEach((kind) => {
+    expect(siteItemCapabilities(imported, 'page', ['write'])).to.deep.equal({ ...READ_ONLY, canOpen: true, view: 'page-readonly' });
+    expect(siteItemCapabilities({ ...imported, openKinds: ['image'] }, 'page', [])).to.include({ view: 'none' });
+    ['asset', 'bogus'].forEach((kind) => {
       expect(siteItemCapabilities(imported, kind, ['write'])).to.deep.equal({ ...READ_ONLY, canOpen: false, view: 'none' });
     });
     expect(siteItemCapabilities({ ...imported, openKinds: [] }, 'image', [])).to.include({ view: 'none' });
