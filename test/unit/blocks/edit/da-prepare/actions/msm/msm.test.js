@@ -442,6 +442,28 @@ describe('DaMsm component', () => {
       expect(calls.some((c) => c.url.includes('/preview/'))).to.be.true;
       expect(calls.filter((c) => c.url.includes('/live/') && c.method === 'POST').length).to.equal(0);
     });
+
+    it('reports a failed re-preview after the override is gone', async () => {
+      const aemStatus = { preview: { status: 200 }, live: { status: 404 } };
+      const base = createFetchMock({ aemStatus });
+      const mock = async (url, opts) => {
+        if (url.includes('admin.hlx.page/preview/') && opts?.method === 'POST') {
+          return new Response('', { status: 500 });
+        }
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        satellites: makeSatellites(['san-diego']),
+        action: 'reset',
+        selected: new Set(['san-diego']),
+      });
+
+      await el.runAction('reset');
+
+      const sat = el._satellites.find((s) => s.site === 'san-diego');
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.false;
+    });
   });
 
   describe('post-action behavior', () => {
@@ -642,6 +664,27 @@ describe('DaMsm component', () => {
       expect(el._satStatus).to.equal('success');
       expect(calls.some((c) => c.url.includes('/preview/'))).to.be.true;
       expect(calls.some((c) => c.url.includes('/live/'))).to.be.true;
+    });
+
+    it('resume-inheritance reports a failed re-publish', async () => {
+      const base = createFetchMock({});
+      const mock = async (url, opts) => {
+        if (url.includes('admin.hlx.page/live/') && opts?.method === 'POST') {
+          return new Response('', { status: 500 });
+        }
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: true,
+        details: satDetails(),
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+
+      expect(el._satStatus).to.equal('error');
+      expect(el._hasOverride).to.be.false;
     });
 
     it('doConfirmedAction runs resume-inheritance for satellite view', async () => {
