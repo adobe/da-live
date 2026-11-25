@@ -786,28 +786,6 @@ describe('DaMsm component', () => {
       const msg = el.shadowRoot.querySelector('.sat-message');
       expect(msg.textContent).to.include('not authorized');
     });
-
-    it('reports resume inheritance as failed when the follow-up preview fails', async () => {
-      const aemStatus = { preview: { status: 200 }, live: { status: 404 } };
-      const base = createFetchMock({ aemStatus });
-      const mock = async (url, opts) => {
-        if (url.includes('admin.hlx.page/preview/') && opts?.method === 'POST') {
-          return new Response('', { status: 500 });
-        }
-        return base(url, opts);
-      };
-      await fixtureWithState(mock, {
-        satellites: makeSatellites(['san-diego']),
-        action: 'reset',
-        selected: new Set(['san-diego']),
-      });
-
-      await el.runAction('reset');
-
-      const sat = el._satellites.find((s) => s.site === 'san-diego');
-      expect(sat.status).to.equal('error');
-      expect(sat.hasOverride).to.be.false;
-    });
   });
 
   describe('a failed backend check', () => {

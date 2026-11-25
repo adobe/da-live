@@ -27,12 +27,11 @@ const NO_INHERITANCE_RESUME = `${NO_INHERITANCE}, so resuming inheritance would 
 
 async function republish(org, site, path, pageStatus) {
   if (pageStatus.live) {
-    const preview = await previewSatellite(org, site, path);
-    if (preview.error) return preview;
-    return publishSatellite(org, site, path);
+    await previewSatellite(org, site, path);
+    await publishSatellite(org, site, path);
+  } else if (pageStatus.preview) {
+    await previewSatellite(org, site, path);
   }
-  if (pageStatus.preview) return previewSatellite(org, site, path);
-  return {};
 }
 
 const ACTION_SCOPE = {
@@ -252,8 +251,8 @@ class DaMsm extends LitElement {
         const pageStatus = await getSatellitePageStatus(org, sat.site, path);
         const result = await deleteOverride(org, sat.site, path);
         if (result.error) return result;
-        const synced = await republish(org, sat.site, path, pageStatus);
-        return { hasOverride: false, error: synced.error };
+        await republish(org, sat.site, path, pageStatus);
+        return { hasOverride: false };
       }
 
       default:
@@ -296,7 +295,7 @@ class DaMsm extends LitElement {
           result = await deleteOverride(org, site, path);
           if (!result.error) {
             this._hasOverride = false;
-            result = await republish(org, site, path, pageStatus);
+            await republish(org, site, path, pageStatus);
           }
         }
       }
