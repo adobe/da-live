@@ -35,7 +35,7 @@ const textValue = (value) => (value === '' ? undefined : value);
  * Builds the document value of an asset field. Removing the file clears the whole asset,
  * alt text included.
  * @param {{ value?: string, altText?: string }} field The asset field.
- * @returns {{ src: string, altText?: string }|undefined} The asset, or undefined when the
+ * @returns {{ src: string, alt?: string }|undefined} The asset, or undefined when the
  *   field holds no file.
  */
 function assetValue(field) {
@@ -45,7 +45,7 @@ function assetValue(field) {
   if (!field.altText) {
     return { src: field.value };
   }
-  return { src: field.value, altText: field.altText };
+  return { src: field.value, alt: field.altText };
 }
 
 /**
@@ -361,10 +361,10 @@ class Editor extends LitElement {
    */
   _renderAsset(node, { hideLabel = false } = {}) {
     const { pointer } = node;
-    const { src, altText } = node.value ?? {};
+    const { src, alt } = node.value ?? {};
     // A filled asset without a file reports the error on its `src`.
     const error = this._error(pointer) || this._error(`${pointer}/src`);
-    const altNode = node.children?.find((child) => child.pointer === `${pointer}/altText`);
+    const altNode = node.children?.find((child) => child.pointer === `${pointer}/alt`);
     return html`
       <ew-form-asset
         data-pointer=${pointer}
@@ -373,11 +373,11 @@ class Editor extends LitElement {
         .error=${error}
         .description=${hideLabel ? '' : (node.description ?? '')}
         .value=${src}
-        .altText=${altText}
+        .altText=${alt}
         .assetType=${node.sharedSchemaName}
         .acceptsAltText=${!!altNode}
         .altRequired=${!!altNode?.required}
-        .altError=${this._error(`${pointer}/altText`)}
+        .altError=${this._error(`${pointer}/alt`)}
         .sources=${this.assetSources}
         .previewOrigin=${this.previewOrigin}
         ?disabled=${!!node.readonly}

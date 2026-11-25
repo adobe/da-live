@@ -21,7 +21,7 @@ const mediaNode = (extra = {}) => ({
   sharedSchemaName: 'image',
   children: [
     { kind: 'string', key: 'src', pointer: '/data/heroImage/src', label: 'Source' },
-    { kind: 'string', key: 'altText', pointer: '/data/heroImage/altText', label: 'Alt text' },
+    { kind: 'string', key: 'alt', pointer: '/data/heroImage/alt', label: 'Alt text' },
   ],
   ...extra,
 });
@@ -122,7 +122,7 @@ describe('ew-form-fields primitive controls', () => {
 
   it('renders an asset object as one file field with its src and alt text', async () => {
     const root = objectRoot([
-      mediaNode({ value: { src: './media_example.png', altText: 'A hero' } }),
+      mediaNode({ value: { src: './media_example.png', alt: 'A hero' } }),
     ]);
     const el = await mountEditor(root);
     const fields = el.shadowRoot.querySelectorAll('ew-form-asset');
@@ -134,9 +134,9 @@ describe('ew-form-fields primitive controls', () => {
   });
 
   it('shows a missing-file error reported on the asset src', async () => {
-    const el = await mountEditor(objectRoot([mediaNode({ value: { altText: 'A hero' } })]));
+    const el = await mountEditor(objectRoot([mediaNode({ value: { alt: 'A hero' } })]));
     el.state = {
-      model: { root: objectRoot([mediaNode({ value: { altText: 'A hero' } })]) },
+      model: { root: objectRoot([mediaNode({ value: { alt: 'A hero' } })]) },
       validation: { errors: { '/data/heroImage/src': { message: 'Required' } } },
     };
     await el.updateComplete;
@@ -149,7 +149,7 @@ describe('ew-form-fields primitive controls', () => {
     const el = await mountEditor(objectRoot([node]));
     el.state = {
       model: { root: objectRoot([node]) },
-      validation: { errors: { '/data/heroImage/altText': { message: 'Required' } } },
+      validation: { errors: { '/data/heroImage/alt': { message: 'Required' } } },
     };
     await el.updateComplete;
     const field = el.shadowRoot.querySelector('ew-form-asset');
@@ -175,20 +175,20 @@ describe('ew-form-fields primitive controls', () => {
 
   it('saves the asset object when the file changes, keeping its alt text', async () => {
     const calls = [];
-    const node = mediaNode({ value: { src: './old.png', altText: 'A hero' } });
+    const node = mediaNode({ value: { src: './old.png', alt: 'A hero' } });
     const el = await mountEditor(objectRoot([node]));
     el.editor = { setField: (pointer, value) => calls.push({ pointer, value }) };
     const field = el.shadowRoot.querySelector('ew-form-asset');
     field.value = './new.png';
     field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     expect(calls).to.deep.equal([
-      { pointer: '/data/heroImage', value: { src: './new.png', altText: 'A hero' } },
+      { pointer: '/data/heroImage', value: { src: './new.png', alt: 'A hero' } },
     ]);
   });
 
   it('clears the asset when its file is removed', async () => {
     const calls = [];
-    const node = mediaNode({ value: { src: './old.png', altText: 'A hero' } });
+    const node = mediaNode({ value: { src: './old.png', alt: 'A hero' } });
     const el = await mountEditor(objectRoot([node]));
     el.editor = { setField: (pointer, value) => calls.push({ pointer, value }) };
     const field = el.shadowRoot.querySelector('ew-form-asset');
@@ -207,7 +207,7 @@ describe('ew-form-fields primitive controls', () => {
     field.altText = 'A hero';
     field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     expect(calls).to.deep.equal([
-      { pointer: '/data/heroImage', value: { src: './a.png', altText: 'A hero' } },
+      { pointer: '/data/heroImage', value: { src: './a.png', alt: 'A hero' } },
     ]);
   });
 

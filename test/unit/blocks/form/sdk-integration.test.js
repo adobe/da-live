@@ -120,18 +120,18 @@ describe('SDK state shape', () => {
     expect(findByPointer(root, '/data/swatch').semanticType).to.equal(undefined);
   });
 
-  it('surfaces an asset as an object with src and altText children (read by editor.js)', () => {
+  it('surfaces an asset as an object with src and alt children (read by editor.js)', () => {
     const schema = {
       type: 'object',
       properties: { heroImage: { $ref: IMAGE_URL, title: 'Hero image' } },
     };
-    const asset = { src: './media_example.png', altText: 'A hero' };
+    const asset = { src: './media_example.png', alt: 'A hero' };
     const engine = createEngine({ schema, document: validDoc({ heroImage: asset }) });
     const node = findByPointer(engine.getState().model.root, '/data/heroImage');
     expect(node.kind).to.equal('object');
     expect(node.sharedSchemaName).to.equal('image');
     expect(node.value).to.deep.equal(asset);
-    expect(node.children.map((child) => child.key)).to.deep.equal(['src', 'altText']);
+    expect(node.children.map((child) => child.key)).to.deep.equal(['src', 'alt']);
     expect(engine.getState().document.data.heroImage).to.deep.equal(asset);
   });
 
@@ -140,7 +140,7 @@ describe('SDK state shape', () => {
       type: 'object',
       properties: { heroImage: { $ref: IMAGE_URL } },
     };
-    const engine = createEngine({ schema, document: validDoc({ heroImage: { altText: 'A hero' } }) });
+    const engine = createEngine({ schema, document: validDoc({ heroImage: { alt: 'A hero' } }) });
     expect(engine.getState().validation.errors['/data/heroImage/src']?.message).to.be.a('string');
   });
 

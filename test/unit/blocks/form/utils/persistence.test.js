@@ -230,7 +230,7 @@ describe('attachPersistence', () => {
 
   it('writes asset fields as images from the model in the editor state', async () => {
     const hero = 'https://content.da.live/org/site/hero.png';
-    const data = { hero: { src: hero, altText: 'A hero' } };
+    const data = { hero: { src: hero, alt: 'A hero' } };
     const editor = makeEditor();
     const { save, calls, release } = makeSave();
     const p = attachPersistence(editor, { path: '/x', save });

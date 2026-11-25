@@ -44,7 +44,7 @@ const asset = (pointer) => ({
   label: 'Image',
   children: [
     { kind: 'string', key: 'src', pointer: `${pointer}/src` },
-    { kind: 'string', key: 'altText', pointer: `${pointer}/altText` },
+    { kind: 'string', key: 'alt', pointer: `${pointer}/alt` },
   ],
 });
 

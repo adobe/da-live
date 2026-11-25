@@ -113,7 +113,7 @@ const featureDoc = (data = {}) => ({
     title: 'Launch Announcement',
     status: 'published',
     body: 'Body copy.',
-    heroImage: { src: './media_example.png', altText: 'A hero' },
+    heroImage: { src: './media_example.png', alt: 'A hero' },
     priority: 3,
     featured: true,
     tags: ['news', 'launch'],
