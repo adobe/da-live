@@ -46,11 +46,16 @@ export async function getSatellitePageStatus(org, satellite, pagePath) {
   const aemPath = pagePath.replace('.html', '');
   const url = `${AEM_ADMIN}/status/${org}/${satellite}/main${aemPath}`;
   const resp = await daFetch(url);
-  if (!resp.ok) return { preview: false, live: false };
-  const json = await resp.json();
+  if (!resp.ok) throw new Error(`Status failed (${resp.status})`);
+  // 404 means the rendition doesn't exist. Anything else (e.g. a 403 inside a
+  // 200 response) leaves it unknown, and resume inheritance must not go on.
+  const { preview, live } = await resp.json();
+  if (![preview?.status, live?.status].every((code) => code === 200 || code === 404)) {
+    throw new Error(`Could not check preview and publish status for ${satellite}`);
+  }
   return {
-    preview: json.preview?.status === 200,
-    live: json.live?.status === 200,
+    preview: preview.status === 200,
+    live: live.status === 200,
   };
 }
 

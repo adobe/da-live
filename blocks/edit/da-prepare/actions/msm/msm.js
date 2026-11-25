@@ -233,7 +233,13 @@ class DaMsm extends LitElement {
 
       case 'reset':
         await Promise.allSettled(targets.map(async (sat) => {
-          const pageStatus = await getSatellitePageStatus(org, sat.site, path);
+          let pageStatus;
+          try {
+            pageStatus = await getSatellitePageStatus(org, sat.site, path);
+          } catch {
+            this.updateSatStatus(sat.site, STATUS.error);
+            return;
+          }
           const result = await deleteOverride(org, sat.site, path);
           if (result.error) {
             this.updateSatStatus(sat.site, STATUS.error);
