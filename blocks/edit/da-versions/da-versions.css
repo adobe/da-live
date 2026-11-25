@@ -15,7 +15,7 @@
   left: 47px;
   width: 2px;
   height: 48px;
-  background: linear-gradient(0deg, #c8c8c800 0%, #c8c8c8 100%);
+  background: linear-gradient(0deg, transparent 0%, var(--s2-gray-400) 100%);
 }
 
 .da-versions-title {
@@ -24,6 +24,7 @@
 }
 
 .da-versions-close-btn {
+  position: relative;
   font-family: var(--s2-font-family, var(--body-font-family));
   line-height: 32px;
   font-weight: 700;
@@ -34,11 +35,23 @@
   display: block;
   height: 32px;
   border: none;
-  background: url('/img/icons/s2-icon-calendar-20-n.svg') left center / 32px no-repeat;
+  background: none;
+  color: var(--s2-gray-800, #464646);
 }
 
-.da-versions-close-btn:hover {
-  background: url('/blocks/edit/img/Smock_CloseCircle_18_N.svg') left center / 32px no-repeat;
+.da-versions-close-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  background-color: currentcolor;
+  mask: url('/img/icons/s2-icon-calendar-20-n.svg') center / 32px no-repeat;
+}
+
+.da-versions-close-btn:hover::before {
+  mask-image: url('/blocks/edit/img/Smock_CloseCircle_18_N.svg');
 }
 
 .da-version-list {
@@ -55,7 +68,7 @@
   bottom: 0;
   left: 4px;
   width: 2px;
-  background: #C8C8C8;
+  background: var(--s2-gray-400);
 }
 
 .da-version-entry {
@@ -65,7 +78,7 @@
 }
 
 .da-version-entry.is-audit {
-  color: #656565;
+  color: var(--s2-gray-700);
 }
 
 .da-version-btn {
@@ -79,7 +92,7 @@
   max-height: 12px;
   border-radius: 16px;
   border: none;
-  background: #C8C8C8;
+  background: var(--s2-gray-400);
   transition: all .4s ease-in-out;
   text-indent: -1000px;
   overflow: hidden;
@@ -107,7 +120,7 @@
   left: -43px;
   max-width: 28px;
   max-height: 28px;
-  background: #8A8A8A url('/blocks/edit/img/Smock_CancelVer_18_N.svg') center / 18px no-repeat;
+  background: var(--s2-gray-600) url('/blocks/edit/img/Smock_CancelVer_18_N.svg') center / 18px no-repeat;
 }
 
 .da-version-entry.is-version .da-version-btn {
@@ -172,7 +185,9 @@
 
 .da-version-new-input {
   border: none;
-  border-bottom: 2px solid #C8C8C8;
+  border-bottom: 2px solid var(--s2-gray-400);
+  background: transparent;
+  color: inherit;
   font-family: var(--s2-font-family, var(--body-font-family));
   font-size: 18px;
   font-weight: 700;
@@ -182,11 +197,13 @@
 .da-version-new-input::placeholder {
   font-style: italic;
   font-weight: 400;
+  color: var(--s2-gray-700);
+  opacity: 1;
 }
 
 /* Loading state */
 .da-version-entry.is-loading {
-  color: #8A8A8A;
+  color: var(--s2-gray-600);
 }
 
 .da-version-entry.is-loading .da-version-date {
@@ -202,7 +219,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #C8C8C8;
+  background: var(--s2-gray-400);
   animation: pulse-scale 1.2s ease-in-out infinite;
 }
 
