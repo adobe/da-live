@@ -1,8 +1,9 @@
 :host {
   display: none;
   position: absolute;
-  background: white;
-  border: 1px solid #ccc;
+  background: light-dark(#fff, var(--s2-gray-75, #222));
+  color: var(--s2-gray-900);
+  border: 1px solid var(--s2-gray-300);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
   max-height: 300px;
@@ -26,31 +27,33 @@
 
 .link-menu-item:hover,
 .link-menu-item.selected {
-  background: #f0f0f0;
+  background: var(--s2-gray-100);
 }
 
 .link-menu-icon {
   width: 18px;
   height: 18px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 18px;
+  color: var(--s2-gray-800);
+  background-color: currentcolor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: 18px;
   flex-shrink: 0;
 }
 
 .link-menu-icon.menu-item-open-link {
-  background-image: url('/blocks/edit/img/S2_icon_OpenIn_20_N.svg');
+  mask-image: url('/img/icons/s2-icon-openin-20-n.svg');
 }
 
 .link-menu-icon.menu-item-edit-link {
-  background-image: url('/blocks/edit/img/Smock_Edit_18_N.svg');
+  mask-image: url('/blocks/edit/img/Smock_Edit_18_N.svg');
 }
 
 .link-menu-icon.menu-item-copy-link {
-  background-image: url('/blocks/edit/img/Smock_Link_18_N.svg');
+  mask-image: url('/blocks/edit/img/Smock_Link_18_N.svg');
 }
 
 .link-menu-icon.menu-item-remove-link {
-  background-image: url('/blocks/edit/img/Smock_Unlink_18_N.svg');
+  mask-image: url('/blocks/edit/img/Smock_Unlink_18_N.svg');
 }
 

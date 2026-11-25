@@ -591,8 +591,8 @@ function diffByBlocks(oldHtml, newHtml) {
     return null;
   }
 
-  // Match blocks by exact text+tag signature first; whatever's left between anchors
-  // gets paired by similarity.
+  // Align blocks by text+tag signature first; matched blocks still need an inline
+  // diff for attribute or markup changes. Pair anything between anchors by similarity.
   const sig = (u) => `${u.kind}:${u.name}:${u.text}`;
   const oldSigs = oldUnits.map((u) => ({ signature: sig(u) }));
   const newSigs = newUnits.map((u) => ({ signature: sig(u) }));
@@ -609,7 +609,7 @@ function diffByBlocks(oldHtml, newHtml) {
       );
     }
     for (let k = 0; k < blk.size; k += 1) {
-      out += oldUnits[blk.ai + k].html;
+      out += inlineDiff(oldUnits[blk.ai + k].html, newUnits[blk.bi + k].html);
     }
     oi = blk.ai + blk.size;
     ni = blk.bi + blk.size;
