@@ -1,3 +1,24 @@
+## [1.36.6](https://github.com/adobe/da-live/compare/v1.36.5...v1.36.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **permissions:** show full member IDs in pills ([#1801](https://github.com/adobe/da-live/issues/1801)) ([2a4fec7](https://github.com/adobe/da-live/commit/2a4fec7d2f735a7ec0f41885c4c8ef5b61a24305))
+
+## [1.36.5](https://github.com/adobe/da-live/compare/v1.36.4...v1.36.5) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve sheet editor dark-mode styling ([#1767](https://github.com/adobe/da-live/issues/1767)) ([80cdbf9](https://github.com/adobe/da-live/commit/80cdbf9987026aee72b9c40cd793dc111f8c14d8))
+
+## [1.36.4](https://github.com/adobe/da-live/compare/v1.36.3...v1.36.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ew:** detect image changes in version comparisons ([#1758](https://github.com/adobe/da-live/issues/1758)) ([d663f43](https://github.com/adobe/da-live/commit/d663f43b5a309c1a4ffe8f23f92125587782e348))
+
 ## [1.36.3](https://github.com/adobe/da-live/compare/v1.36.2...v1.36.3) (2026-11-25)
 
 

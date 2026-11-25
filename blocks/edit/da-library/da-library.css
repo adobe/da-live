@@ -94,7 +94,7 @@
   position: absolute;
   inset: 0;
   background-color: currentcolor;
-  mask: url('/blocks/edit/img/Smock_Close_18_N.svg') center / 18px no-repeat;
+  mask: url('/img/icons/s2-icon-close-20-n.svg') center / 18px no-repeat;
 }
 
 /* Shared between main menu & inline plugin panes */
