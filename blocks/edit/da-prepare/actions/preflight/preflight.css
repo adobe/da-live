@@ -63,6 +63,7 @@ ul.categories {
       flex: 0 1 100%;
       min-height: 48px;
       text-align: start;
+      color: inherit;
       font-weight: 700;
       font-size: 16px;
     }
@@ -90,7 +91,7 @@ ul.categories {
       inset: 0 var(--inline-spacing) auto;
       content: "";
       height: 1px;
-      background: rgb(209 209 209);
+      background: var(--s2-gray-300);
       transition: 0.2s ease-in-out;
     }
 
@@ -99,23 +100,23 @@ ul.categories {
       inset: auto var(--inline-spacing) 0;
       content: "";
       height: 1px;
-      background: rgb(209 209 209);
+      background: var(--s2-gray-300);
       transition: 0.2s ease-in-out;
     }
 
     &:hover {
-      color: rgb(22 122 243);
-      background: rgb(228 240 255);
+      color: var(--s2-blue-1000);
+      background: var(--s2-blue-200);
       z-index: 105;
 
       &::before {
         inset: 0 0 auto;
-        background: rgb(22 122 243);
+        background: var(--s2-blue-1000);
       }
 
       &::after {
         inset: auto 0 0;
-        background: rgb(22 122 243);
+        background: var(--s2-blue-1000);
       }
     }
   }
