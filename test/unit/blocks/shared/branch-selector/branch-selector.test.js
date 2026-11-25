@@ -110,4 +110,15 @@ describe('content branch selector', () => {
     expect(selector.shadowRoot.querySelector('da-branch-conflicts')).to.equal(null);
     expect(selector.shadowRoot.querySelector('slot[name="toolbar"]')).to.equal(null);
   });
+
+  it('describes changes lost on deletion as unmerged', async () => {
+    window.fetch = async () => new Response('{"supported":false}', { status: 200 });
+    document.body.append(selector);
+    await selector.updateComplete;
+    selector._data = { selected: null, branches: [], defaultBranchId: 'main' };
+    selector._deleteTarget = { id: 'work', name: 'work' };
+    await selector.updateComplete;
+    expect(selector.shadowRoot.querySelector('.delete-confirmation').textContent)
+      .to.include('Unmerged changes will be lost.');
+  });
 });

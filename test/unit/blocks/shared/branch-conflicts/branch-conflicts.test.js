@@ -77,8 +77,23 @@ describe('branch sync and publish', () => {
   it('flushes before fetching the revision and starting sync', async () => {
     await element.sync();
     expect(calls).to.deep.equal([['flush', true], ['get', 'work'], ['sync', 'work', 7]]);
-    expect(element._status).to.include('Sync completed');
+    expect(element._status).to.equal('Sync completed. You can now merge to default.');
     expect(editor.inert).to.equal(false);
+  });
+
+  it('uses merge wording for branch actions while distinguishing AEM publishing', async () => {
+    const action = element.shadowRoot.querySelector('[part~="publish-action"]');
+    expect(action.textContent.trim()).to.equal('Merge to default');
+    action.click();
+    await element.updateComplete;
+    const dialog = element.shadowRoot.querySelector('[role="dialog"]');
+    expect(dialog.querySelector('h3').textContent).to.equal('Merge to default');
+    expect(dialog.textContent).to.include('Merge all branch changes to default?');
+    expect(dialog.textContent).to.include('This does not publish to AEM preview or live.');
+    expect(dialog.textContent).to.include('Delete this branch after merging');
+    dialog.querySelector('input[type="checkbox"]').click();
+    await element.updateComplete;
+    expect(element.shadowRoot.textContent).to.include('After merging, you’ll return to Default');
   });
 
   it('marks the saved resolution and updates it when a different option is saved', async () => {
@@ -161,6 +176,9 @@ describe('branch sync and publish', () => {
     expect(first[2]).to.equal(7);
     expect(first[3]).to.be.a('string');
     expect(editor.inert).to.equal(true);
+    expect(element._status).to.include('Merge result unknown');
+    await element.updateComplete;
+    expect(element.shadowRoot.textContent).to.include('Retry merge');
     await element.publish();
     expect(calls.filter((call) => call[0] === 'publish')).to.deep.equal([first, first]);
     expect(calls.filter((call) => call[0] === 'flush')).to.have.length(1);
@@ -194,16 +212,16 @@ describe('branch sync and publish', () => {
     expect(reads).to.equal(2);
     expect(element._retry).to.equal(undefined);
     expect(element._confirm).to.equal(false);
-    expect(element._status).to.include('confirm a new publish');
+    expect(element._status).to.include('confirm a new merge');
     expect(element.shadowRoot.querySelector('[role="dialog"]')).to.equal(null);
     expect(editor.inert).to.equal(false);
     const publishButton = [...element.shadowRoot.querySelectorAll('button')]
-      .find((button) => button.textContent.trim() === 'Publish to default');
+      .find((button) => button.textContent.trim() === 'Merge to default');
     publishButton.click();
     await element.updateComplete;
     expect(element.shadowRoot.querySelector('[role="dialog"]')).to.exist;
     const confirm = [...element.shadowRoot.querySelectorAll('button')]
-      .find((button) => button.textContent.trim() === 'Confirm publish to default');
+      .find((button) => button.textContent.trim() === 'Confirm merge to default');
     confirm.click();
     await tick();
     const published = calls.filter((call) => call[0] === 'publish');
@@ -253,7 +271,7 @@ describe('branch sync and publish', () => {
     expect(element._retry).to.equal(undefined);
     expect(element._confirm).to.equal(false);
     expect(element._ready).to.equal(true);
-    expect(element._status).to.include('confirm a new publish');
+    expect(element._status).to.include('confirm a new merge');
     expect(editor.inert).to.equal(false);
   });
 
@@ -558,7 +576,7 @@ describe('branch sync and publish', () => {
   it('handles nothing-to-publish without changing the branch', async () => {
     client.publish = async () => ({ status: 'nothing-to-publish' });
     await element.publish();
-    expect(element._status).to.equal('Nothing to publish.');
+    expect(element._status).to.equal('Nothing to merge.');
     expect(element.branchId).to.equal('work');
   });
 

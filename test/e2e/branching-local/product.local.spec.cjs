@@ -383,8 +383,8 @@ test('real sheet, config and media UI publish and revert mixed branch changes', 
     const selector = page.locator('da-branch-selector');
     await expect(selector.locator('.branch-trigger')).toHaveText('Branch · work');
     const conflicts = selector.locator('da-branch-conflicts');
-    await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
-    await conflicts.getByRole('button', { name: 'Confirm publish to default' }).click();
+    await conflicts.getByRole('button', { name: 'Merge to default', exact: true }).click();
+    await conflicts.getByRole('button', { name: 'Confirm merge to default' }).click();
     await expect(conflicts).toContainText('Changes merged into default — not published to live.');
     expect(await (await api(request, 'GET', `/source${site}/page.html`)).text()).toContain('branch html');
     expect((await (await api(request, 'GET', `/source${site}/sheet.json`)).json()).data[0].value).toBe('branch sheet');

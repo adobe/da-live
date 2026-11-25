@@ -249,8 +249,8 @@ export class DaBranchConflicts extends LitElement {
       this._confirm = false;
       const messages = {
         published: 'Changes merged into default — not published to live.',
-        completed: 'Sync completed. You can now publish to default.',
-        'nothing-to-publish': 'Nothing to publish.',
+        completed: 'Sync completed. You can now merge to default.',
+        'nothing-to-publish': 'Nothing to merge.',
       };
       this.showStatus(messages[result.status], true);
       this._shouldUnlock = true;
@@ -258,7 +258,7 @@ export class DaBranchConflicts extends LitElement {
         try {
           const { branch } = result;
           if (branch?.id !== ctx.branchId || !revision(branch.revision) || branch.revision < 1) {
-            throw new Error('Missing published branch revision');
+            throw new Error('Missing merged branch revision');
           }
           const remove = () => ctx.client.delete(ctx.branchId, branch.revision);
           await retirePublishedBranch(ctx.branchId, remove, { valid: ctx.valid });
@@ -323,7 +323,7 @@ export class DaBranchConflicts extends LitElement {
     try {
       const result = await ctx.client.publish(ctx.branchId, expected, key);
       if (!validResult(result, ['published', 'nothing-to-publish', 'needs-resolution'])) {
-        throw new Error('Invalid publish response');
+        throw new Error('Invalid merge response');
       }
       return result;
     } catch (error) {
@@ -333,7 +333,7 @@ export class DaBranchConflicts extends LitElement {
         this._confirm = false;
         this._ready = false;
         this._terminalRefresh = true;
-        this.showStatus('Branch revision changed. Review the branch and confirm a new publish.');
+        this.showStatus('Branch revision changed. Review the branch and confirm a new merge.');
         lockBranchEditing();
         await this.refreshMetadata(ctx, true);
         return undefined;
@@ -343,7 +343,7 @@ export class DaBranchConflicts extends LitElement {
         && error.status === 409 && !error.code;
       if (ctx.valid() && (uncertain(error) || ambiguousConflict)) {
         this._retry = { expected, key, ...(deleteAfterPublish ? { deleteAfterPublish } : {}) };
-        this.showStatus('Publish result unknown. Editing is locked; retry the same request.');
+        this.showStatus('Merge result unknown. Editing is locked; retry the same request.');
         lockBranchEditing();
       }
       throw error;
@@ -485,7 +485,7 @@ export class DaBranchConflicts extends LitElement {
       ${this._status ? html`<p role="status">${this._status}</p>` : nothing}
       ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
       ${this._retry ? html`<button class="primary" type="button"
-        @click=${this.publish} ?disabled=${this._busy}>Retry publish</button>` : nothing}
+        @click=${this.publish} ?disabled=${this._busy}>Retry merge</button>` : nothing}
       ${this._uncertain ? html`<button type="button" @click=${() => window.location.reload()}>Reload branch</button>` : nothing}
       ${!this._ready && this._error ? html`<button type="button" @click=${this.loadMetadata}
         ?disabled=${this._busy}>Retry branch metadata</button>` : nothing}
@@ -510,18 +510,18 @@ export class DaBranchConflicts extends LitElement {
       this.shadowRoot.querySelector('[part~="publish-action"]').focus();
     }
   }}>
-      <h3 id="publish-title">Publish to default</h3>
-      <p class="description">Publish all branch changes to default? This does not publish to AEM preview or live.</p>
+      <h3 id="publish-title">Merge to default</h3>
+      <p class="description">Merge all branch changes to default? This does not publish to AEM preview or live.</p>
       <label class="publish-delete"><input type="checkbox" .checked=${Boolean(this._deleteAfterPublish)}
         ?disabled=${this._busy} @change=${({ target }) => { this._deleteAfterPublish = target.checked; }}>
-        Delete this branch after publishing
+        Delete this branch after merging
       </label>
       ${this._deleteAfterPublish ? html`<p class="description">Close other editors on this branch first.
-        After publishing, you’ll return to Default and this branch will be deleted.</p>` : nothing}
+        After merging, you’ll return to Default and this branch will be deleted.</p>` : nothing}
       ${this.renderFeedback()}
       <footer>
         <button type="button" @click=${() => { this._confirm = false; }} ?disabled=${this._busy}>Cancel</button>
-        <button class="primary" type="button" @click=${this.publish} ?disabled=${this._busy}>Confirm publish to default</button>
+        <button class="primary" type="button" @click=${this.publish} ?disabled=${this._busy}>Confirm merge to default</button>
       </footer>
     </div>`;
   }
@@ -587,7 +587,7 @@ export class DaBranchConflicts extends LitElement {
   }}
           aria-haspopup="dialog" ?disabled=${disabled}>
           <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V4m-4 4 4-4 4 4M4 12v4h12v-4"/></svg>
-          Publish to default
+          Merge to default
         </button>
       </div>
       ${overlay}

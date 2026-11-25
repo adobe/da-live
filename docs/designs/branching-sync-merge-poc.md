@@ -67,7 +67,7 @@ The table below applies only when branching is available. Without that capabilit
 | Edit / create / delete document | Yes | Yes |
 | Changes view | Not needed | Yes, including an empty state |
 | Sync from default | No | Yes, even with no local changes |
-| Publish to default | No | Yes when changes exist and no sync is pending |
+| Merge to default | No | Yes when changes exist and no sync is pending |
 | Existing AEM live publish/unpublish | Existing behavior | Disabled for the PoC |
 
 The backend enforces default-branch and target restrictions even if a disabled UI is bypassed. While a branch sync session is unresolved, branch editing and publishing are locked; switching away and returning is allowed and resumes the session. Default can continue to receive changes between requests.

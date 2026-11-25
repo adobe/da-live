@@ -612,12 +612,12 @@ async function reconcileInBranchUi(request, browser, doc) {
     await expect(conflicts).toContainText('Sync completed.');
     expect(await (await api(request, 'GET', doc, undefined, 200)).text()).toBe(html('B5 branch conflict'));
     expect(await (await api(request, 'GET', `${base}/race.html`, undefined, 200)).text()).toBe(html('B5 default conflict'));
-    await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
+    await conflicts.getByRole('button', { name: 'Merge to default', exact: true }).click();
     await expect(conflicts.getByText('This does not publish to AEM preview or live.')).toBeVisible();
-    await expect(conflicts.getByRole('checkbox', { name: 'Delete this branch after publishing' })).not.toBeChecked();
+    await expect(conflicts.getByRole('checkbox', { name: 'Delete this branch after merging' })).not.toBeChecked();
     const publishResponse = page.waitForResponse((response) => response.request().method() === 'POST'
       && response.url() === `${source}${branches}/draft/publish`);
-    await conflicts.getByRole('button', { name: 'Confirm publish to default', exact: true }).click();
+    await conflicts.getByRole('button', { name: 'Confirm merge to default', exact: true }).click();
     const response = await publishResponse;
     expect(response.status()).toBe(200);
     expect(response.request().headers()['idempotency-key']).toBeTruthy();

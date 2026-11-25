@@ -201,7 +201,7 @@ export class DaBranchSelector extends LitElement {
         </div>
         ${this._deleteTarget ? html`<div class="delete-confirmation" role="group" aria-label="Confirm branch deletion">
           <strong>Delete ${this._deleteTarget.name}?</strong>
-          <p>Unpublished changes will be lost. Close other editors on this branch before deleting.</p>
+          <p>Unmerged changes will be lost. Close other editors on this branch before deleting.</p>
           <div class="delete-actions">
             <button type="button" ?disabled=${this._busy} @click=${() => { this._deleteTarget = undefined; }}>Cancel</button>
             <button type="button" class="danger" ?disabled=${this._busy} @click=${this.deleteBranch}>Delete branch</button>
