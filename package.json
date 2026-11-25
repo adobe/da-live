@@ -9,7 +9,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
-    "@adobe/da-merge": "file:deps/da-merge/pkg/adobe-da-merge-db61098.tgz",
+    "@adobe/da-merge": "file:deps/da-merge/pkg/adobe-da-merge-dadb67f.tgz",
     "@adobe/da-parser": "file:deps/da-parser/pkg/adobe-da-parser-f545641.tgz",
     "@adobe/da-sc-sdk": "0.6.1",
     "@open-wc/lit-helpers": "0.7.0",
@@ -70,7 +70,7 @@
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
     "build:da-parser": "./tools/build-da-parser.sh",
-    "build:da-merge": "esbuild --format=esm --minify ./node_modules/@adobe/da-merge/src/index.js --bundle --outfile=./deps/da-merge/dist/index.js",
+    "build:da-merge": "esbuild --format=esm --minify ./node_modules/@adobe/da-merge/src/resolve-entry.js --bundle --outfile=./deps/da-merge/dist/resolve.js",
     "build:github-slugger": "esbuild --format=esm --minify ./deps/github-slugger/src/index.js --bundle --outfile=./deps/github-slugger/dist/index.js",
     "build:da-sc-sdk": "esbuild --format=esm --minify ./deps/da-sc-sdk/src/index.js --bundle --outfile=./deps/da-sc-sdk/dist/index.js",
     "semantic-release": "semantic-release",
