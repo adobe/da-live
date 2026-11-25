@@ -35,6 +35,32 @@ In order to also use the local `nx` scripts, run `npm run local` in the `da-nx` 
 
 **Note:** these values will persist in local storage until you reset them.
 
+#### Single-author da-rs demo
+
+An isolated loopback-hosted da-rs demo can opt in to direct document saves by
+adding `"authoringMode": "single"` to its deployment-owned `/da-rs-demo.json`:
+
+```json
+{
+  "apiVersion": 1,
+  "provider": "da-rs",
+  "org": "demo",
+  "adminEnv": "local",
+  "collabEnv": "local",
+  "authoringMode": "single"
+}
+```
+
+The demo must select da-rs and use Helix 6 Source. `collabEnv` remains required
+for compatibility with the bootstrap schema, but a collaboration service is not
+used for native page editing in this mode. Omit `authoringMode` to retain normal
+collaboration. For a fully standalone demo, leave `da-rs.collab.origin` unset so
+da-rs does not send room notifications. This is a single-author PoC, not a
+replacement for collaboration:
+do not edit the same document in multiple tabs or clients. Saves use Source
+ETags; on a conflict or failed save, copy unsaved edits before leaving the editor.
+Browser or tab closure may also interrupt a pending save.
+
 ### Edge Delivery
 If you wish to do any testing that involves Edge Delivery, please note the following:
 

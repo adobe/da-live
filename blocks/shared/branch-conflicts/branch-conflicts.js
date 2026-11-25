@@ -3,6 +3,7 @@ import { BranchingError } from '../branching-client.js';
 import { retirePublishedBranch, withBranchBarrier } from '../branch-selector/navigation.js';
 import { lockBranchEditing, unlockBranchEditing, rememberEditorBeforeBarrier, forgetUnneededEditorSnapshot } from './editing-lock.js';
 import styles from './branch-conflicts-styles.js';
+import { isSingleAuthorDemo } from '../da-rs-bootstrap.js';
 import '../branch-diff/branch-diff.js';
 
 const SIDES = ['base', 'branch', 'default'];
@@ -270,6 +271,8 @@ export class DaBranchConflicts extends LitElement {
         }
       }
       this.dispatchEvent(new CustomEvent('branch-changed', { bubbles: true, composed: true }));
+      // Reconciliation can replace Source without a collaboration invalidation.
+      if (isSingleAuthorDemo() && result.status !== 'nothing-to-publish') window.location.reload();
     } else throw new Error('Invalid branch operation response');
   }
 

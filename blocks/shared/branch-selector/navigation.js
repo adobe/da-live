@@ -11,7 +11,8 @@ export async function flushForBranchAction(root = document) {
   const editor = currentEditor(root);
   if (!editor) return { ok: true };
   if (typeof editor.forceSave !== 'function'
-    || (editor.localName === 'ew-editor-doc' && !editor.hasCollaborationProvider())) {
+    || (editor.localName === 'ew-editor-doc' && !editor.hasCollaborationProvider()
+      && !editor.hasSingleAuthorProvider?.())) {
     return { ok: false, error: 'The editor is not ready to confirm its save.' };
   }
   try {
@@ -143,7 +144,9 @@ export function installBranchHashGuard(options = {}) {
     }
     const oldScope = stableHash.slice(2).split('/').slice(0, 2).join('/');
     const newScope = targetHash.slice(2).split('/').slice(0, 2).join('/');
-    if ((!target && !old) || oldScope === newScope) {
+    const mounted = currentEditor(document);
+    const direct = mounted?.wsProvider?.singleAuthor || mounted?.hasSingleAuthorProvider?.();
+    if (!direct && ((!target && !old) || oldScope === newScope)) {
       stableHash = targetHash;
       return;
     }

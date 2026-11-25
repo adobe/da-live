@@ -73,6 +73,7 @@ function waitForWsConnection(provider) {
 }
 
 export async function forceSave(provider) {
+  if (provider?.singleAuthor) return provider.singleAuthor.save();
   for (let attempt = 0; attempt < FLUSH_MAX_RETRIES; attempt += 1) {
     try {
       if (!provider.wsconnected) {

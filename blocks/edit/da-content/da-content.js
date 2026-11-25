@@ -52,7 +52,7 @@ export default class DaContent extends LitElement {
 
   async handleEditorLoaded() {
     this.loadViews();
-    if (!this.details?.repo?.includes('~')) this.loadUe();
+    if (this.details?.previewUrl && !this.details.repo?.includes('~')) this.loadUe();
   }
 
   openUe() {
@@ -76,7 +76,8 @@ export default class DaContent extends LitElement {
   render() {
     const { owner, repo, previewUrl } = this.details;
     const contentBranch = repo?.includes('~');
-    const pathname = contentBranch ? '' : new URL(previewUrl).pathname;
+    const hasPreview = !contentBranch && Boolean(previewUrl);
+    const pathname = hasPreview ? new URL(previewUrl).pathname : '';
 
     return html`
       <div class="editor-wrapper">
@@ -91,11 +92,11 @@ export default class DaContent extends LitElement {
         </da-editor>
         ${this._editorLoaded ? html`
           <div class="da-editor-tabs ${this._showPane ? 'show-pane' : ''}">
-            ${contentBranch ? nothing : html`<div class="da-editor-tabs-full">
-              <button
-                class="da-editor-tab show-preview"
+            ${hasPreview ? html`<div class="da-editor-tabs-full">
+                <button
+                  class="da-editor-tab show-preview"
                 title="Preview" @click=${() => this.togglePane({ detail: 'preview' })}>Preview</button>
-            </div>`}
+            </div>` : nothing}
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
               ${this._externalUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
@@ -104,11 +105,11 @@ export default class DaContent extends LitElement {
         ` : nothing}
       </div>
       ${this._editorLoaded ? html`
-        ${contentBranch ? nothing : html`<da-preview
+        ${hasPreview ? html`<da-preview
           path="${getLivePreviewUrl(owner, repo)}${pathname}"
           .show=${this._showPane === 'preview'}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
-          @close=${this.togglePane}></da-preview>`}
+          @close=${this.togglePane}></da-preview>` : nothing}
         <da-versions
           path=${this.details.fullpath}
           .open=${this._showPane === 'versions'}

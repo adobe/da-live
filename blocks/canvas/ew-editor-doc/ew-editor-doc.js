@@ -267,7 +267,11 @@ export class EwEditorDoc extends LitElement {
   }
 
   hasCollaborationProvider() {
-    return !!this._proseContext?.wsProvider;
+    return !!this._proseContext?.wsProvider && !this.hasSingleAuthorProvider();
+  }
+
+  hasSingleAuthorProvider() {
+    return !!this._proseContext?.wsProvider?.singleAuthor;
   }
 
   getComparisonSession({ org, site, path } = {}) {

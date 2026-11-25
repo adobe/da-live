@@ -33,6 +33,8 @@ import { bindFirstSectionName } from '../../shared/section-name.js';
 import { handleFencedRoomClose, isFencedProvider, registerFencedView } from '../../shared/branch-selector/fenced-room.js';
 import { parseSiteSegment } from '../../shared/content-branch-context.js';
 import { validateBranch } from '../../shared/branch-selector/context.js';
+import { isSingleAuthorDemo } from '../../shared/da-rs-bootstrap.js';
+import { createSingleAuthorConnection } from '../../shared/single-author-session.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -52,6 +54,7 @@ async function checkDoc(path) {
 }
 
 export async function createConnection(path, { reload } = {}) {
+  if (isSingleAuthorDemo()) return createSingleAuthorConnection(path);
   const server = COLLAB_ORIGIN;
 
   const { pathname } = new URL(path);
@@ -551,9 +554,10 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   const { wsProvider, ydoc } = await connectionPromise;
   if (isFencedProvider(wsProvider)) return;
+  wsProvider.singleAuthor?.setWritable(canWrite);
 
   addSyncedListener(wsProvider, canWrite);
-  createAwarenessStatusWidget(wsProvider, window, path);
+  if (!wsProvider.singleAuthor) createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');

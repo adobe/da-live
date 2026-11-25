@@ -53,6 +53,8 @@ import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { handleFencedRoomClose, isFencedProvider, registerFencedView } from '../../shared/branch-selector/fenced-room.js';
 import { createDaRsImageView } from './prose-plugins/daRsMedia.js';
+import { isSingleAuthorDemo } from '../../shared/da-rs-bootstrap.js';
+import { createSingleAuthorConnection } from '../../shared/single-author-session.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -76,7 +78,8 @@ function addSyncedListener(wsProvider, canWrite, setEditable) {
       wsProvider.off('synced', handleSynced);
     }
   };
-  wsProvider.on('synced', handleSynced);
+  if (wsProvider.synced) handleSynced(true);
+  else wsProvider.on('synced', handleSynced);
 }
 
 function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
@@ -89,7 +92,8 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
     });
     unsub?.();
   };
-  wsProvider.on('synced', handleSynced);
+  if (wsProvider.synced) handleSynced(true);
+  else wsProvider.on('synced', handleSynced);
 }
 
 export default async function initProse({
@@ -123,7 +127,10 @@ export default async function initProse({
 
   const canWrite = permissions.some((permission) => permission === 'write');
 
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc, wsOpts);
+  const wsProvider = isSingleAuthorDemo()
+    ? (await createSingleAuthorConnection(path, { ydoc })).wsProvider
+    : new WebsocketProvider(server, roomName, ydoc, wsOpts);
+  wsProvider.singleAuthor?.setWritable(canWrite);
   wsProvider.maxBackoffTime = 30000;
 
   wsProvider.on('connection-close', async (event) => {

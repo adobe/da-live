@@ -9,12 +9,14 @@ const CONFIG_KEYS = ['apiVersion', 'provider', 'org', 'adminEnv', 'collabEnv'];
 export function validateDaRsDemoConfig(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid da-rs demo config');
   const keys = Object.keys(raw);
-  if (keys.length !== CONFIG_KEYS.length || keys.some((key) => !CONFIG_KEYS.includes(key))) {
+  if (!CONFIG_KEYS.every((key) => keys.includes(key))
+    || keys.some((key) => !CONFIG_KEYS.includes(key) && key !== 'authoringMode')) {
     throw new Error('Invalid da-rs demo config');
   }
   if (raw.apiVersion !== 1 || raw.provider !== 'da-rs'
     || typeof raw.org !== 'string' || !/^[a-z0-9_-]+$/.test(raw.org)
-    || !ENV_KEYS.includes(raw.adminEnv) || !ENV_KEYS.includes(raw.collabEnv)) {
+    || !ENV_KEYS.includes(raw.adminEnv) || !ENV_KEYS.includes(raw.collabEnv)
+    || (raw.authoringMode !== undefined && raw.authoringMode !== 'single')) {
     throw new Error('Invalid da-rs demo config');
   }
   return Object.freeze({ ...raw });
@@ -77,3 +79,7 @@ export function daRsDemoEnvDefault(key) {
 // A configured demo is in effect (not overridden by an explicit non-da-rs selection).
 export const isDaRsDemoActive = (href = window.location.href) => daRsDemoState.status === 'ready'
   && isDaRsSelected(href);
+
+// Explicitly opt in only for the selected, loopback-hosted demo.
+export const isSingleAuthorDemo = () => isDaRsDemoActive()
+  && daRsDemoState.config?.authoringMode === 'single';

@@ -56,6 +56,7 @@ describe('da-content', () => {
 
   it('handleEditorLoaded triggers loadViews and loadUe', async () => {
     const ed = new DaContent();
+    ed.details = { repo: 'site', previewUrl: 'https://example.com/page' };
     let viewsCalled = false;
     let ueCalled = false;
     ed.loadViews = async () => { viewsCalled = true; };
@@ -63,5 +64,16 @@ describe('da-content', () => {
     await ed.handleEditorLoaded();
     expect(viewsCalled).to.be.true;
     expect(ueCalled).to.be.true;
+  });
+
+  it('does not request a preview for a bound site without a delivery URL', async () => {
+    const ed = new DaContent();
+    ed.details = { owner: 'demo', repo: 'site', fullpath: '/demo/site/page' };
+    let ueCalled = false;
+    ed.loadViews = async () => {};
+    ed.loadUe = async () => { ueCalled = true; };
+    await ed.handleEditorLoaded();
+    expect(ueCalled).to.be.false;
+    expect(() => ed.render()).not.to.throw();
   });
 });

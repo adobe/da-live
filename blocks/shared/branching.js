@@ -1,5 +1,6 @@
 import { DA_ORIGIN } from './constants.js';
 import { createBranchingClient } from './branching-client.js';
+import { isSingleAuthorDemo } from './da-rs-bootstrap.js';
 
 const OPERATIONS = Object.freeze(['create', 'changes', 'sync', 'publish', 'revert', 'restore']);
 const ITEM_KINDS = Object.freeze(['html', 'json', 'media', 'config']);
@@ -22,7 +23,8 @@ function parseCapabilities(data) {
   if (data?.supported !== true || data.apiVersion !== 1) return result('unavailable', 'invalid-capabilities');
   const complete = data.defaultBranchId === 'main' && data.addressing === 'site-suffix'
     && data.separator === '~' && data.branchScopedSource === true
-    && data.branchScopedCollaboration === true && Array.isArray(data.operations)
+    && (data.branchScopedCollaboration === true || isSingleAuthorDemo())
+    && Array.isArray(data.operations)
     && OPERATIONS.every((op) => data.operations.includes(op)) && Array.isArray(data.itemKinds)
     && ITEM_KINDS.every((kind) => data.itemKinds.includes(kind));
   if (!complete) return result('unavailable', 'incomplete-capabilities');
@@ -37,7 +39,7 @@ function parseCapabilities(data) {
       operations: OPERATIONS,
       itemKinds: ITEM_KINDS,
       branchScopedSource: true,
-      branchScopedCollaboration: true,
+      branchScopedCollaboration: data.branchScopedCollaboration === true,
       helix6BranchSource: data.helix6BranchSource === true,
     }),
   });

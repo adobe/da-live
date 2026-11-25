@@ -9,6 +9,7 @@ import '../shared/branch-selector/branch-selector.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 import { checkEditorAccess, editorAccessRequired } from '../shared/da-file-item/guard.js';
 import { withDaRsBinding } from '../shared/da-rs-navigation.js';
+import { isSingleAuthorDemo } from '../shared/da-rs-bootstrap.js';
 import * as importedPage from './imported-page/imported-page.js';
 
 import './da-title/da-title.js';
@@ -143,7 +144,7 @@ async function setUI(el) {
   prosePromise ??= import('./prose/index.js');
 
   // Start WebSocket as soon as prose module loads (don't wait for logins/doc)
-  const wsPromise = prosePromise.then(
+  const wsPromise = isSingleAuthorDemo() ? null : prosePromise.then(
     (mod) => mod.createConnection(details.sourceUrl),
   );
 
@@ -164,7 +165,7 @@ async function setUI(el) {
   const resp = await docPromise;
 
   if (resp.status === 401 || resp.status === 403) {
-    wsPromise.then(({ wsProvider }) => wsProvider.disconnect()).catch(() => {});
+    wsPromise?.then(({ wsProvider }) => wsProvider.disconnect()).catch(() => {});
     daTitle.permissions = resp.permissions;
     const message = resp.status === 401 ? 'Sign in required' : NOT_PERMITTED;
     showNotPermitted({ el, daTitle, message });
