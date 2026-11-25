@@ -1,3 +1,10 @@
+## [1.36.3](https://github.com/adobe/da-live/compare/v1.36.2...v1.36.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve classic editor dark mode support ([#1759](https://github.com/adobe/da-live/issues/1759)) ([acb9421](https://github.com/adobe/da-live/commit/acb942173eb79e5853ca1603f0a28f7fb4e86cd6))
+
 ## [1.36.2](https://github.com/adobe/da-live/compare/v1.36.1...v1.36.2) (2026-11-24)
 
 
