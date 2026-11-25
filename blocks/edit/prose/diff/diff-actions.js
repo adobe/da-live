@@ -11,6 +11,7 @@ import {
   setDaMetadata,
   getDiffLabels,
 } from '../../utils/helpers.js';
+import { removeResolvedBases } from './diff-bases.js';
 
 const HASH_LENGTH = 12;
 export const REJECTED_KEY = 'rejectedHashes';
@@ -202,6 +203,7 @@ export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode)
 
     addToHashMetadata(currentNode, REJECTED_KEY);
 
+    const groups = [currentNode.attrs.diffGroup];
     // Check if parent is a list item for special handling
     if (resolvedPos.parent.type.name === 'list_item') {
       const parentPos = resolvedPos.before(resolvedPos.depth);
@@ -209,13 +211,13 @@ export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode)
         parentPos,
         parentPos + resolvedPos.parent.nodeSize,
       );
-      view.dispatch(transaction);
+      view.dispatch(removeResolvedBases(transaction, groups));
     } else {
       const transaction = view.state.tr.delete(
         currentPos,
         currentPos + currentNode.nodeSize,
       );
-      view.dispatch(transaction);
+      view.dispatch(removeResolvedBases(transaction, groups));
     }
   } catch (error) {
     // eslint-disable-next-line no-console

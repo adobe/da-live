@@ -7,6 +7,7 @@ import {
   ACCEPTED_KEY,
   REJECTED_KEY,
 } from './diff-actions.js';
+import { markerGroups, removeResolvedBases } from './diff-bases.js';
 
 const KEEP = 'keep';
 const DELETE = 'delete';
@@ -100,6 +101,7 @@ function processViewNodes(view, action, isLocNode) {
   if (locNodes.length === 0) return false;
 
   let { tr } = view.state;
+  const groups = markerGroups(tr.doc);
 
   locNodes.forEach(({ pos }) => {
     try {
@@ -116,7 +118,7 @@ function processViewNodes(view, action, isLocNode) {
     }
   });
 
-  view.dispatch(tr);
+  view.dispatch(removeResolvedBases(tr, groups));
   return true;
 }
 

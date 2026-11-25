@@ -5,6 +5,7 @@ import {
 } from 'da-y-wrapper';
 import getSheet from '../../../shared/sheet.js';
 import { createElement, getDiffLabels } from '../../utils/helpers.js';
+import { markerGroups, removeResolvedBases } from './diff-bases.js';
 
 let overlayUIModule = null;
 async function loadOverlayUI() {
@@ -514,8 +515,9 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     dispatchContentTransaction(startPos, endPos, filteredContent) {
+      const groups = markerGroups(this.view.state.doc, startPos, endPos);
       const transaction = createContentTransaction(this.view, startPos, endPos, filteredContent);
-      this.view.dispatch(transaction);
+      this.view.dispatch(removeResolvedBases(transaction, groups));
     }
 
     // Generic handler to eliminate duplication in user action calls
