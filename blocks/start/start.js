@@ -1,11 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
-import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import initGreeting from '../greeting/greeting.js';
 
-const sheet = await getSheet('/blocks/start/start.css');
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const sheet = await loadStyle(import.meta.url);
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -350,13 +351,8 @@ class DaStart extends LitElement {
 
   render() {
     return html`
-      <img src="/blocks/start/dark-alley.jpg" class="background"/>
-      <div class="gradient"></div>
-      <div class="foreground step-${this.activeStep}-active">
-        <ul class="step-count">
-          <li>1</li>
-          <li class="step-2">2</li>
-        </ul>
+      <div class="step-${this.activeStep}-active">
+        <slot name="greeting"></slot>
         <div class="panels">
           ${this.renderOne()}
           ${this.renderTwo()}
@@ -368,6 +364,28 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
+export function initPage(el) {
+  if (!document.adoptedStyleSheets.includes(sheet)) {
+    document.adoptedStyleSheets.push(sheet);
+  }
+  el.closest('.block-content, .section')?.classList.add('start-page');
+}
+
 export default function init(el) {
-  el.append(document.createElement('da-start'));
+  if (!el.classList.contains('cmp')) {
+    initPage(el);
+    el.hidden = true;
+    return;
+  }
+
+  const start = document.createElement('da-start');
+  el.append(start);
+  const section = el.closest('.section')?.nextElementSibling;
+  const greetingEl = section?.querySelector('div.greeting');
+  if (!greetingEl) return;
+  section.remove();
+  initGreeting(greetingEl).then((greeting) => {
+    greeting.slot = 'greeting';
+    start.append(greeting);
+  });
 }
