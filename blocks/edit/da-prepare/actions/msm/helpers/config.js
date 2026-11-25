@@ -77,14 +77,14 @@ export function legacySource(org, site, path, opts = {}) {
   return daFetch(`${DA_ORIGIN}/source/${org}/${site}${path}`, { ...opts, noRedirect: true });
 }
 
-// nx2 keeps a failed backend check until the page reloads (da-nx hlx6probe
-// changes that), so trying again in the panel can't help.
+// A site whose backend check fails is read as legacy DA, which is what the
+// panel did for every site before Helix 6 support.
 export async function siteIsHlx6(org, site) {
   const { isHlx6 } = await getNx2Api();
   try {
     return await isHlx6(org, site);
-  } catch (e) {
-    throw new Error(`Could not check whether ${site} runs on Helix 6 (${e.message}). If this keeps happening, reload the page`);
+  } catch {
+    return false;
   }
 }
 
