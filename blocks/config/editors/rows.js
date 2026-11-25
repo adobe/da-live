@@ -147,6 +147,7 @@ function renderRow(columns, item, handlers) {
     <tr class=${inherited ? 'is-inherited' : ''}>
       <th scope="row">
         <span class="config-table-name">
+          ${first.preview ? first.preview(row, handlers) : nothing}
           <span class="config-table-name-text">${cellText(first, row)}</span>
           ${inherited ? renderPill(INHERITANCE.inheritedPill, 'neutral') : nothing}
           ${overrides ? renderPill(INHERITANCE.overridesPill, 'override') : nothing}
@@ -217,7 +218,10 @@ export function renderRowDialog(panel, draft, errors, handlers) {
   const title = `${draft.index === null ? 'Add' : 'Edit'} ${panel.noun}`;
   const field = { disabled: false, onChange: handlers.onChange };
   return html`
-    <nx-dialog class="config-row-dialog" title=${title} @close=${handlers.onCancel}>
+    <nx-dialog class="config-row-dialog" title=${title} @close=${(e) => {
+    // Nested picker popovers also emit bubbling close events.
+    if (e.target === e.currentTarget) handlers.onCancel();
+  }}>
       <form class="config-row-form" @submit=${(e) => { e.preventDefault(); handlers.onApply(); }}>
         ${panel.columns.map((column, i) => {
     const raw = String(draft.row[column.key] ?? '');

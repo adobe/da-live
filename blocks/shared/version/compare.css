@@ -9,7 +9,8 @@
 }
 
 .da-compare-modal {
-  background: #FFF;
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-900);
   border-radius: 10px;
   box-shadow: rgb(0 0 0 / 25%) 0 4px 24px;
   width: min(960px, 100%);
@@ -25,7 +26,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px;
-  border-bottom: 1px solid #DDD;
+  border-bottom: 1px solid var(--s2-gray-300);
   flex: 0 0 auto;
 }
 
@@ -51,7 +52,7 @@
   line-height: 1;
   cursor: pointer;
   padding: 0 8px;
-  color: #000;
+  color: inherit;
 }
 
 .da-compare-close:hover {
@@ -75,17 +76,17 @@
 }
 
 .da-compare-key del.diffdel {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--s2-red-200);
+  color: var(--s2-red-1000);
   text-decoration: line-through;
-  border-color: #ef9a9a;
+  border-color: var(--s2-red-300);
 }
 
 .da-compare-key ins.diffins {
-  background-color: #e8f5e8;
-  color: #2e7d32;
+  background-color: var(--s2-green-200);
+  color: var(--s2-green-1000);
   text-decoration: none;
-  border-color: #a5d6a7;
+  border-color: var(--s2-green-300);
 }
 
 .da-compare-body {
@@ -95,6 +96,8 @@
 }
 
 .da-compare-modal .da-compare-body .ProseMirror {
+  --editor-document-background: var(--s2-gray-25);
+
   min-height: auto;
   box-shadow: none;
   padding: 0;
@@ -103,28 +106,28 @@
 
 .da-compare-body ins.diffins,
 .da-compare-body ins.diffmod {
-  background-color: #e8f5e8;
-  color: #2e7d32;
+  background-color: var(--s2-green-200);
+  color: var(--s2-green-1000);
   text-decoration: none;
   padding: 2px 4px;
   border-radius: 3px;
-  border: 1px solid #a5d6a7;
+  border: 1px solid var(--s2-green-300);
 }
 
 .da-compare-body del.diffdel,
 .da-compare-body del.diffmod {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--s2-red-200);
+  color: var(--s2-red-1000);
   text-decoration: line-through;
   padding: 2px 4px;
   border-radius: 3px;
-  border: 1px solid #ef9a9a;
+  border: 1px solid var(--s2-red-300);
 }
 
 .da-compare-body del.diffmod {
-  background-color: #fff3e0;
-  color: #ef6c00;
-  border-color: #ffcc02;
+  background-color: var(--s2-orange-200);
+  color: var(--s2-orange-1000);
+  border-color: var(--s2-orange-300);
 }
 
 .da-compare-body [data-diffmod] {
@@ -151,30 +154,30 @@
 }
 
 .da-compare-body ins.diffins:has(table) {
-  border-left: 4px solid #2e7d32;
+  border-left: 4px solid var(--s2-green-1000);
 }
 
 .da-compare-body del.diffdel:has(table) {
-  border-left: 4px solid #c62828;
+  border-left: 4px solid var(--s2-red-1000);
 }
 
 .da-compare-body del.diffmod:has(table) {
-  border-left: 4px solid #ef6c00;
+  border-left: 4px solid var(--s2-orange-1000);
 }
 
 .da-compare-body ins.diffins:has(table) .tableWrapper {
-  border-color: #2e7d32;
-  box-shadow: 0 0 0 1px #a5d6a7;
+  border-color: var(--s2-green-1000);
+  box-shadow: 0 0 0 1px var(--s2-green-300);
 }
 
 .da-compare-body del.diffdel:has(table) .tableWrapper {
-  border-color: #c62828;
-  box-shadow: 0 0 0 1px #ef9a9a;
+  border-color: var(--s2-red-1000);
+  box-shadow: 0 0 0 1px var(--s2-red-300);
 }
 
 .da-compare-body del.diffdel:has(table) table,
 .da-compare-body del.diffdel:has(table) td,
 .da-compare-body del.diffdel:has(table) th {
   text-decoration: line-through;
-  color: #8a3a3a;
+  color: var(--s2-red-1100);
 }

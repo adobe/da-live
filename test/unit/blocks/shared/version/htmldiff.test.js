@@ -241,6 +241,27 @@ describe('HTML Diff', () => {
   });
 
   describe('block-level segmentation', () => {
+    it('detects an image replacement between unchanged text blocks', () => {
+      const oldHtml = '<h2>Coffee</h2><p><img src="./media_old.png"></p><p>Lorem ipsum</p>';
+      const newHtml = '<h2>Coffee</h2><p><img src="./media_new.png"></p><p>Lorem ipsum</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<h2>Coffee</h2><p><del class="diffdel"><img src="./media_old.png"></del><ins class="diffins"><img src="./media_new.png"></ins></p><p>Lorem ipsum</p>');
+    });
+
+    it('detects a top-level image replacement alongside unchanged text', () => {
+      const oldHtml = '<h2>Coffee</h2><img src="./media_old.png"><p>Lorem ipsum</p>';
+      const newHtml = '<h2>Coffee</h2><img src="./media_new.png"><p>Lorem ipsum</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<h2>Coffee</h2><del class="diffdel"><img src="./media_old.png"></del><ins class="diffins"><img src="./media_new.png"></ins><p>Lorem ipsum</p>');
+    });
+
+    it('detects an image replacement within otherwise unchanged paragraph text', () => {
+      const oldHtml = '<h2>Coffee</h2><p>Before <img src="./media_old.png"> after</p>';
+      const newHtml = '<h2>Coffee</h2><p>Before <img src="./media_new.png"> after</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<h2>Coffee</h2><p>Before <del class="diffdel"><img src="./media_old.png"></del><ins class="diffins"><img src="./media_new.png"></ins> after</p>');
+    });
+
     it('isolates per-paragraph changes so neighbours stay untouched', () => {
       const oldHtml = '<p>One</p><p>Two</p><p>Three</p>';
       const newHtml = '<p>One</p><p>Two changed</p><p>Three</p>';
@@ -280,6 +301,13 @@ describe('HTML Diff', () => {
   });
 
   describe('attribute normalization', () => {
+    it('treats reordered image attributes in matched blocks as equal', () => {
+      const oldHtml = '<h2>Coffee</h2><p><img src="./media_coffee.png" alt="Coffee"></p>';
+      const newHtml = '<h2>Coffee</h2><p><img alt="Coffee" src="./media_coffee.png"></p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal(newHtml);
+    });
+
     it('treats reordered attributes as equal', () => {
       const oldHtml = '<p class="a" id="x">Hello</p>';
       const newHtml = '<p id="x" class="a">Hello</p>';

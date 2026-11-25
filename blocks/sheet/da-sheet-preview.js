@@ -77,7 +77,11 @@ class DaSheetPreview extends LitElement {
         ${this._formatted ? this.renderFormatted() : nothing}
       </div>
       <div class="da-preview-menubar">
-        <button class="da-preview-menuitem" @click=${this.handleClose}>Close</button>
+        <button class="da-preview-menuitem" aria-label="Close" @click=${this.handleClose}>
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <use href="/img/icons/s2-icon-close-20-n.svg#icon"></use>
+          </svg>
+        </button>
       </div>
     `;
   }
