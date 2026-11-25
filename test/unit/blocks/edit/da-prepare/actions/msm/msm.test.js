@@ -442,6 +442,28 @@ describe('DaMsm component', () => {
       expect(calls.some((c) => c.url.includes('/preview/'))).to.be.true;
       expect(calls.filter((c) => c.url.includes('/live/') && c.method === 'POST').length).to.equal(0);
     });
+
+    it('keeps the override when the status read fails', async () => {
+      const calls = [];
+      const base = createFetchMock({});
+      const mock = async (url, opts) => {
+        calls.push({ url, method: opts?.method });
+        if (url.includes('/status/')) return new Response('', { status: 500 });
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        satellites: makeSatellites(['san-diego']),
+        action: 'reset',
+        selected: new Set(['san-diego']),
+      });
+
+      await el.runAction('reset');
+
+      const sat = el._satellites.find((s) => s.site === 'san-diego');
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
   });
 
   describe('post-action behavior', () => {
@@ -642,6 +664,28 @@ describe('DaMsm component', () => {
       expect(el._satStatus).to.equal('success');
       expect(calls.some((c) => c.url.includes('/preview/'))).to.be.true;
       expect(calls.some((c) => c.url.includes('/live/'))).to.be.true;
+    });
+
+    it('resume-inheritance keeps the page when the status read fails', async () => {
+      const calls = [];
+      const aemStatus = { preview: { status: 200 }, live: { status: 403 } };
+      const base = createFetchMock({ aemStatus });
+      const mock = async (url, opts) => {
+        calls.push({ url, method: opts?.method });
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: true,
+        details: satDetails(),
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+
+      expect(el._satStatus).to.equal('error');
+      expect(el._hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
     });
 
     it('doConfirmedAction runs resume-inheritance for satellite view', async () => {

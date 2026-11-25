@@ -166,12 +166,23 @@ describe('MSM utils', () => {
       expect(status.live).to.be.false;
     });
 
-    it('returns false for both when fetch fails', async () => {
+    it('throws when the status request fails', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
 
-      const status = await getSatellitePageStatus('org', 'san-diego-mccs', '/about');
-      expect(status.preview).to.be.false;
-      expect(status.live).to.be.false;
+      const error = await getSatellitePageStatus('org', 'san-diego-mccs', '/about')
+        .then(() => undefined, (e) => e);
+      expect(error?.message).to.include('500');
+    });
+
+    it('throws when a rendition reports neither 200 nor 404', async () => {
+      window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+        preview: { status: 403 },
+        live: { status: 404 },
+      }), { status: 200 }));
+
+      const error = await getSatellitePageStatus('org', 'san-diego-mccs', '/about')
+        .then(() => undefined, (e) => e);
+      expect(error?.message).to.include('san-diego-mccs');
     });
 
     it('strips .html from the path', async () => {
