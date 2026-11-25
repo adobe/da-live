@@ -3,6 +3,7 @@ import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
 import { setMergeCopy } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
 import { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
+import { DA_ORIGIN } from '../../../../../../../blocks/shared/constants.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const waitForLoad = () => new Promise((resolve) => { setTimeout(resolve, 100); });
@@ -217,17 +218,23 @@ describe('DaMsm component', () => {
       expect(el.shadowRoot.querySelector('.load-error').textContent).to.include('403');
     });
 
-    it('lists no satellite as inherited when the backend check fails', async () => {
-      const good = createFetchMock({ orgConfigs: { 'msm-pingerr': BASE_CONFIG } });
+    it('reads the satellites from legacy DA when the backend check fails', async () => {
+      const good = createFetchMock({
+        orgConfigs: { 'msm-pingerr': BASE_CONFIG },
+        overrideSites: ['san-diego'],
+      });
       const mock = async (url, opts = {}) => {
         if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
         return good(url, opts);
       };
       await fixture({ org: 'msm-pingerr', site: 'mccs', path: '/about' }, mock);
 
-      expect(el._satellites).to.be.undefined;
-      // Try again can't help: nx2 keeps a failed check until the page reloads
-      expect(el.shadowRoot.querySelector('.load-error').textContent).to.include('reload the page');
+      // a primitive: a failing assert on a DOM node hangs the run
+      expect(el._loadError).to.equal(undefined);
+      expect(el._satellites.map((s) => [s.site, s.hasOverride])).to.deep.equal([
+        ['san-diego', true],
+        ['pendleton', false],
+      ]);
     });
   });
 
@@ -917,7 +924,7 @@ describe('DaMsm component', () => {
   });
 
   describe('a failed backend check', () => {
-    it('cancels no inheritance and writes nothing', async () => {
+    it('cancels inheritance on legacy DA, like before Helix 6', async () => {
       const calls = [];
       const base = createFetchMock({});
       const mock = async (url, opts = {}) => {
@@ -934,9 +941,12 @@ describe('DaMsm component', () => {
       await el.runAction('break');
 
       const sat = el._satellites.find((s) => s.site === 'ping-sat');
-      expect(sat.status).to.equal('error');
-      expect(sat.hasOverride).to.be.false;
-      expect(calls.some((c) => ['PUT', 'POST', 'DELETE'].includes(c.method))).to.be.false;
+      expect(sat.status).to.equal('success');
+      expect(sat.hasOverride).to.be.true;
+      const writes = calls.filter((c) => ['PUT', 'POST', 'DELETE'].includes(c.method));
+      expect(writes.map((c) => `${c.method} ${c.url}`)).to.deep.equal([
+        `PUT ${DA_ORIGIN}/source/test/ping-sat/about.html`,
+      ]);
     });
   });
 

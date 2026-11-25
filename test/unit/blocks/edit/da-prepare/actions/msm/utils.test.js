@@ -159,17 +159,20 @@ describe('MSM utils', () => {
       expect(result.error).to.include('409');
     });
 
-    it('asks for a reload and writes nothing when the backend check fails', async () => {
+    it('copies on legacy DA when the backend check fails', async () => {
       const calls = [];
       window.fetch = async (url, opts = {}) => {
         if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
         calls.push({ url, method: opts.method || 'GET' });
-        return new Response('', { status: 201 });
+        return new Response('<p>Base</p>', { status: 200 });
       };
 
-      const error = await rejection(createOverride('org', 'ping-fail', 'ping-fail-sat', '/about'));
-      expect(error?.message).to.include('reload the page');
-      expect(calls).to.have.length(0);
+      const result = await createOverride('org', 'ping-fail', 'ping-fail-sat', '/about');
+      expect(result).to.deep.equal({ ok: true });
+      expect(calls.map((c) => `${c.method} ${c.url}`)).to.deep.equal([
+        `GET ${DA_ORIGIN}/source/org/ping-fail/about.html`,
+        `PUT ${DA_ORIGIN}/source/org/ping-fail-sat/about.html`,
+      ]);
     });
   });
 
@@ -271,7 +274,7 @@ describe('MSM utils', () => {
       expect(result.error).to.include('delete override');
     });
 
-    it('asks for a reload and deletes nothing when the backend check fails', async () => {
+    it('deletes on legacy DA when the backend check fails', async () => {
       const calls = [];
       window.fetch = async (url, opts = {}) => {
         if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
@@ -279,9 +282,11 @@ describe('MSM utils', () => {
         return new Response(null, { status: 204 });
       };
 
-      const error = await rejection(deleteOverride('org', 'ping-fail-del', '/about'));
-      expect(error?.message).to.include('reload the page');
-      expect(calls).to.have.length(0);
+      const result = await deleteOverride('org', 'ping-fail-del', '/about');
+      expect(result).to.deep.equal({ ok: true });
+      expect(calls.map((c) => `${c.method} ${c.url}`)).to.deep.equal([
+        `DELETE ${DA_ORIGIN}/source/org/ping-fail-del/about.html`,
+      ]);
     });
   });
 

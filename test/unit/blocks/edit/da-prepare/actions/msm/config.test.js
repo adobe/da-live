@@ -231,22 +231,20 @@ describe('MSM config', () => {
 
       const error = await rejection(isPageLocal('org', 'head-403', '/about'));
       expect(error?.message).to.include('403');
-      expect(error?.message).not.to.include('reload the page');
     });
 
-    it('throws when the site backend check fails', async () => {
+    it('checks the legacy DA page when the site backend check fails', async () => {
       const calls = [];
       window.fetch = async (url, opts = {}) => {
         if (url.startsWith(PING)) throw new TypeError('Failed to fetch');
         calls.push({ url, method: opts.method || 'GET' });
-        return new Response('', { status: 404 });
+        return new Response('', { status: 200 });
       };
 
-      const error = await rejection(isPageLocal('org', 'ping-fail', '/about'));
-      // nx2 keeps a failed check until the page reloads
-      expect(error?.message).to.include('ping-fail');
-      expect(error?.message).to.include('reload the page');
-      expect(calls).to.have.length(0);
+      expect(await isPageLocal('org', 'ping-fail', '/about')).to.be.true;
+      expect(calls).to.deep.equal([
+        { url: `${DA_ORIGIN}/source/org/ping-fail/about.html`, method: 'HEAD' },
+      ]);
     });
 
     it('returns false when HEAD returns 404', async () => {
@@ -336,11 +334,10 @@ describe('MSM config', () => {
       expect(await inheritsFromBase('org', 'inh-base3', 'inh-sat3')).to.be.false;
     });
 
-    it('rejects when a backend check fails, instead of guessing', async () => {
+    it('is true when a backend check fails, like before Helix 6', async () => {
       window.fetch = async () => { throw new TypeError('Failed to fetch'); };
 
-      const error = await rejection(inheritsFromBase('org', 'inh-base4', 'inh-sat4'));
-      expect(error?.message).to.include('reload the page');
+      expect(await inheritsFromBase('org', 'inh-base4', 'inh-sat4')).to.be.true;
     });
   });
 
