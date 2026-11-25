@@ -66,16 +66,21 @@ export function setMergeCopy(fn) { mergeCopyFn = fn; }
 
 export async function mergeFromBase(org, base, satellite, pagePath) {
   try {
+    // da-nx moved mergeCopy to its public loc SDK (adobe/da-nx#801). It only
+    // exists under nx/, never nx2/, whatever nx version the page runs.
+    const nx = getNx();
+    const locNx = nx.endsWith('/nx2') ? nx.slice(0, -1) : nx;
     const mergeCopy = mergeCopyFn
-      || (await import(`${getNx()}/blocks/loc/project/index.js`)).mergeCopy;
+      || (await import(`${locNx}/public/loc/index.js`)).mergeCopy;
 
-    const url = {
-      source: `/${org}/${base}${pagePath}.html`,
-      destination: `/${org}/${satellite}${pagePath}.html`,
-    };
-
-    const result = await mergeCopy(url, 'MSM Merge');
-    if (!result?.ok) return { error: 'Merge failed' };
+    const result = await mergeCopy({
+      fetch: daFetch,
+      daOrigin: DA_ORIGIN,
+      urlSource: `/${org}/${base}${pagePath}.html`,
+      urlTarget: `/${org}/${satellite}${pagePath}.html`,
+      msg: 'MSM Merge',
+    });
+    if (!result?.ok) return { error: result?.error || 'Merge failed' };
 
     const editUrl = `${window.location.origin}/edit#/${org}/${satellite}${pagePath}`;
     return { ok: true, editUrl };
