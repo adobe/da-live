@@ -41,6 +41,13 @@ const canPin = (view) => !!view && !opensOutsidePanel(view);
 
 const labelOf = (view) => view.getLabel?.() ?? view.label;
 
+// A view's optional `pinAfter` places its new tab right after that tab, when pinned.
+function withPin(ids, view) {
+  const index = view.pinAfter ? ids.indexOf(view.pinAfter) : -1;
+  if (index < 0) return [...ids, view.id];
+  return [...ids.slice(0, index + 1), view.id, ...ids.slice(index + 1)];
+}
+
 class DaToolPanel extends LitElement {
   static properties = {
     views: { attribute: false },
@@ -486,7 +493,7 @@ class DaToolPanel extends LitElement {
     const request = {};
     this._panelRequest = request;
     if (!this._pinnedIds.includes(name)) {
-      this._setPinnedIds([...this._pinnedIds, name]);
+      this._setPinnedIds(withPin(this._pinnedIds, view));
     }
     if (!this._loaded[name]) {
       const { contextKey } = this;

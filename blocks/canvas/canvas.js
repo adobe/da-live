@@ -32,6 +32,7 @@ import { canvasBus } from './utils/canvas-bus.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
+import { AGENT_ACTIVITY_VIEW_ID, installAgentActivity } from './ew-agent-activity/agent-activity.js';
 import { docToHtml } from '../shared/version/compare.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import {
@@ -326,6 +327,9 @@ export default async function decorate(block) {
       }
     },
   }));
+
+  const openAgentActivity = () => openPanelSection(TOOL_PANEL_SECTION, AGENT_ACTIVITY_VIEW_ID);
+  installAgentActivity({ onTurnStarted: openAgentActivity });
 
   const header = await installCanvasHeader(block, { org, site });
 

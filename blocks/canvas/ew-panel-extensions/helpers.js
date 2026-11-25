@@ -868,6 +868,21 @@ function createOutlineView() {
   };
 }
 
+function createAgentActivityView() {
+  return {
+    id: 'agent-activity',
+    label: 'Agent Activity',
+    section: 'Editor',
+    firstParty: true,
+    // Opened by a chat prompt; its tab is placed next to Outline rather than last.
+    pinAfter: 'outline',
+    load: async () => {
+      await import('../ew-agent-activity/ew-agent-activity.js');
+      return document.createElement('ew-agent-activity');
+    },
+  };
+}
+
 function createFileExplorerView() {
   return {
     id: 'files',
@@ -1047,6 +1062,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
 
   return [
     createOutlineView(),
+    createAgentActivityView(),
     createMetadataView(),
     createFileExplorerView(),
     createVersioningView(),
