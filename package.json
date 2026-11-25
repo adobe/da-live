@@ -9,7 +9,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
-    "@adobe/da-merge": "file:deps/da-merge/pkg/adobe-da-merge-8d0a176.tgz",
+    "@adobe/da-merge": "file:deps/da-merge/pkg/adobe-da-merge-db61098.tgz",
     "@adobe/da-parser": "file:deps/da-parser/pkg/adobe-da-parser-f545641.tgz",
     "@adobe/da-sc-sdk": "0.6.1",
     "@open-wc/lit-helpers": "0.7.0",
