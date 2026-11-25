@@ -1,4 +1,4 @@
-import { getNx, setPageTitle } from '../../scripts/utils.js';
+import { getNx } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 import initTiles from './tiles/tile-group.js';
 import { getBrowseComponent } from './utils.js';
@@ -105,7 +105,6 @@ export default function init(el) {
     ? takeBrowseBlocks(el) : undefined;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    setPageTitle(cmpName === 'da-browse' ? 'Browse' : undefined);
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
     loadComponent(el, cmpName, pathDetails, surface, blocks);
     if (pathDetails) setRecentSite(pathDetails);

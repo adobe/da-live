@@ -1,4 +1,4 @@
-import { getNx, getNx2Api, setPageTitle } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -37,7 +37,6 @@ export async function handleRoute(el, details) {
 }
 
 export default function init(el) {
-  setPageTitle('Permissions');
   el.replaceChildren();
   hashChange.subscribe(async (details) => {
     const redirect = await handleRoute(el, details);

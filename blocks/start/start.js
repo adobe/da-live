@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx, getNx2Api, sanitizePathParts, setPageTitle } from '../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -372,7 +372,6 @@ export function initPage(el) {
 }
 
 export default function init(el) {
-  setPageTitle('Start');
   if (!el.classList.contains('cmp')) {
     initPage(el);
     el.hidden = true;

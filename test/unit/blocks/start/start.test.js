@@ -7,8 +7,10 @@ const { default: init } = await import('../../../../blocks/start/start.js');
 
 describe('start page', () => {
   let main;
+  let title;
 
   beforeEach(() => {
+    title = document.title;
     main = document.createElement('main');
     main.innerHTML = `
       <div class="section"><div class="start cmp"></div></div>
@@ -18,13 +20,13 @@ describe('start page', () => {
 
   afterEach(() => {
     main.remove();
+    document.title = title;
   });
 
-  it('sets the page title', () => {
-    const { title } = document;
+  it('preserves the content-authored page title', () => {
+    document.title = 'Content-authored start title';
     init(main.querySelector('.start'));
-    expect(document.title).to.equal('Start | Experience Workspace');
-    document.title = title;
+    expect(document.title).to.equal('Content-authored start title');
   });
 
   it('mounts the legacy wizard instead of initializing the authored page', () => {

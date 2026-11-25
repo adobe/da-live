@@ -161,8 +161,8 @@ describe('setPageTitle', () => {
   afterEach(() => { document.title = title; });
 
   it('appends the product name to the page name', () => {
-    setPageTitle('Browse');
-    expect(document.title).to.equal('Browse | Experience Workspace');
+    setPageTitle('Edit page');
+    expect(document.title).to.equal('Edit page | Experience Workspace');
   });
 
   it('uses only the product name without a page name', () => {
