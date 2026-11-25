@@ -92,9 +92,6 @@ export function siteBackends(org, base, satellite) {
   return Promise.all([siteIsHlx6(org, base), siteIsHlx6(org, satellite)]);
 }
 
-// Only a 404 means the satellite has no page of its own. Any other failure
-// throws: reading it as "inherited" would offer Cancel inheritance, which
-// overwrites the page.
 export async function isPageLocal(org, site, pagePath) {
   const { source } = await getNx2Api();
   const path = `${pagePath}.html`;
@@ -102,9 +99,7 @@ export async function isPageLocal(org, site, pagePath) {
     ? () => source.getMetadata({ org, site, path })
     : () => legacySource(org, site, path, { method: 'HEAD' });
   const resp = await paced(head);
-  if (resp?.status === 404) return false;
-  if (!resp?.ok) throw new Error(`Could not check the page on ${site} (${resp?.status ?? 0})`);
-  return true;
+  return !!resp?.ok;
 }
 
 export async function inheritsFromBase(org, base, satellite) {

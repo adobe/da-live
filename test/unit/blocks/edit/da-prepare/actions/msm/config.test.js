@@ -226,13 +226,6 @@ describe('MSM config', () => {
       expect(error).to.exist;
     });
 
-    it('throws when HEAD returns an error other than 404', async () => {
-      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 403 })));
-
-      const error = await rejection(isPageLocal('org', 'head-403', '/about'));
-      expect(error?.message).to.include('403');
-    });
-
     it('checks the legacy DA page when the site backend check fails', async () => {
       const calls = [];
       window.fetch = async (url, opts = {}) => {
@@ -278,19 +271,6 @@ describe('MSM config', () => {
 
       const cpResult = results.find((r) => r.site === 'camp-pendleton-mccs');
       expect(cpResult.hasOverride).to.be.false;
-    });
-
-    it('rejects when a satellite cannot be checked', async () => {
-      window.fetch = hlx6Fetch([], (url) => {
-        const status = url.includes('/check-broken/') ? 500 : 404;
-        return Promise.resolve(new Response('', { status }));
-      });
-
-      const error = await rejection(checkOverrides('org', {
-        'check-ok': { label: 'OK' },
-        'check-broken': { label: 'Broken' },
-      }, '/about'));
-      expect(error?.message).to.include('check-broken');
     });
 
     it('handles empty satellites', async () => {

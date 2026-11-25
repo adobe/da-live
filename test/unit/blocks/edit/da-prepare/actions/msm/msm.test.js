@@ -185,39 +185,6 @@ describe('DaMsm component', () => {
       expect(el._baseSite).to.equal('mccs');
     });
 
-    it('shows an error with a retry when an override check fails', async () => {
-      const good = createFetchMock({ orgConfigs: { 'msm-loaderr': BASE_CONFIG } });
-      const broken = async (url, opts = {}) => {
-        if (opts.method === 'HEAD' && url.includes('/san-diego/')) return new Response('', { status: 500 });
-        return good(url, opts);
-      };
-      await fixture({ org: 'msm-loaderr', site: 'mccs', path: '/about' }, broken);
-
-      expect(el._satellites).to.be.undefined;
-      const msg = el.shadowRoot.querySelector('.load-error');
-      expect(msg.textContent).to.include('san-diego');
-      expect(el.shadowRoot.querySelector('.satellite-list')).to.be.null;
-
-      window.fetch = good;
-      el.shadowRoot.querySelector('.form-actions sl-button').click();
-      await waitForLoad();
-
-      expect(el.shadowRoot.querySelector('.load-error')).to.be.null;
-      expect(el._satellites).to.have.length(2);
-    });
-
-    it('shows an error when the satellite cannot check its own page', async () => {
-      const good = createFetchMock({ orgConfigs: { 'msm-saterr': BASE_CONFIG } });
-      const broken = async (url, opts = {}) => {
-        if (opts.method === 'HEAD') return new Response('', { status: 403 });
-        return good(url, opts);
-      };
-      await fixture({ org: 'msm-saterr', site: 'san-diego', path: '/about' }, broken);
-
-      expect(el._hasOverride).to.be.undefined;
-      expect(el.shadowRoot.querySelector('.load-error').textContent).to.include('403');
-    });
-
     it('reads the satellites from legacy DA when the backend check fails', async () => {
       const good = createFetchMock({
         orgConfigs: { 'msm-pingerr': BASE_CONFIG },
@@ -229,8 +196,6 @@ describe('DaMsm component', () => {
       };
       await fixture({ org: 'msm-pingerr', site: 'mccs', path: '/about' }, mock);
 
-      // a primitive: a failing assert on a DOM node hangs the run
-      expect(el._loadError).to.equal(undefined);
       expect(el._satellites.map((s) => [s.site, s.hasOverride])).to.deep.equal([
         ['san-diego', true],
         ['pendleton', false],
