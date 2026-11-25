@@ -16,7 +16,7 @@ const ICON_NAMES = {
   share: 's2-icon-share-20-n',
   publish: 's2-icon-publish-20-n',
   preview: 's2-icon-preview-20-n',
-  preflight: 's2-icon-search-20-n',
+  preflight: 's2-icon-badgeverified-20-n',
   coworker: 's2-icon-coworker-20-n',
 };
 
