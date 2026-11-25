@@ -28,6 +28,7 @@ describe('focalPointDialog', () => {
 
     view = {
       dispatch: () => {},
+      nodeDOM: () => null,
       state: {
         doc: { nodeAt: () => node },
         // eslint-disable-next-line no-unused-vars
@@ -58,6 +59,22 @@ describe('focalPointDialog', () => {
   //   expect(img).to.exist;
   //   expect(indicator).to.exist;
   // });
+
+  it('shows the image the editor displays, also when it retries without CORS', async () => {
+    const shownSrc = 'https://main--repo--org.preview.da.live/media_123.png';
+    node.attrs = { ...node.attrs, src: './media_123.png' };
+    const shown = document.createElement('span');
+    shown.innerHTML = `<img src="${shownSrc}">`;
+    view.nodeDOM = () => shown;
+
+    await openFocalPointDialog(view, 10, node);
+    const img = document.querySelector('da-dialog .focal-point-image');
+    expect(img.src).to.equal(shownSrc);
+
+    img.dispatchEvent(new Event('error'));
+    expect(img.crossOrigin).to.equal(null);
+    expect(img.src).to.equal(shownSrc);
+  });
 
   it('only writes the focal point on Accept, not while dragging', async () => {
     const dispatched = [];
