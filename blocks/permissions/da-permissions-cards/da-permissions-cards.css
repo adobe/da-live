@@ -96,6 +96,12 @@
 
 nx-pills {
   --nx-pills-max-height: none;
+
+  min-width: 0;
+  max-width: 100%;
+
+  /* Show full member IDs: many share a long prefix and are indistinguishable once truncated. */
+  --nx-pill-max-width: 100%;
 }
 
 .level-row[data-level='none'] nx-pills {
@@ -123,6 +129,7 @@ nx-pills {
   align-items: center;
   gap: var(--s2-spacing-100);
   min-width: 0;
+  max-width: 100%;
 }
 
 .inherited-pills {
