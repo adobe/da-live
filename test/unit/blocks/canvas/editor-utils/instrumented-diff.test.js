@@ -158,7 +158,7 @@ describe('getInstrumentedHTML with grouped merge conflicts', () => {
       expect(html).to.include('local text');
       expect(html).to.not.include('upstream text');
       expect(html).to.not.include('original text');
-      expect(html).to.not.include('Keep mine');
+      expect(html).to.not.include('Preserve Local');
       expect(html).to.not.include('diff-group');
     } finally {
       cleanup();
@@ -191,7 +191,7 @@ describe('getInstrumentedHTML with grouped merge conflicts', () => {
       const html = getInstrumentedHTML(view);
       expect(html).to.include('intro');
       expect(html).to.not.include('new upstream text');
-      expect(html).to.not.include('Take source');
+      expect(html).to.not.include('Accept Upstream');
     } finally {
       cleanup();
     }

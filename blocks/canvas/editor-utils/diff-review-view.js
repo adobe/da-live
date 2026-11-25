@@ -1,37 +1,43 @@
 import { DOMSerializer } from 'da-y-wrapper';
+import { getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getDiffLabels } from '../../edit/utils/helpers.js';
 import { htmlDiff } from '../../shared/version/htmldiff.js';
 import { CHOICE, findGroup, resolveAll, resolveGroup } from './diff-review.js';
 
 const REASON_TEXT = {
-  'both-changed': 'Source and you both changed this.',
-  differs: 'The source and this page are different here.',
-  'no-baseline': 'There is no record of the last copy, so all differences show.',
-  'page-too-large': 'The page is too large to compare with the last copy, so all differences show.',
-  'reviewing-open-markup': 'The page had open review items, so all differences show.',
+  'no-baseline': 'Last rollout not available',
+  'page-too-large': 'Last rollout not compared: the page is too large',
+  'reviewing-open-markup': 'Last rollout not compared: the page had open review items',
 };
 
-const NO_ORIGINAL = 'The original is not available.';
-const LAYOUT_KEY = 'da-review-layout';
-const INLINE = 'inline';
-const SIDE = 'side';
-const TEXT_UNITS = new Set(['paragraph', 'heading', 'list_item']);
+const THREE_WAY = new Set(['both-changed', null, undefined]);
+const BASE_LABEL = 'Last rollout';
+const DIFF_KEY = 'da-review-diff';
+const SHOW_KEY = 'da-review-show';
+export const SHOW = Object.freeze({ source: 'source', both: 'both', local: 'local' });
+const TEXT_LEAVES = new Set(['paragraph', 'heading', 'code_block']);
+const TEXT_CONTAINERS = new Set(['blockquote', 'bullet_list', 'ordered_list', 'list_item']);
 
-function readLayout() {
+function read(key) {
   try {
-    return localStorage.getItem(LAYOUT_KEY) === INLINE ? INLINE : SIDE;
+    return localStorage.getItem(key);
   } catch {
-    return SIDE;
+    return null;
   }
 }
 
-function writeLayout(layout) {
+function write(key, value) {
   try {
-    localStorage.setItem(LAYOUT_KEY, layout);
+    localStorage.setItem(key, value);
   } catch {
     // The choice only lasts for this page.
   }
+}
+
+function readView() {
+  const show = Object.values(SHOW).includes(read(SHOW_KEY)) ? read(SHOW_KEY) : SHOW.both;
+  return { show, diff: read(DIFF_KEY) === 'true' };
 }
 
 function el(tag, className, text) {
@@ -41,26 +47,33 @@ function el(tag, className, text) {
   return node;
 }
 
-export function groupTitle({ sides = [], kinds = [] }) {
-  if (sides.length > 1) return 'Source changed this · You changed it';
-  if (sides[0] === 'source') return 'Source added this';
+export function groupTitle({ sides = [], kinds = [], reason } = {}, labels = getDiffLabels()) {
+  const { local, upstream } = labels;
+  if (sides.length > 1) {
+    return THREE_WAY.has(reason) ? `Changed in ${upstream} and ${local}` : `Different in ${upstream} and ${local}`;
+  }
+  if (sides[0] === 'source') return `Added in ${upstream}`;
   if (sides[0] === 'local') {
-    return kinds.includes('removed') ? 'You changed this · Source removed it' : 'You added this';
+    return kinds.includes('removed') ? `Removed in ${upstream}, edited in ${local}` : `Added in ${local}`;
   }
   return '';
 }
 
-const ONE_SIDED_TEXT = {
-  'local:removed': 'Source removed this after you edited it.',
-  'source:added': 'Source added this where you removed content.',
-};
-
-export function reasonText(reason, { sides = [], kinds = [] } = {}) {
-  if (reason === 'both-changed' && sides.length === 1) {
-    const text = kinds.map((kind) => ONE_SIDED_TEXT[`${sides[0]}:${kind}`]).find(Boolean);
-    if (text) return text;
-  }
+export function reasonText(reason) {
   return REASON_TEXT[reason] ?? '';
+}
+
+let controlsLoaded;
+function loadControls() {
+  controlsLoaded ??= Promise.resolve()
+    .then(() => Promise.all([
+      import(`${getNx2()}/blocks/shared/switch/switch.js`),
+      import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`),
+      import(`${getNx2()}/blocks/shared/menu/menu.js`),
+    ]))
+    .catch(() => {
+      controlsLoaded = undefined;
+    });
 }
 
 function hiddenView() {
@@ -80,32 +93,74 @@ function serialize(schema, entries) {
   return frag;
 }
 
-const isTextSide = (entries) => entries.length > 0 && entries
-  .every(({ node }) => node.content.content.every((unit) => TEXT_UNITS.has(unit.type.name)));
+function isTextUnit(node) {
+  if (TEXT_LEAVES.has(node.type.name)) return true;
+  return TEXT_CONTAINERS.has(node.type.name) && node.content.content.every(isTextUnit);
+}
+
+function shapeOf(node) {
+  if (node.type.name === 'table') return node.content.content.map((row) => row.childCount).join('x');
+  return isTextUnit(node) ? '' : null;
+}
+
+const tableShapes = (entries) => entries.flatMap(({ node }) => node.content.content.map(shapeOf));
+
+function canDiff(entries, reference) {
+  const shapes = tableShapes(entries);
+  if (!entries.length || shapes.includes(null)) return false;
+  if (!reference.length) return true;
+  const refShapes = tableShapes(reference);
+  if (refShapes.includes(null)) return false;
+  return shapes.filter(Boolean).join() === refShapes.filter(Boolean).join();
+}
 
 function toHtml(fragment) {
   const div = document.createElement('div');
   div.append(fragment);
-  return div.innerHTML.replaceAll(' da-diff-added=""', '');
+  return div.innerHTML.replace(/ (?:da-diff-added|dadiffadded|data-id|dataid)="[^"]*"/g, '');
 }
 
-function setInline(card, inline) {
-  card.classList.toggle('is-inline', inline);
-  card.querySelector('.diff-group-layout')?.setAttribute('aria-pressed', String(inline));
-}
-
-function toolButton(label, className, onClick) {
-  const button = el('button', `diff-group-tool ${className}`, label);
-  button.type = 'button';
-  button.addEventListener('click', onClick);
-  return button;
+function diffView(before, after, label) {
+  const diff = el('div', 'diff-group-side-diff');
+  diff.setAttribute('role', 'group');
+  diff.setAttribute('aria-label', label);
+  diff.innerHTML = htmlDiff(before, after);
+  diff.querySelectorAll('.diffmod, [data-diffmod]').forEach((node) => {
+    node.title = node.matches('a[data-diffmod]') ? 'Link changed' : 'Formatting changed';
+  });
+  return diff;
 }
 
 function actionButton(label, choice, onChoose) {
-  const button = el('button', `diff-group-action is-choose-${choice}`, label);
+  const variant = choice === CHOICE.both ? 'nx-action-btn-quiet' : 'nx-action-btn';
+  const button = el('button', `diff-group-action ${variant} nx-btn-sm is-choose-${choice}`);
+  if (choice !== CHOICE.both) {
+    const swatch = el('span', 'diff-group-action-swatch');
+    swatch.setAttribute('aria-hidden', 'true');
+    button.append(swatch);
+  }
+  button.append(el('span', '', label));
   button.type = 'button';
   button.addEventListener('click', () => onChoose(choice));
   return button;
+}
+
+function syncScrollFocus(side) {
+  const scrolls = side.scrollWidth > side.clientWidth + 1;
+  if (scrolls) side.tabIndex = 0;
+  else side.removeAttribute('tabindex');
+}
+
+function focusAfterResolve(view, card) {
+  const ids = [...view.dom.querySelectorAll('.diff-group-card')].map((c) => c.dataset.diffGroup);
+  const at = ids.indexOf(card.dataset.diffGroup);
+  return () => {
+    const nextId = [ids[at + 1], ids[at - 1]].find((id) => id
+      && view.dom.querySelector(`.diff-group-card[data-diff-group="${id}"]`));
+    const next = nextId && view.dom.querySelector(`.diff-group-card[data-diff-group="${nextId}"]`);
+    if (next) next.focus();
+    else view.focus();
+  };
 }
 
 class GroupCardView {
@@ -130,109 +185,95 @@ class GroupCardView {
     card.contentEditable = 'false';
     card.tabIndex = -1;
     card.dataset.diffGroup = this.id;
+    card.setAttribute('role', 'group');
+    const idBase = `diff-group-${this.id}`;
+    card.setAttribute('aria-labelledby', `${idBase}-title`);
 
     const header = el('div', 'diff-group-header');
     this.titleEl = el('p', 'diff-group-title', groupTitle({
       sides: ['source', 'local'].filter((s) => markers.some(({ side }) => side === s)),
       kinds: markers.map(({ node }) => node.attrs.diffKind).filter(Boolean),
+      reason: markers.map(({ node }) => node.attrs.diffReason).find(Boolean),
     }));
+    this.titleEl.id = `${idBase}-title`;
     this.reasonEl = el('p', 'diff-group-reason');
-    const text = el('div', 'diff-group-heading');
-    text.append(this.titleEl, this.reasonEl);
-    const tools = el('div', 'diff-group-tools');
-    header.append(text, tools);
+    this.reasonEl.hidden = true;
+    header.append(this.titleEl);
     card.append(header);
-
-    if (bases.length) {
-      const details = el('details', 'diff-group-base');
-      this.baseSummaryEl = el('summary', '', 'Was');
-      const body = el('div', 'diff-group-base-content');
-      body.append(serialize(schema, bases));
-      details.append(this.baseSummaryEl, body);
-      card.append(details);
-    }
-    this.hasBase = bases.length > 0;
 
     const sides = el('div', 'diff-group-sides');
     const sourceEntries = markers.filter(({ side }) => side === 'source');
     const localEntries = markers.filter(({ side }) => side === 'local');
-    [[sourceEntries, labels.upstream, 'is-source'], [localEntries, labels.local, 'is-local']]
-      .filter(([entries]) => entries.length)
-      .forEach(([entries, label, cls]) => {
-        const side = el('section', `diff-group-side ${cls}`);
-        side.append(el('p', 'diff-group-side-label', label));
-        const content = el('div', 'diff-group-side-content');
-        content.tabIndex = 0;
-        content.setAttribute('role', 'region');
-        content.setAttribute('aria-label', label);
-        content.append(serialize(schema, entries));
-        side.append(content);
+    const removed = markers.some(({ node }) => node.attrs.diffKind === 'removed');
+    const emptyText = removed ? 'Removed' : 'Not present';
+    const panes = [
+      [sourceEntries, labels.upstream, 'is-source', localEntries, labels.local],
+      [localEntries, labels.local, 'is-local', sourceEntries, labels.upstream],
+    ];
+    panes.forEach(([entries, label, cls, other, otherLabel]) => {
+      const side = el('section', `diff-group-side ${cls}`);
+      const chip = el('p', 'diff-group-side-label', label);
+      chip.id = `${idBase}-${cls}`;
+      side.setAttribute('role', 'group');
+      side.setAttribute('aria-labelledby', chip.id);
+      side.append(chip);
+      if (!entries.length) {
+        side.classList.add('is-empty');
+        side.append(el('p', 'diff-group-side-empty', emptyText));
         sides.append(side);
-      });
-    card.append(sides);
-
-    if (isTextSide(sourceEntries) && isTextSide(localEntries)) {
-      card.classList.add('can-inline');
-      const inline = el('div', 'diff-group-inline');
-      inline.tabIndex = 0;
-      inline.setAttribute('role', 'region');
-      inline.setAttribute('aria-label', `Changes from ${labels.upstream} to ${labels.local}`);
-      inline.innerHTML = htmlDiff(
-        toHtml(serialize(schema, sourceEntries)),
-        toHtml(serialize(schema, localEntries)),
-      );
-      const legend = el('p', 'diff-group-legend', `Struck out: only in ${labels.upstream}. Highlighted: only in ${labels.local}.`);
-      card.append(legend, inline);
-      const layout = toolButton('Inline view', 'diff-group-layout', () => {
-        const next = card.classList.contains('is-inline') ? SIDE : INLINE;
-        writeLayout(next);
-        this.view.dom.querySelectorAll('.diff-group-card.can-inline')
-          .forEach((other) => setInline(other, next === INLINE));
-      });
-      tools.append(layout);
-      setInline(card, readLayout() === INLINE);
-    }
-
-    const expand = toolButton('Expand', 'diff-group-expand', () => {
-      const expanded = card.classList.toggle('is-expanded');
-      expand.textContent = expanded ? 'Collapse' : 'Expand';
-      expand.setAttribute('aria-expanded', String(expanded));
+        return;
+      }
+      const content = el('div', 'diff-group-side-content');
+      content.append(serialize(schema, entries));
+      side.append(content);
+      const [reference, referenceLabel] = bases.length ? [bases, BASE_LABEL] : [other, otherLabel];
+      if (canDiff(entries, reference)) {
+        side.classList.add('has-diff');
+        side.append(diffView(
+          toHtml(serialize(schema, reference)),
+          toHtml(serialize(schema, entries)),
+          `Changes from ${referenceLabel} to ${label}`,
+        ));
+      }
+      sides.append(side);
     });
-    expand.setAttribute('aria-expanded', 'false');
-    expand.hidden = true;
-    tools.append(expand);
-    const panels = card.querySelectorAll('.diff-group-side-content, .diff-group-inline');
-    const overflows = () => [...panels].some((p) => p.scrollHeight > p.clientHeight + 1);
-    this.updateExpand = () => {
-      expand.hidden = !card.classList.contains('is-expanded') && !overflows();
-    };
-    this.resizeObserver = new ResizeObserver(() => this.updateExpand());
-    panels.forEach((panel) => this.resizeObserver.observe(panel));
+    card.append(sides);
+    this.sides = [...sides.children];
+    this.resizeObserver = new ResizeObserver(() => this.sides.forEach(syncScrollFocus));
+    this.sides.forEach((side) => this.resizeObserver.observe(side));
 
-    const choose = (choice) => resolveGroup(this.view, this.id, choice);
+    const choose = (choice) => {
+      const refocus = focusAfterResolve(this.view, card);
+      resolveGroup(this.view, this.id, choice);
+      refocus();
+    };
     const actions = el('div', 'diff-group-actions');
     actions.append(
-      actionButton('Keep mine', CHOICE.mine, choose),
-      actionButton('Take source', CHOICE.source, choose),
+      actionButton(`Accept ${labels.upstream}`, CHOICE.source, choose),
+      actionButton(`Preserve ${labels.local}`, CHOICE.mine, choose),
     );
     if (sourceEntries.length && localEntries.length) {
       actions.append(actionButton('Keep both', CHOICE.both, choose));
     }
-    card.append(actions);
+    if (bases.length) {
+      const details = el('details', 'diff-group-base');
+      const summary = el('summary', '', BASE_LABEL);
+      const body = el('div', 'diff-group-base-content');
+      body.append(serialize(schema, bases));
+      details.append(summary, body);
+      card.append(details);
+    }
+    card.append(this.reasonEl, actions);
     return card;
   }
 
   renderSummary(summary) {
-    this.updateExpand?.();
+    this.sides?.forEach(syncScrollFocus);
     const group = summary?.groups?.find(({ id }) => id === this.id);
     if (!group) return;
     this.titleEl.textContent = groupTitle(group);
-    const reason = reasonText(group.reason, group);
-    const missing = !this.hasBase && group.reason === 'both-changed' ? ` ${NO_ORIGINAL}` : '';
-    this.reasonEl.textContent = `${reason}${missing}`.trim();
-    if (this.baseSummaryEl && group.preview?.base) {
-      this.baseSummaryEl.textContent = `Was: ${group.preview.base}`;
-    }
+    this.reasonEl.textContent = reasonText(group.reason);
+    this.reasonEl.hidden = !this.reasonEl.textContent;
   }
 
   stopEvent() {
@@ -272,30 +313,120 @@ function focusGroup(view, id) {
   card.focus({ preventScroll: true });
 }
 
+function applyView(view, { show, diff }) {
+  const host = view.dom.parentNode;
+  if (!host) return;
+  host.dataset.reviewShow = show;
+  host.dataset.reviewDiff = String(diff);
+}
+
+function clearView(view) {
+  const host = view.dom.parentNode;
+  if (!host) return;
+  delete host.dataset.reviewShow;
+  delete host.dataset.reviewDiff;
+}
+
+function buildViewControls(view, labels) {
+  loadControls();
+  const current = readView();
+  const showEl = el('nx-segmented-btn', 'diff-review-show');
+  showEl.label = 'Show';
+  showEl.items = [
+    { value: SHOW.source, label: labels.upstream },
+    { value: SHOW.local, label: labels.local },
+    { value: SHOW.both, label: 'Both' },
+  ];
+  showEl.value = current.show;
+  const diffEl = el('nx-switch', 'diff-review-diff');
+  diffEl.setAttribute('size', 'sm');
+  diffEl.setAttribute('label', 'Show diff');
+  diffEl.checked = current.diff;
+  const update = () => {
+    const next = { show: showEl.value, diff: !!diffEl.checked };
+    write(SHOW_KEY, next.show);
+    write(DIFF_KEY, String(next.diff));
+    applyView(view, next);
+  };
+  showEl.addEventListener('change', (e) => {
+    showEl.value = e.detail?.value ?? showEl.value;
+    update();
+  });
+  diffEl.addEventListener('change', (e) => {
+    diffEl.checked = !!e.detail?.checked;
+    update();
+  });
+  const group = el('div', 'diff-review-view');
+  const labelEl = el('span', 'diff-review-view-label', 'Show');
+  labelEl.setAttribute('aria-hidden', 'true');
+  group.append(labelEl, showEl, diffEl);
+  applyView(view, current);
+  return group;
+}
+
+function icon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `/img/icons/s2-icon-${name}-20-n.svg#icon`);
+  svg.append(use);
+  return svg;
+}
+
+function iconButton(label, iconName, cls, onClick) {
+  const b = el('button', `diff-review-btn nx-action-btn-icon nx-btn-sm ${cls}`);
+  b.type = 'button';
+  b.title = label;
+  b.setAttribute('aria-label', label);
+  b.append(icon(iconName));
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function buildAcceptAll(view, labels) {
+  const menu = el('nx-menu', 'diff-review-accept-all');
+  menu.setAttribute('placement', 'below-end');
+  menu.items = [
+    { id: CHOICE.source, label: `Accept all ${labels.upstream}` },
+    { id: CHOICE.mine, label: `Preserve all ${labels.local}` },
+  ];
+  menu.addEventListener('select', (e) => {
+    if (![CHOICE.source, CHOICE.mine].includes(e.detail?.id)) return;
+    resolveAll(view, e.detail.id);
+    view.focus();
+  });
+  const trigger = el('button', 'diff-review-btn nx-action-btn nx-btn-sm');
+  trigger.type = 'button';
+  trigger.slot = 'trigger';
+  trigger.append(el('span', '', 'Resolve all'), icon('chevrondown'));
+  menu.append(trigger);
+  const wrap = el('div', 'diff-review-bulk');
+  wrap.append(menu);
+  return wrap;
+}
+
 function buildBar(view, state) {
   const bar = el('div', 'diff-review-bar');
-  bar.setAttribute('role', 'toolbar');
+  bar.setAttribute('role', 'group');
   bar.setAttribute('aria-label', 'Review conflicts');
   state.countEl = el('p', 'diff-review-count');
+  state.countEl.setAttribute('aria-live', 'polite');
   const step = (delta) => {
     const ids = state.summary?.groups.map(({ id }) => id) ?? [];
     if (!ids.length) return;
     state.index = (state.index + delta + ids.length) % ids.length;
     focusGroup(view, ids[state.index]);
   };
-  const button = (label, cls, onClick) => {
-    const b = el('button', `diff-review-btn ${cls}`, label);
-    b.type = 'button';
-    b.addEventListener('click', onClick);
-    return b;
-  };
-  bar.append(
-    state.countEl,
-    button('Previous', 'is-prev', () => step(-1)),
-    button('Next', 'is-next', () => step(1)),
-    button('Accept all source', 'is-all-source', () => resolveAll(view, CHOICE.source)),
-    button('Accept all mine', 'is-all-mine', () => resolveAll(view, CHOICE.mine)),
+  const labels = getDiffLabels();
+  const nav = el('div', 'diff-review-nav');
+  nav.append(
+    iconButton('Previous conflict', 'chevronleft', 'is-prev', () => step(-1)),
+    iconButton('Next conflict', 'chevronright', 'is-next', () => step(1)),
   );
+  const position = el('div', 'diff-review-position');
+  position.append(state.countEl, nav);
+  bar.append(position, buildViewControls(view, labels), buildAcceptAll(view, labels));
   return bar;
 }
 
@@ -308,12 +439,13 @@ export function renderReviewBar(view, summary) {
   }
   state.summary = summary;
   const count = summary.groups.length;
-  state.countEl.textContent = count === 1 ? '1 conflict to review' : `${count} conflicts to review`;
+  state.countEl.textContent = count === 1 ? '1 conflict' : `${count} conflicts`;
   if (state.index >= count) state.index = count - 1;
   if (!state.el.isConnected) view.dom.parentNode?.insertBefore(state.el, view.dom);
 }
 
 export function removeReviewBar(view) {
+  clearView(view);
   bars.get(view)?.el.remove();
   bars.delete(view);
 }
