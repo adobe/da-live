@@ -112,6 +112,23 @@ describe('MSM utils', () => {
       expect(putCall.url).to.include('/san-diego-mccs/about');
     });
 
+    it('keeps the editor open when a site answers 401', async () => {
+      const calls = [];
+      window.fetch = (url, opts = {}) => {
+        calls.push({ method: opts.method || 'GET', noRedirect: opts.noRedirect });
+        if (url.includes('/mccs/')) {
+          return Promise.resolve(new Response('<p>Base content</p>', { status: 200 }));
+        }
+        return Promise.resolve(new Response('', { status: 201 }));
+      };
+
+      await createOverride('org', 'mccs', 'san-diego-mccs', '/about');
+      expect(calls).to.deep.equal([
+        { method: 'GET', noRedirect: true },
+        { method: 'PUT', noRedirect: true },
+      ]);
+    });
+
     it('returns error when base fetch fails', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 404 }));
 
@@ -205,6 +222,18 @@ describe('MSM utils', () => {
       expect(result.ok).to.be.true;
       expect(capturedUrl).to.include('/san-diego-mccs/about.html');
       expect(capturedMethod).to.equal('DELETE');
+    });
+
+    it('keeps the editor open when the satellite answers 401', async () => {
+      let noRedirect;
+      window.fetch = (url, opts) => {
+        ({ noRedirect } = opts);
+        return Promise.resolve(new Response('', { status: 401 }));
+      };
+
+      const result = await deleteOverride('org', 'san-diego-mccs', '/about');
+      expect(result.error).to.include('401');
+      expect(noRedirect).to.equal(true);
     });
 
     it('returns error on failure', async () => {

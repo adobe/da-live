@@ -170,6 +170,17 @@ describe('MSM config', () => {
       expect(result).to.be.true;
     });
 
+    it('keeps the editor open when the satellite answers 401', async () => {
+      let noRedirect;
+      window.fetch = (url, opts) => {
+        ({ noRedirect } = opts);
+        return Promise.resolve(new Response('', { status: 401 }));
+      };
+
+      await isPageLocal('org', 'san-diego-mccs', '/about');
+      expect(noRedirect).to.equal(true);
+    });
+
     it('returns false when HEAD returns 404', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 404 }));
 
