@@ -1,4 +1,10 @@
-import { DOMSerializer } from 'da-y-wrapper';
+import {
+  Decoration,
+  DecorationSet,
+  DOMSerializer,
+  Plugin,
+  PluginKey,
+} from 'da-y-wrapper';
 import { getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getDiffLabels } from '../../edit/utils/helpers.js';
@@ -18,6 +24,9 @@ const SHOW_KEY = 'da-review-show';
 export const SHOW = Object.freeze({ source: 'source', both: 'both', local: 'local' });
 const TEXT_LEAVES = new Set(['paragraph', 'heading', 'code_block']);
 const TEXT_CONTAINERS = new Set(['blockquote', 'bullet_list', 'ordered_list', 'list_item']);
+const MARKERS = new Set(['diff_added', 'diff_deleted']);
+const ROLE = Object.freeze({ card: 'card', member: 'member' });
+const rolesKey = new PluginKey('diffReviewRoles');
 
 function read(key) {
   try {
@@ -76,14 +85,46 @@ function loadControls() {
     });
 }
 
-function hiddenView() {
+function roleOf(decorations = []) {
+  return decorations.find((deco) => deco.spec?.diffRole)?.spec.diffRole;
+}
+
+function hiddenView(role) {
   const dom = el('span', 'diff-group-member');
   dom.hidden = true;
   return {
     dom,
     stopEvent: () => true,
     ignoreMutation: () => true,
+    ...(role && { update: (node, decorations) => roleOf(decorations) === role }),
   };
+}
+
+function roleDecorations(doc) {
+  const seen = new Set();
+  const decorations = [];
+  doc.descendants((node, pos) => {
+    if (!MARKERS.has(node.type.name)) return true;
+    const id = node.attrs.diffGroup;
+    if (id) {
+      const diffRole = seen.has(id) ? ROLE.member : ROLE.card;
+      decorations.push(Decoration.node(pos, pos + node.nodeSize, {}, { diffRole }));
+      seen.add(id);
+    }
+    return false;
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
+export function createReviewPlugin() {
+  return new Plugin({
+    key: rolesKey,
+    state: {
+      init: (_, state) => roleDecorations(state.doc),
+      apply: (tr, set, _, state) => (tr.docChanged ? roleDecorations(state.doc) : set),
+    },
+    props: { decorations: (state) => rolesKey.getState(state) },
+  });
 }
 
 function serialize(schema, entries) {
@@ -164,14 +205,16 @@ function focusAfterResolve(view, card) {
 }
 
 class GroupCardView {
-  constructor(node, view, getPos) {
+  constructor(node, view, getPos, decorations) {
     this.view = view;
+    this.node = node;
     this.id = node.attrs.diffGroup;
-    const { markers, bases } = findGroup(view.state.doc, this.id);
-    if (markers[0]?.pos !== getPos()) {
-      Object.assign(this, hiddenView());
+    const role = roleOf(decorations);
+    if (role !== ROLE.card) {
+      Object.assign(this, hiddenView(role));
       return;
     }
+    const { markers, bases } = findGroup(view.state.doc, this.id);
     this.dom = this.build(markers, bases);
     this.unsubscribe = canvasBus.diffReviewState.subscribe((detail) => {
       if (detail?.view === view) this.renderSummary(detail.summary);
@@ -276,6 +319,10 @@ class GroupCardView {
     this.reasonEl.hidden = !this.reasonEl.textContent;
   }
 
+  update(node, decorations) {
+    return node.eq(this.node) && roleOf(decorations) === ROLE.card;
+  }
+
   stopEvent() {
     return true;
   }
@@ -291,8 +338,8 @@ class GroupCardView {
 }
 
 export function createReviewNodeViews(fallback) {
-  const pick = (type) => (node, view, getPos) => (node.attrs.diffGroup
-    ? new GroupCardView(node, view, getPos)
+  const pick = (type) => (node, view, getPos, decorations) => (node.attrs.diffGroup
+    ? new GroupCardView(node, view, getPos, decorations)
     : fallback[type](node, view, getPos));
   return {
     diff_added: pick('diff_added'),

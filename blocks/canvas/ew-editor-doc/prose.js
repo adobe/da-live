@@ -47,7 +47,7 @@ import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
-import { createReviewNodeViews } from '../editor-utils/diff-review-view.js';
+import { createReviewNodeViews, createReviewPlugin } from '../editor-utils/diff-review-view.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -240,7 +240,11 @@ export default async function initProse({
 
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
-    plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
+    plugins.push(
+      imageFocalPoint(),
+      createMergeConflictsPlugin(onMergeConflictsChange, hostEl),
+      createReviewPlugin(),
+    );
   }
 
   let state = EditorState.create({ schema, plugins });

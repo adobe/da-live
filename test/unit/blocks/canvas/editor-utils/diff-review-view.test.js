@@ -3,6 +3,7 @@ import { Y, yDocToProsemirror } from 'da-y-wrapper';
 import { aem2doc, getSchema } from 'da-parser';
 import {
   createReviewNodeViews,
+  createReviewPlugin,
   groupTitle,
   reasonText,
 } from '../../../../../blocks/canvas/editor-utils/diff-review-view.js';
@@ -33,7 +34,10 @@ async function openEditor(html, { withPlugin = false } = {}) {
   const ydoc = new Y.Doc();
   aem2doc(html, ydoc);
   const doc = yDocToProsemirror(getSchema(), ydoc);
-  const additionalPlugins = withPlugin ? [createMergeConflictsPlugin(() => {})] : [];
+  const additionalPlugins = [
+    createReviewPlugin(),
+    ...(withPlugin ? [createMergeConflictsPlugin(() => {})] : []),
+  ];
   const editor = await createTestEditor({ doc, ydoc, additionalPlugins });
   initDaMetadata(ydoc.getMap('daMetadata'));
   editor.view.setProps({ nodeViews: createReviewNodeViews(fallback) });
@@ -107,6 +111,20 @@ describe('diff-review-view', () => {
       expect(upstream.querySelector('.diff-group-side-empty').textContent).to.equal('Removed');
       expect(g3.querySelector('.is-local .diff-group-side-content').textContent).to.include('Charlie local');
       expect(buttons(g3)).to.deep.equal(['Accept Upstream', 'Preserve Local']);
+    });
+
+    it('moves the card to the next member when the first one is removed another way', () => {
+      const { view } = editor;
+      let first;
+      view.state.doc.descendants((node, pos) => {
+        if (!first && node.type.name === 'diff_deleted' && node.attrs.diffGroup === 'g1') first = { node, pos };
+        return !first;
+      });
+      view.dispatch(view.state.tr.delete(first.pos, first.pos + first.node.nodeSize));
+      const g1 = card(view, 'g1');
+      expect(g1).to.not.equal(null);
+      expect(g1.querySelector('.is-local').textContent).to.include('Alpha local');
+      expect(cards(view).map((el) => el.dataset.diffGroup)).to.deep.equal(['g1', 'g2', 'g3', 'g4']);
     });
 
     it('resolves a group from its card', () => {
