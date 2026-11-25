@@ -25,9 +25,7 @@ describe('configured single-author Source connection', () => {
       const url = new URL(input, window.location.href);
       requests.push({ path: url.pathname, method: options.method || 'GET', options });
       if (url.pathname === '/da-rs-demo.json') {
-        return Response.json({
-          apiVersion: 1, provider: 'da-rs', org: 'demo', adminEnv: 'local', collabEnv: 'local', authoringMode: 'single',
-        });
+        return Response.json({ apiVersion: 1, provider: 'da-rs', org: 'demo', adminEnv: 'local', collabEnv: 'local' });
       }
       if (url.pathname === '/ping/demo/site') {
         return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });

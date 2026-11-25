@@ -5,9 +5,10 @@ import { validateDaRsDemoConfig } from '../../../../blocks/shared/da-rs-bootstra
 
 describe('single-author demo configuration', () => {
   const config = { apiVersion: 1, provider: 'da-rs', org: 'demo', adminEnv: 'local', collabEnv: 'local' };
-  it('requires an explicit supported authoring mode', () => {
+  it('accepts supported optional authoring modes', () => {
     expect(validateDaRsDemoConfig(config).authoringMode).to.equal(undefined);
     expect(validateDaRsDemoConfig({ ...config, authoringMode: 'single' }).authoringMode).to.equal('single');
+    expect(validateDaRsDemoConfig({ ...config, authoringMode: 'collaboration' }).authoringMode).to.equal('collaboration');
     expect(() => validateDaRsDemoConfig({ ...config, authoringMode: 'other' })).to.throw();
   });
 });

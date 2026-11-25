@@ -16,7 +16,7 @@ export function validateDaRsDemoConfig(raw) {
   if (raw.apiVersion !== 1 || raw.provider !== 'da-rs'
     || typeof raw.org !== 'string' || !/^[a-z0-9_-]+$/.test(raw.org)
     || !ENV_KEYS.includes(raw.adminEnv) || !ENV_KEYS.includes(raw.collabEnv)
-    || (raw.authoringMode !== undefined && raw.authoringMode !== 'single')) {
+    || (raw.authoringMode !== undefined && !['single', 'collaboration'].includes(raw.authoringMode))) {
     throw new Error('Invalid da-rs demo config');
   }
   return Object.freeze({ ...raw });
@@ -80,6 +80,6 @@ export function daRsDemoEnvDefault(key) {
 export const isDaRsDemoActive = (href = window.location.href) => daRsDemoState.status === 'ready'
   && isDaRsSelected(href);
 
-// Explicitly opt in only for the selected, loopback-hosted demo.
+// Single-author is the default only for the selected, loopback-hosted demo.
 export const isSingleAuthorDemo = () => isDaRsDemoActive()
-  && daRsDemoState.config?.authoringMode === 'single';
+  && daRsDemoState.config?.authoringMode !== 'collaboration';
