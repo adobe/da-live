@@ -184,6 +184,11 @@
   gap: 8px;
 }
 
+.ext-variant-title:disabled,
+.ext-item-title:disabled {
+  cursor: default;
+}
+
 .ext-item-actions {
   display: flex;
   align-items: center;

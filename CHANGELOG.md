@@ -1,3 +1,10 @@
+## [1.37.1](https://github.com/adobe/da-live/compare/v1.37.0...v1.37.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ew:** block all edits for read-only users in EW ([#1811](https://github.com/adobe/da-live/issues/1811)) ([164e44e](https://github.com/adobe/da-live/commit/164e44ef6f18601164118ce509210a48240b8c59))
+
 # [1.37.0](https://github.com/adobe/da-live/compare/v1.36.9...v1.37.0) (2026-11-26)
 
 

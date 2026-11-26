@@ -61,7 +61,7 @@
 
 .ew-comments-threads-list {
   list-style: none;
-  margin: 0;
+  margin: var(--s2-spacing-200) 0;
   padding: 0;
 }
 
