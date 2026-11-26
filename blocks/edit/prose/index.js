@@ -87,7 +87,13 @@ export async function createConnection(path) {
   });
 
   provider.on('connection-close', async (event) => {
-    if (event?.code === 4401 || event?.code === 4403) {
+    // 4403 = authenticated but forbidden: a refreshed token is still forbidden,
+    // and IMS hands out a new token on every refresh, so retrying would loop.
+    if (event?.code === 4403) {
+      provider.shouldConnect = false;
+      return;
+    }
+    if (event?.code === 4401) {
       provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
