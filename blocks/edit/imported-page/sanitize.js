@@ -46,6 +46,12 @@ const REF_KINDS = ['page', 'sheet', 'image'];
 
 const clean = (value, max) => value.replace(/[\p{Cc}\p{Cf}]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 
+function safeImagePath(path) {
+  return typeof path === 'string' && path.startsWith('/content/dam/') && path.length <= 2048
+    && !/[\\?#\p{Cc}\p{Cs}]/u.test(path) && !path.endsWith('/')
+    && !path.split('/').slice(1).some((part) => !part || part === '.' || part === '..');
+}
+
 // Canonical decoded DA fullpath: /org/site/alias... — never a URL, never reverse-parsed.
 export function parseCanonicalPath(path) {
   if (typeof path !== 'string' || path.length > 2000 || !path.startsWith('/')) return null;
@@ -124,6 +130,8 @@ export function sanitizeImportedPage(html, scope) {
       if (value && NUMBER.test(value)) img.setAttribute(name, value);
     });
     copyAttributes(el, img, 'img');
+    const fallback = el.getAttribute('data-aem-image-path');
+    if (safeImagePath(fallback)) img.setAttribute('data-aem-image-path', fallback);
     if (identity?.kind === 'image') {
       if (!images.has(identity.path) && images.size < LIMITS.maxImages) {
         images.set(identity.path, `img-${images.size}`);
@@ -293,7 +301,9 @@ export function serializeImportedPage(root, dataUrls, maxImageChars, routes = ne
   clone.querySelectorAll('img').forEach((img) => {
     const id = img.getAttribute('data-img-id');
     const url = allowed.get(id);
+    const fallback = img.getAttribute('data-aem-image-path');
     img.removeAttribute('data-img-id');
+    img.removeAttribute('data-aem-image-path');
     // Reserve room for each distinct image before spending what's left on repetitions.
     const repeat = emitted.has(id);
     if (url && (!repeat || url.length <= remaining)) {
@@ -305,7 +315,7 @@ export function serializeImportedPage(root, dataUrls, maxImageChars, routes = ne
     }
     const note = clone.ownerDocument.createElement('span');
     note.setAttribute('class', 'aem-image-placeholder');
-    note.textContent = `Image unavailable${img.getAttribute('alt') ? `: ${img.getAttribute('alt')}` : ''}`;
+    note.textContent = fallback || `Image unavailable${img.getAttribute('alt') ? `: ${img.getAttribute('alt')}` : ''}`;
     img.replaceWith(note);
   });
   return clone.innerHTML;

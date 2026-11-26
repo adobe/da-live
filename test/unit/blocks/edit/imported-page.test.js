@@ -502,6 +502,62 @@ describe('imported page route', () => {
     expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image', undefined, 'author', 'author-image']);
   });
 
+  it('displays Franklin block table content and authenticated images in Content view', async () => {
+    const headers = { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' };
+    const paths = [];
+    const block = `<table><thead><tr><th colspan="2">hero</th></tr></thead><tbody>
+      <tr><td>image</td><td><img data-da-source-path="/o/s/assets/hero.png" data-da-source-kind="image" data-aem-image-path="/content/dam/frescopa/hero.png" alt="Hero"></td></tr>
+      <tr><td>text</td><td><h1>Café Vibes, Anywhere</h1></td></tr></tbody></table>`;
+    routeDeps.source = async () => ({
+      get: async (path, extra, options) => {
+        paths.push(path);
+        if (path === details.fullpath) return new Response(options.render === 'author' ? '<p>Layout</p>' : block, { headers });
+        return new Response(Uint8Array.from(atob(PNG), (c) => c.charCodeAt(0)), { headers: { ...headers, 'content-type': 'image/png', 'x-da-source-kind': 'image' } });
+      },
+    });
+    await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    el.querySelectorAll('button')[1].click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    const frameDoc = new DOMParser().parseFromString(el.querySelector('iframe').srcdoc, 'text/html');
+    expect(frameDoc.querySelector('th[colspan="2"]').textContent).to.equal('hero');
+    expect(frameDoc.querySelectorAll('tbody tr')).to.have.length(2);
+    expect(frameDoc.querySelector('tbody img').getAttribute('src')).to.equal(PNG_URL);
+    expect(frameDoc.querySelector('tbody img').hasAttribute('data-aem-image-path')).to.equal(false);
+    expect(frameDoc.querySelector('tbody h1').textContent).to.equal('Café Vibes, Anywhere');
+    expect(paths).to.deep.equal([details.fullpath, details.fullpath, '/o/s/assets/hero.png']);
+  });
+
+  it('displays the authored path as inert text when a Franklin block image cannot load', async () => {
+    const headers = { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' };
+    const block = `<table><tr><td>image</td><td><img data-da-source-path="/o/s/assets/hero.png"
+      data-da-source-kind="image" data-aem-image-path="/content/dam/frescopa/&lt;img&gt;.png"></td></tr></table>`;
+    routeDeps.source = async () => ({
+      get: async (path, extra, options) => {
+        if (path === details.fullpath) return new Response(options.render === 'author' ? '<p>Layout</p>' : block, { headers });
+        return new Response('', { status: 404 });
+      },
+    });
+    await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    el.querySelectorAll('button')[1].click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    const frameDoc = new DOMParser().parseFromString(el.querySelector('iframe').srcdoc, 'text/html');
+    expect(frameDoc.querySelector('.aem-image-placeholder').textContent).to.equal('/content/dam/frescopa/<img>.png');
+    expect(frameDoc.querySelector('tbody img')).to.equal(null);
+    expect(frameDoc.querySelector('tbody a')).to.equal(null);
+  });
+
+  it('does not display unsafe fallback paths or query strings', () => {
+    const markup = '<img data-da-source-path="/o/s/hero.png" data-da-source-kind="image" data-aem-image-path="/content/dam/hero.png?token=secret">';
+    const { root } = sanitizeImportedPage(markup, SCOPE);
+    const html = serializeImportedPage(root, new Map());
+    expect(html).to.contain('Image unavailable');
+    expect(html).not.to.contain('token=secret');
+  });
+
   it('keeps reference text inert if sheet navigation is not supported', async () => {
     const body = '<a data-da-source-path="/o/s/model.json" data-da-source-kind="sheet" href="https://evil">Open model Sheet</a>';
     routeDeps.source = async () => ({ get: async () => new Response(body, { headers: { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } }) });
