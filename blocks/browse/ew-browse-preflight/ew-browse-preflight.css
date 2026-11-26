@@ -1,37 +1,27 @@
-/* Keep the header (title + close) and footer (actions) in view: only the content scrolls.
-   Fixed height so opening and closing rows doesn't resize the dialog. */
-da-dialog::part(inner) {
-  display: flex;
-  flex-direction: column;
+/* nx-dialog keeps its title (and Publish, when shown) in view and scrolls only the rows.
+   Fixed height so opening and closing rows doesn't resize the dialog; nx-dialog still
+   clamps it to the viewport. */
+.da-preflight-dialog {
+  --nx-dialog-min-width: 784px;
+  --nx-dialog-max-width: 784px;
+}
+
+.da-preflight-dialog::part(panel) {
+  position: relative;
   height: 85vh;
-  overflow: hidden;
 }
 
-da-dialog::part(header),
-da-dialog::part(footer) {
-  flex-shrink: 0;
-}
-
-da-dialog::part(content) {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* The quiet dialog only pads its bottom when it has a footer. */
-da-dialog.no-footer::part(content) {
-  padding-bottom: 24px;
+/* nx-dialog has no close button. Pinned to the panel (not the scrolling body), centered
+   on the title line and over the rows' right-most icons. */
+.da-preflight-close {
+  position: absolute;
+  top: calc(var(--s2-spacing-500) + 11px - 16px);
+  right: calc(var(--s2-spacing-500) + 22px - 16px);
 }
 
 .da-preflight-rows {
   display: flex;
   flex-direction: column;
-  width: 720px;
-  max-width: 90vw;
-
-  /* 12px + 12px summary padding centers each row's right-most icon under the
-     dialog's close button (34px in) and starts the chevron at the title (24px). */
-  padding-inline: 12px;
   font-family: var(--s2-font-family);
 }
 
@@ -125,12 +115,6 @@ da-dialog.no-footer::part(content) {
   padding: 12px 0;
   color: var(--s2-orange-900);
   font-size: 14px;
-}
-
-.da-preflight-footer {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* Pass/fail check icons — replicated from da-nx's page-evaluation.css because that

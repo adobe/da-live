@@ -100,8 +100,6 @@ describe('EWBrowsePreflight', () => {
     it('emits a single close event from the host when the dialog closes', async () => {
       mountPages(1);
       await el.updateComplete;
-      const dialog = el.shadowRoot.querySelector('da-dialog');
-      await dialog.updateComplete;
       let hostCloses = 0;
       let outerCloses = 0;
       const countOuter = () => { outerCloses += 1; };
@@ -111,6 +109,15 @@ describe('EWBrowsePreflight', () => {
       document.body.removeEventListener('close', countOuter);
       expect(hostCloses).to.equal(1);
       expect(outerCloses).to.equal(1);
+    });
+
+    it('closes once from the close button', async () => {
+      mountPages(1);
+      await el.updateComplete;
+      let hostCloses = 0;
+      el.addEventListener('close', () => { hostCloses += 1; });
+      el.shadowRoot.querySelector('.da-preflight-close').click();
+      expect(hostCloses).to.equal(1);
     });
 
     it('stays open when a nested dialog inside a result closes', async () => {
@@ -129,7 +136,6 @@ describe('EWBrowsePreflight', () => {
     it('closes when the chat panel is opened, but not for other panels', async () => {
       mountPages(1);
       await el.updateComplete;
-      await el.shadowRoot.querySelector('da-dialog').updateComplete;
       let hostCloses = 0;
       el.addEventListener('close', () => { hostCloses += 1; });
       const open = (section) => document.dispatchEvent(new CustomEvent('nx-panel-open', { detail: { section } }));
@@ -266,22 +272,19 @@ describe('EWBrowsePreflight', () => {
       const icons = [...el.shadowRoot.querySelectorAll('.da-preflight-row-actions .ui-artifact-pe-icon')];
       expect(icons.map((i) => i.getAttribute('aria-label'))).to.deep.equal(['Not applicable', 'Not applicable']);
       expect(icons.every((i) => i.classList.contains('ui-artifact-pe-tone-neutral'))).to.be.true;
-      const buttons = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
+      const buttons = el.shadowRoot.querySelectorAll('nx-dialog > [slot="actions"]');
       expect(buttons).to.have.length(1);
       const [publish] = buttons;
       expect(publish.className).to.equal('nx-form-btn-primary');
       expect(publish.textContent.trim()).to.equal('Publish Passing (2)');
     });
 
-    it('shows no footer when the user cannot publish', async () => {
+    it('shows no actions when the user cannot publish', async () => {
       window.fetch = () => Promise.resolve(new Response('{}'));
       mount([{ path: '/o/s/data.json', ext: 'json' }]);
       el.canPublish = false;
       await el.updateComplete;
-      expect(el.shadowRoot.querySelector('.da-preflight-footer')).to.be.null;
-      const dialog = el.shadowRoot.querySelector('da-dialog');
-      expect(dialog.action).to.be.null;
-      expect(dialog.classList.contains('no-footer')).to.be.true;
+      expect(el.shadowRoot.querySelector('nx-dialog > [slot="actions"]')).to.be.null;
     });
 
     it('stays open on Publish Passing and shows "Checking..." while the host checks', async () => {
@@ -297,7 +300,7 @@ describe('EWBrowsePreflight', () => {
 
       el.checking = true;
       await el.updateComplete;
-      const publish = el.shadowRoot.querySelector('.da-preflight-footer button');
+      const publish = el.shadowRoot.querySelector('nx-dialog > [slot="actions"]');
       expect(publish.textContent.trim()).to.equal('Checking...');
       expect(publish.disabled).to.be.true;
       el._handlePublishPassing();
@@ -320,7 +323,7 @@ describe('EWBrowsePreflight', () => {
       expect(el._rows.map((r) => r.status)).to.deep.equal(['error', 'error', 'pass']);
       expect(el._passing).to.deep.equal([json]);
       expect(calls).to.equal(0);
-      expect(el.shadowRoot.querySelectorAll('da-dialog > .da-preflight-error')).to.have.length(1);
+      expect(el.shadowRoot.querySelectorAll('nx-dialog > .da-preflight-error')).to.have.length(1);
     });
 
     it('labels rows like browse: name without extension, site-relative path in tooltip', async () => {

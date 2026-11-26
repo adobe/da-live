@@ -5,8 +5,8 @@ import { adaptEvaluation } from '../../canvas/ew-preflight/adapter.js';
 import { evaluatePage } from '../../canvas/ew-preflight/api.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { iconPathForExt } from '../../shared/icons.js';
-import '../../shared/da-dialog/da-dialog.js';
 
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const [BUTTONS, FORM, SPINNER, STYLE] = await Promise.all([
@@ -31,10 +31,7 @@ function itemPath(item) {
 
 const REFRESH_ICON = '/img/icons/s2-icon-refresh-20-n.svg';
 const CHEVRON_ICON = '/img/icons/s2-icon-chevronright-20-n.svg';
-
-// da-dialog only renders its footer region when `action` is truthy; we supply our
-// own Publish button via the footer-right slot, so this is just a presence sentinel.
-const DIALOG_FOOTER = { style: '', label: '', click: () => {} };
+const CLOSE_ICON = '/img/icons/s2-icon-close-20-n.svg';
 
 // The result renderer (<nx-page-eval>) lives in da-nx; importing it defines the
 // element and loads its CSS as a side effect. Memoized so repeated evaluations
@@ -163,7 +160,7 @@ export default class EWBrowsePreflight extends LitElement {
   }
 
   _closeDialog() {
-    this.shadowRoot.querySelector('da-dialog')?.close();
+    this.shadowRoot.querySelector('nx-dialog')?.close();
   }
 
   // The modal would cover the chat panel, e.g. after a result's "Add to chat" or "Apply change".
@@ -172,7 +169,7 @@ export default class EWBrowsePreflight extends LitElement {
   };
 
   _handleDialogClose(e) {
-    // da-dialog's own `close` is composed; stop it so the host only sees ours.
+    // nx-dialog's own `close` is composed; stop it so the host only sees ours.
     e?.stopPropagation();
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
   }
@@ -241,28 +238,28 @@ export default class EWBrowsePreflight extends LitElement {
   render() {
     const passing = this._passing;
     return html`
-      <da-dialog
-        title="Preflight"
-        size="auto"
-        emphasis="quiet"
-        class=${this.canPublish ? '' : 'no-footer'}
-        .action=${this.canPublish ? DIALOG_FOOTER : null}
-        @close=${this._handleDialogClose}>
+      <nx-dialog class="da-preflight-dialog" title="Preflight" @close=${this._handleDialogClose}>
+        <button
+          type="button"
+          class="da-preflight-close nx-action-btn-icon"
+          aria-label="Close"
+          @click=${this._closeDialog}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLOSE_ICON}#icon"></use></svg>
+        </button>
         ${this._authError ? html`<p class="da-preflight-error" role="alert">${this._authError}</p>` : nothing}
         <div class="da-preflight-rows">
           ${this._rows.map((row) => this._renderRow(row))}
         </div>
         ${this.canPublish ? html`
-          <div slot="footer-right" class="da-preflight-footer">
-            <button
-              type="button"
-              class="nx-form-btn-primary"
-              ?disabled=${this.checking || this._busy || passing.length === 0}
-              @click=${this._handlePublishPassing}>
-              ${this.checking ? 'Checking...' : `Publish Passing${passing.length ? ` (${passing.length})` : ''}`}
-            </button>
-          </div>` : nothing}
-      </da-dialog>`;
+          <button
+            slot="actions"
+            type="button"
+            class="nx-form-btn-primary"
+            ?disabled=${this.checking || this._busy || passing.length === 0}
+            @click=${this._handlePublishPassing}>
+            ${this.checking ? 'Checking...' : `Publish Passing${passing.length ? ` (${passing.length})` : ''}`}
+          </button>` : nothing}
+      </nx-dialog>`;
   }
 }
 
