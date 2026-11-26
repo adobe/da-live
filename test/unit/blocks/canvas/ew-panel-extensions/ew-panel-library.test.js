@@ -568,8 +568,11 @@ describe('Ew panel library icons: preview + search', () => {
 
 describe('Ew panel library blocks sidebar', () => {
   let el;
+  let savedView;
 
   beforeEach(async () => {
+    savedView = getExtensionsBridge().view;
+    getExtensionsBridge().view = { editable: true };
     el = document.createElement('ew-panel-library');
     el.extension = { name: 'blocks', ootb: true, sources: [] };
     document.body.append(el);
@@ -588,8 +591,23 @@ describe('Ew panel library blocks sidebar', () => {
   });
 
   afterEach(() => {
+    getExtensionsBridge().view = savedView;
     el.remove();
     document.querySelector('ew-block-library-modal')?.remove();
+  });
+
+  it('offers browsing only to read-only users (#1808)', async () => {
+    getExtensionsBridge().view = { editable: false };
+    el._expandedBlock = '/hero';
+    el.requestUpdate();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.ext-variant-title').disabled).to.be.true;
+
+    await el._openBlockLibrary(el._items[0]);
+    const modal = document.querySelector('ew-block-library-modal');
+    await modal.updateComplete;
+    expect(modal.onInsert).to.equal(undefined);
   });
 
   it('expands groups and filters automatically expanded variants by metadata', async () => {
