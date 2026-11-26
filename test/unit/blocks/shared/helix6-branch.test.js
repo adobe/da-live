@@ -111,6 +111,103 @@ describe('bound Helix 6 branch transport', () => {
     expect(calls.every(({ target }) => new URL(target).origin === DA_ORIGIN)).to.equal(true);
   });
 
+  it('loads and saves a branch Sheet with the original validator and branch instance', async () => {
+    const url = new URL(window.location.href);
+    url.hash = '#/h6test/work~draft/data';
+    window.history.replaceState(null, '', url);
+    const fallback = window.fetch;
+    const instance = '71bb4b72-b604-4cc7-99c8-c3e288223a89';
+    const headers = {
+      'content-branch': 'draft',
+      'x-da-source-mode': 'helix6',
+      'x-da-branch-instance': instance,
+      'x-da-actions': '/work/data.json=read,write',
+      ETag: '"sheet-v1"',
+    };
+    window.fetch = async (target, options = {}) => {
+      if (target.endsWith('/source/data.json')) {
+        calls.push({ target, options });
+        if (options.method === 'PUT') return new Response('', { status: 201, headers: { ...headers, ETag: '"sheet-v2"' } });
+        return new Response(JSON.stringify({ ':type': 'sheet', data: [{ key: 'old' }] }), { headers });
+      }
+      return fallback(target, options);
+    };
+    const { getData } = await import('../../../../blocks/sheet/utils/index.js');
+    const { saveSheets, staleCheck } = await import('../../../../blocks/sheet/utils/utils.js');
+    const details = { org: 'h6test', site: 'work~draft', path: '/data.json', view: 'sheet' };
+    try {
+      const loaded = await getData(details);
+      expect(loaded[0].data).to.deep.equal([['key'], ['old']]);
+      staleCheck.start({ details, onStale: () => {} });
+      staleCheck.markEdited();
+      const sheet = { name: 'data', getData: () => [['key'], ['new']], getConfig: () => ({ columns: [{ width: '300' }] }) };
+      expect(await saveSheets([sheet])).to.equal(true);
+      const put = calls.find(({ options }) => options.method === 'PUT');
+      expect(put.target).to.equal(`${DA_ORIGIN}/h6test/sites/work~draft/source/data.json`);
+      expect(put.options.headers['Content-Type']).to.equal('application/json');
+      expect(put.options.headers['If-Match']).to.equal('"sheet-v1"');
+      expect(put.options.headers['X-DA-Branch-Instance']).to.equal(instance);
+      expect(JSON.parse(put.options.body).data).to.deep.equal([{ key: 'new' }]);
+      expect(staleCheck.isDirty).to.equal(false);
+    } finally {
+      staleCheck.stop();
+    }
+  });
+
+  it('sends an atomic create condition and branch instance for a new Sheet', async () => {
+    const api = await getNx2Api();
+    const instance = '71bb4b72-b604-4cc7-99c8-c3e288223a89';
+    await api.source.replace('/h6test/work~draft/new.json', { body: '{}', ifNoneMatch: '*', branchInstance: instance });
+    const put = calls.find(({ options }) => options.method === 'PUT');
+    expect(put.options.headers['Content-Type']).to.equal('application/json');
+    expect(put.options.headers['If-None-Match']).to.equal('*');
+    expect(put.options.headers['X-DA-Branch-Instance']).to.equal(instance);
+    expect(put.target).to.equal(`${DA_ORIGIN}/h6test/sites/work~draft/source/new.json`);
+  });
+
+  it('creates a new branch Sheet only in the verified branch incarnation', async () => {
+    const url = new URL(window.location.href);
+    url.hash = '#/h6test/work~draft/new';
+    window.history.replaceState(null, '', url);
+    const fallback = window.fetch;
+    const instance = '71bb4b72-b604-4cc7-99c8-c3e288223a89';
+    const headers = {
+      'content-branch': 'draft',
+      'x-da-source-mode': 'helix6',
+      'x-da-branch-instance': instance,
+      'x-da-actions': '/work=read,write',
+      ETag: '"new-v1"',
+    };
+    window.fetch = async (target, options = {}) => {
+      if (target.endsWith('/source/') && options.method === 'HEAD') {
+        calls.push({ target, options });
+        return new Response(null, { headers });
+      }
+      if (target.endsWith('/source/new.json')) {
+        calls.push({ target, options });
+        if (options.method === 'PUT') return new Response('', { status: 201, headers });
+        return new Response('', { status: 404 });
+      }
+      return fallback(target, options);
+    };
+    const { getData } = await import('../../../../blocks/sheet/utils/index.js');
+    const { saveSheets, staleCheck } = await import('../../../../blocks/sheet/utils/utils.js');
+    const details = { org: 'h6test', site: 'work~draft', path: '/new.json', view: 'sheet' };
+    try {
+      expect((await getData(details))[0].sheetName).to.equal('data');
+      staleCheck.start({ details, onStale: () => {} });
+      staleCheck.markEdited();
+      const sheet = { name: 'data', getData: () => [['key'], ['new']], getConfig: () => ({ columns: [{ width: '300' }] }) };
+      expect(await saveSheets([sheet])).to.equal(true);
+      const put = calls.find(({ options }) => options.method === 'PUT');
+      expect(put.options.headers['If-None-Match']).to.equal('*');
+      expect(put.options.headers['X-DA-Branch-Instance']).to.equal(instance);
+      expect(put.options.headers).not.to.have.property('If-Match');
+    } finally {
+      staleCheck.stop();
+    }
+  });
+
   it('encodes Author render and image options as Source query parameters', async () => {
     window.history.replaceState(null, '', '/edit?da-source=da-rs#/h6test/work/page');
     invalidateDaRsDiscovery();

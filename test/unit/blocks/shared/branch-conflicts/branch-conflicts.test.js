@@ -81,6 +81,21 @@ describe('branch sync and publish', () => {
     expect(editor.inert).to.equal(false);
   });
 
+  it('reloads a direct Sheet after sync even outside single-author mode', async () => {
+    const sheet = document.createElement('div');
+    sheet.className = 'da-sheet';
+    sheet.hasBranchSaveBarrier = () => true;
+    document.body.append(sheet);
+    const reload = sinon.stub(element, 'reloadBranch');
+    try {
+      await element.sync();
+      expect(reload.calledOnce).to.equal(true);
+    } finally {
+      reload.restore();
+      sheet.remove();
+    }
+  });
+
   it('uses merge wording for branch actions while distinguishing AEM publishing', async () => {
     const action = element.shadowRoot.querySelector('[part~="publish-action"]');
     expect(action.textContent.trim()).to.equal('Merge to default');

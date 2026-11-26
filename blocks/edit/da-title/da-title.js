@@ -294,28 +294,40 @@ export default class DaTitle extends LitElement {
         }
       }
 
-      const savedOk = await staleCheck.runSave(async () => {
-        let resp;
-        if (view === 'sheet') {
-          const sheetPath = fullpath.replace('.json', '');
-          resp = await saveToDa(sheetPath, this.sheet);
-        } else {
-          resp = await saveDaConfig(fullpath, this.sheet);
+      let savedOk;
+      if (view === 'sheet' && staleCheck.conditionalSession) {
+        const { forceSaveSheets } = await import('../../sheet/utils/utils.js');
+        const result = await forceSaveSheets(document.querySelector('.da-sheet'));
+        savedOk = result.ok;
+        if (savedOk) this.handleSuccess('save');
+        else {
+          this._status = { message: result.error || 'Unable to confirm Sheet save.' };
+          this._isSending = false;
         }
-        if (!resp.ok) {
-          if (view === 'config') {
-            // eslint-disable-next-line no-console
-            console.log('Saving configuration failed because:', resp.status, await resp.text());
+      } else {
+        savedOk = await staleCheck.runSave(async () => {
+          let resp;
+          if (view === 'sheet') {
+            const sheetPath = fullpath.replace('.json', '');
+            resp = await saveToDa(sheetPath, this.sheet);
+          } else {
+            resp = await saveDaConfig(fullpath, this.sheet);
           }
-          return false;
-        }
-        // markSynced inside runSave so _lastEtag is updated before pendingSave
-        // resolves — a concurrent read that unblocks on pendingSave otherwise
-        // sees a stale baseline etag.
-        staleCheck.markSynced(resp.headers.get('etag'));
-        this.handleSuccess('save');
-        return true;
-      });
+          if (!resp.ok) {
+            if (view === 'config') {
+            // eslint-disable-next-line no-console
+              console.log('Saving configuration failed because:', resp.status, await resp.text());
+            }
+            return false;
+          }
+          // markSynced inside runSave so _lastEtag is updated before pendingSave
+          // resolves — a concurrent read that unblocks on pendingSave otherwise
+          // sees a stale baseline etag.
+          staleCheck.markSynced(resp.headers.get('etag'));
+          this.handleSuccess('save');
+          return true;
+        });
+      }
       if (!savedOk) return;
     }
 

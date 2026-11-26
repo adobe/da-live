@@ -87,6 +87,7 @@ describe('sheet route init gating', () => {
     });
     expect(ctx.start.called).to.be.false;
     expect(ctx.tabs.calledOnce).to.be.true;
+    expect(el.querySelector('da-branch-selector')).to.equal(null);
     const [options] = ctx.tabs.firstCall.args[1];
     expect(options.editable).to.equal(false);
     expect(options.data).to.deep.equal([['Key', '2'], ['=SUM(A1)', 'two']]);
@@ -179,6 +180,8 @@ describe('sheet route init gating', () => {
     await started;
     expect(ctx.discover.calledOnceWithExactly('org', 'site')).to.be.true;
     expect(el.querySelector('da-title')).to.not.equal(null);
+    expect(el.querySelector('da-branch-selector')).to.not.equal(null);
+    expect(el.querySelector('.da-sheet').forceSave).to.be.a('function');
     expect(ctx.start.calledOnce).to.be.true;
   });
 });

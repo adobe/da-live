@@ -164,7 +164,7 @@ async function saveJson(path, sheets, jsonToSave, type = 'sheet') {
   }
 
   // type === 'sheet'
-  if (isDaRsBinding() && !path.split('/')[2]?.includes('~') && source.replace) {
+  if (isDaRsBinding() && source.replace) {
     return source.replace(path, { body });
   }
   return source.save(path, { body });

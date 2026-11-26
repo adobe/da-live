@@ -2,6 +2,9 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import { NOT_PERMITTED } from '../../shared/empty-list.js';
 import makeKeyboardAccessible, { releaseKeyboard } from './keyboard.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
+import { parseSiteSegment } from '../../shared/content-branch-context.js';
+import { createConditionalSheetSession } from './conditional-save.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
@@ -48,6 +51,7 @@ function finishSetup(el, data) {
     sheet.options.ondeleterow = save;
     sheet.options.ondeletecolumn = save;
     sheet.options.onmoverow = save;
+    sheet.options.onresizecolumn = save;
     makeKeyboardAccessible(sheet);
   });
   releaseKeyboard();
@@ -122,8 +126,11 @@ function emitLoadStatus(errMsg) {
 // Takes a pathDetails object ({ org, site, path, view }). For a version restore,
 // pass the same doc details plus a `versionId` and it routes through versions.get.
 export async function getData(input) {
-  const { config, source, versions } = await getNx2Api();
+  const { href } = window.location;
+  const api = await getNx2Api();
+  const { config, source, versions } = api;
   const { org, site, path, view, versionId } = input;
+  const conditional = !versionId && view === 'sheet' && isDaRsBinding() && await api.isHlx6(org, site);
 
   // Version snapshots are immutable; only live-file reads need to wait for our own writes.
   if (!versionId) await staleCheck.awaitPendingSave();
@@ -137,6 +144,21 @@ export async function getData(input) {
     resp = await config.get({ org, site, cachebust: true });
   } else {
     resp = await source.get({ org, site, path, cachebust: true });
+  }
+
+  if (conditional) {
+    try {
+      const { branch } = parseSiteSegment(site);
+      const options = { details: input, branch, response: resp, source, href };
+      const session = await createConditionalSheetSession(options);
+      staleCheck.setConditionalSession(session);
+      resp.permissions = session.permissions;
+    } catch (error) {
+      permissions = [];
+      canWrite = false;
+      emitLoadStatus(error.message || 'Unable to verify the Sheet.');
+      return getDefaultSheet();
+    }
   }
 
   // Set permissions even if the file is a 404

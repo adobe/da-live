@@ -2,7 +2,7 @@ import { LitElement, html, nothing, render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
-import { discoverDaRsCapabilities, siteItemCapabilities } from '../shared/da-rs-provider.js';
+import { discoverDaRsCapabilities, isDaRsBinding, siteItemCapabilities } from '../shared/da-rs-provider.js';
 import {
   ImportedSheetError, validateImportedResponse, parseImportedEnvelope,
   buildImportedSheet, installImportedGuards,
@@ -10,9 +10,10 @@ import {
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
-import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
+import { staleCheck, showDaDialog, restoreVersion, forceSaveSheets } from './utils/utils.js';
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
+import '../shared/branch-selector/branch-selector.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -199,7 +200,12 @@ async function setSheet(details, daTitle, daSheet) {
   daTitle.details = details;
   daSheet.details = details;
 
-  await reloadSheet(daTitle, daSheet);
+  try {
+    await reloadSheet(daTitle, daSheet);
+  } catch (error) {
+    document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { errMsg: error.message || 'Unable to open Sheet.' } }));
+    return;
+  }
 
   const onStale = async ({ dirty }) => {
     if (!dirty) {
@@ -354,6 +360,35 @@ export default async function init(el) {
     return;
   }
 
+  const selector = document.createElement('da-branch-selector');
+  selector.org = details.org;
+  selector.site = details.site;
+  if (details.view === 'sheet') {
+    daSheet.forceSave = () => forceSaveSheets(daSheet);
+    daSheet.hasBranchSaveBarrier = () => isDaRsBinding();
+  }
+  document.addEventListener('sheet-save-error', ({ detail: { message } }) => {
+    let alert = wrapper.querySelector('.da-sheet-save-error');
+    if (!message) {
+      alert?.remove();
+      return;
+    }
+    if (!alert) {
+      alert = document.createElement('p');
+      alert.className = 'da-sheet-save-error';
+      alert.setAttribute('role', 'alert');
+      wrapper.prepend(alert);
+    }
+    alert.textContent = message;
+  });
+  window.addEventListener('beforeunload', (event) => {
+    const editingCell = daSheet.jexcel?.some((sheet) => Boolean(sheet.edition));
+    if (staleCheck.isDirty || editingCell || wrapper.querySelector('da-sheet-tabs')?.hasPendingEdit) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
   let isOnline = window.navigator.onLine;
   let isDirty = false;
   const applyStatus = () => {
@@ -379,7 +414,8 @@ export default async function init(el) {
   // Set data against the title & sheet
   setSheet(details, daTitle, daSheet);
 
-  el.append(daTitle, versionWrapper);
+  if (details.view === 'sheet') el.append(daTitle, selector, versionWrapper);
+  else el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
     try {
@@ -395,6 +431,8 @@ export default async function init(el) {
       return;
     }
     setSheet(details, daTitle, daSheet);
+    selector.org = details.org;
+    selector.site = details.site;
     daSheetPanes.pathDetails = details;
   });
 }

@@ -1,8 +1,9 @@
-import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
+import { convertSheets, saveToDa } from '../../edit/utils/helpers.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
+let saveTimer;
 
 // Cloudflare downgrades strong ETags to weak (W/"...") whenever it transforms a
 // response body (e.g. gzip/brotli on GETs), so the same file's POST response and a
@@ -26,6 +27,7 @@ class StaleCheck {
     // was in flight keep the indicator in "saving". Null when no save is live.
     this._editSeq = 0;
     this._savingSeq = null;
+    this._conditionalSession = null;
   }
 
   // `details` is the pathDetails object ({ org, site, path, view }).
@@ -37,6 +39,8 @@ class StaleCheck {
   }
 
   stop() {
+    clearTimeout(saveTimer);
+    saveTimer = undefined;
     if (this._intervalId) clearInterval(this._intervalId);
     this._intervalId = null;
     this._doc = null;
@@ -49,6 +53,7 @@ class StaleCheck {
     this._pendingSave = null;
     this._editSeq = 0;
     this._savingSeq = null;
+    this._conditionalSession = null;
     if (wasDirty) document.dispatchEvent(new CustomEvent('sheet-clean'));
   }
 
@@ -79,6 +84,12 @@ class StaleCheck {
   get isBlocked() {
     return this._saveBlocked;
   }
+
+  get isDirty() { return this._hasLocalEdits; }
+
+  setConditionalSession(session) { this._conditionalSession = session; }
+
+  get conditionalSession() { return this._conditionalSession; }
 
   // Loops so a save that started mid-wait is also awaited.
   async awaitPendingSave() {
@@ -132,32 +143,59 @@ class StaleCheck {
 
 export const staleCheck = new StaleCheck();
 
-export const saveSheets = async (sheets) => {
-  document.querySelector('da-sheet-panes').data = convertSheets(sheets);
+const reportSaveError = (message) => document.dispatchEvent(new CustomEvent('sheet-save-error', { detail: { message } }));
+
+export const saveSheets = async (sheets, expectedHref = window.location.href) => {
+  const session = staleCheck.conditionalSession;
 
   // Bail before writing if the remote moved out from under us — protects against
   // last-write-wins between concurrent editors. Drift triggers the onStale flow.
-  if (await staleCheck.checkForDrift()) return false;
+  if (staleCheck.isBlocked || (!session && await staleCheck.checkForDrift())) return false;
 
-  const { hash } = window.location;
-  const pathname = hash.replace('#', '');
-  return staleCheck.runSave(async () => {
-    const dasSave = await saveToDa(pathname, sheets);
-    if (!dasSave.ok) {
-      // eslint-disable-next-line no-console
-      console.error('Error saving sheet', dasSave);
-      return false;
-    }
-    staleCheck.markSynced(dasSave.headers.get('etag'));
-    return true;
-  });
+  try {
+    if (window.location.href !== expectedHref) throw new Error('The Sheet context changed. Copy your edits.');
+    return await staleCheck.runSave(async () => {
+      if (window.location.href !== expectedHref || session !== staleCheck.conditionalSession) {
+        throw new Error('The Sheet context changed. Copy your edits.');
+      }
+      const json = convertSheets(sheets);
+      const panes = document.querySelector('da-sheet-panes');
+      if (panes) panes.data = json;
+      const pathname = new URL(expectedHref).hash.replace('#', '');
+      const response = session
+        ? await session.save(JSON.stringify(json)) : await saveToDa(pathname, sheets);
+      if (!response?.ok) throw new Error(`Sheet save failed (${response?.status ?? 'no response'}). Copy your edits.`);
+      staleCheck.markSynced(response.headers.get('etag'));
+      reportSaveError('');
+      return true;
+    });
+  } catch (error) {
+    reportSaveError(error.message || 'Sheet save failed. Copy your edits.');
+    return false;
+  }
 };
 
-const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+export async function forceSaveSheets(element) {
+  if (!element?.jexcel) return { ok: false, error: 'The Sheet is not ready to save.' };
+  const tabs = element.parentElement?.querySelector('da-sheet-tabs');
+  if (tabs?.hasPendingEdit) return { ok: false, error: 'Finish or cancel the Sheet tab rename first.' };
+  clearTimeout(saveTimer);
+  for (const sheet of element.jexcel) {
+    if (sheet.edition) sheet.closeEditor(sheet.edition[0], true);
+  }
+  clearTimeout(saveTimer);
+  saveTimer = undefined;
+  await staleCheck.awaitPendingSave();
+  while (staleCheck.isDirty) {
+    if (!await saveSheets(element.jexcel)) return { ok: false, error: 'Sheet save was not confirmed. Copy your edits.' };
+  }
+  return { ok: true };
+}
 
 export async function restoreVersion(daTitle, daSheet, versionData) {
   const initSheet = (await import('./index.js')).default;
   daTitle.sheet = await initSheet(daSheet, versionData);
+  staleCheck.markEdited();
   return saveSheets(daSheet.jexcel);
 }
 
@@ -166,7 +204,9 @@ export function handleSave(jexcel, view) {
   staleCheck.markEdited();
   if (view === 'config') return;
   if (staleCheck.isBlocked) return;
-  debouncedSaveSheets(jexcel);
+  clearTimeout(saveTimer);
+  const { href } = window.location;
+  saveTimer = setTimeout(() => { saveSheets(jexcel, href); }, DEBOUNCE_TIME);
 }
 
 export async function showDaDialog({ title, body, confirmLabel }) {

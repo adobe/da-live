@@ -20,6 +20,7 @@ const STATUS_DURATION_MS = 5000;
 const revision = (value) => Number.isSafeInteger(value) && value >= 0;
 const segment = (value) => typeof value === 'string' && !!value && value !== '.' && value !== '..' && !/[/\\]/.test(value);
 const uncertain = (error) => !(error instanceof BranchingError) || error.status >= 500;
+const hasDirectSheetSession = () => document.querySelector('.da-sheet')?.hasBranchSaveBarrier?.() === true;
 const validResult = (result, statuses) => statuses.includes(result?.status)
   && (result.status !== 'needs-resolution' || segment(result.syncId));
 const scope = (hash) => hash.split('/').slice(0, 3).join('/');
@@ -272,9 +273,13 @@ export class DaBranchConflicts extends LitElement {
       }
       this.dispatchEvent(new CustomEvent('branch-changed', { bubbles: true, composed: true }));
       // Reconciliation can replace Source without a collaboration invalidation.
-      if (isSingleAuthorDemo() && result.status !== 'nothing-to-publish') window.location.reload();
+      if ((isSingleAuthorDemo() || hasDirectSheetSession()) && result.status !== 'nothing-to-publish') {
+        this.reloadBranch();
+      }
     } else throw new Error('Invalid branch operation response');
   }
+
+  reloadBranch() { window.location.reload(); }
 
   sync() {
     return this.run(async (ctx) => {

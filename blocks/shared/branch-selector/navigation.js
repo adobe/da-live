@@ -145,7 +145,8 @@ export function installBranchHashGuard(options = {}) {
     const oldScope = stableHash.slice(2).split('/').slice(0, 2).join('/');
     const newScope = targetHash.slice(2).split('/').slice(0, 2).join('/');
     const mounted = currentEditor(document);
-    const direct = mounted?.wsProvider?.singleAuthor || mounted?.hasSingleAuthorProvider?.();
+    const direct = mounted?.wsProvider?.singleAuthor || mounted?.hasSingleAuthorProvider?.()
+      || mounted?.hasBranchSaveBarrier?.();
     if (!direct && ((!target && !old) || oldScope === newScope)) {
       stableHash = targetHash;
       return;

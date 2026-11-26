@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   saveSheets,
+  forceSaveSheets,
   handleSave,
   staleCheck,
   findColumnsWithDataButNoHeader,
   colIndexToLetter,
 } = await import('../../../../blocks/sheet/utils/utils.js');
+const { switchContentBranch } = await import('../../../../blocks/shared/branch-selector/navigation.js');
 
 // The new api.js makes an hlx6 upgrade probe before each source op. The probe
 // must respond without an x-api-upgrade-available header so the source URL
@@ -234,6 +236,116 @@ describe('sheet/utils utils', () => {
       // wait beyond the 1000ms debounce
       await new Promise((r) => { setTimeout(r, 1200); });
       expect(captured).to.contain('/source/o/r/test');
+    });
+  });
+
+  describe('branch save barrier', () => {
+    afterEach(() => { staleCheck.stop(); });
+
+    it('commits an active cell and flushes its debounced save', async () => {
+      window.history.replaceState(null, '', '/sheet#/demo/work~draft/test');
+      const sheets = [buildSheet('data', [['key'], ['value']])];
+      let written;
+      staleCheck.setConditionalSession({
+        save: async (body) => {
+          written = JSON.parse(body);
+          return new Response('', { status: 201, headers: { ETag: '"next"' } });
+        },
+      });
+      sheets[0].edition = ['active-cell'];
+      sheets[0].closeEditor = (cell, commit) => {
+        expect(cell).to.equal('active-cell');
+        expect(commit).to.equal(true);
+        sheets[0].edition = null;
+        handleSave(sheets, 'sheet');
+      };
+      expect(await forceSaveSheets({ jexcel: sheets })).to.deep.equal({ ok: true });
+      expect(written.data).to.deep.equal([{ key: 'value' }]);
+      expect(staleCheck.isDirty).to.equal(false);
+    });
+
+    it('refuses navigation and retains dirty state after a failed save', async () => {
+      window.history.replaceState(null, '', '/sheet#/demo/work~draft/test');
+      const sheets = [buildSheet('data', [['key'], ['value']])];
+      staleCheck.setConditionalSession({ save: async () => { throw new Error('conflict'); } });
+      handleSave(sheets, 'sheet');
+      const result = await forceSaveSheets({ jexcel: sheets });
+      expect(result.ok).to.equal(false);
+      expect(result.error).to.contain('not confirmed');
+      expect(staleCheck.isDirty).to.equal(true);
+    });
+
+    it('does not navigate while a Sheet tab rename is unfinished', async () => {
+      const sheets = [buildSheet('data', [['key'], ['value']])];
+      const parentElement = { querySelector: () => ({ hasPendingEdit: true }) };
+      const element = { jexcel: sheets, parentElement };
+      staleCheck.markEdited();
+      const result = await forceSaveSheets(element);
+      expect(result.ok).to.equal(false);
+      expect(result.error).to.contain('tab rename');
+      expect(staleCheck.isDirty).to.equal(true);
+    });
+
+    it('flushes edits made while an earlier save is in flight', async () => {
+      window.history.replaceState(null, '', '/sheet#/demo/work~draft/test');
+      let value = 'first';
+      const sheets = [buildSheet('data', [['key'], ['first']])];
+      sheets[0].getData = () => [['key'], [value]];
+      let release;
+      let started;
+      const startedSave = new Promise((resolve) => { started = resolve; });
+      const bodies = [];
+      staleCheck.setConditionalSession({
+        save: async (body) => {
+          bodies.push(JSON.parse(body).data[0].key);
+          if (bodies.length === 1) {
+            started();
+            await new Promise((resolve) => { release = resolve; });
+          }
+          return new Response('', { status: 201, headers: { ETag: '"next"' } });
+        },
+      });
+      staleCheck.markEdited();
+      const first = saveSheets(sheets);
+      await startedSave;
+      value = 'second';
+      handleSave(sheets, 'sheet');
+      const flushed = forceSaveSheets({ jexcel: sheets });
+      release();
+      expect(await first).to.equal(true);
+      expect(await flushed).to.deep.equal({ ok: true });
+      expect(bodies).to.deep.equal(['first', 'second']);
+      expect(staleCheck.isDirty).to.equal(false);
+    });
+
+    it('does not send a delayed save after the location changes', async () => {
+      window.history.replaceState(null, '', '/sheet#/demo/work~draft/test');
+      const original = window.location.href;
+      let called = false;
+      staleCheck.setConditionalSession({ save: async () => { called = true; } });
+      staleCheck.markEdited();
+      window.history.replaceState(null, '', '/sheet#/demo/work~draft/other');
+      expect(await saveSheets([buildSheet('data', [['key'], ['value']])], original)).to.equal(false);
+      expect(called).to.equal(false);
+      expect(staleCheck.isDirty).to.equal(true);
+    });
+
+    it('saves before switching branches and refuses a switch after a failed save', async () => {
+      window.history.replaceState(null, '', '/sheet#/demo/work/test');
+      const sheets = [buildSheet('data', [['key'], ['value']])];
+      const editor = { localName: 'div', inert: false, jexcel: sheets };
+      editor.forceSave = () => forceSaveSheets(editor);
+      const root = { querySelector: (selector) => (selector === '.da-sheet' ? editor : null) };
+      const urls = [];
+      const options = { root, validate: async () => {}, navigate: (url) => urls.push(url) };
+      staleCheck.setConditionalSession({ save: async () => { throw new Error('conflict'); } });
+      handleSave(sheets, 'sheet');
+      const failure = await switchContentBranch('draft', options).catch((error) => error);
+      expect(failure.message).to.contain('not confirmed');
+      expect(urls).to.deep.equal([]);
+      staleCheck.setConditionalSession({ save: async () => new Response('', { status: 201, headers: { ETag: '"next"' } }) });
+      await switchContentBranch('draft', options);
+      expect(urls).to.deep.equal(['/sheet#/demo/work~draft/test']);
     });
   });
 

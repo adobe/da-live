@@ -243,6 +243,16 @@ export async function getDaRsApi(basePromise, branch = null, expectedHref = wind
         if (!isStrongSourceETag(args.ifMatch)) throw new Error('An exact strong ETag is required');
         headers['If-Match'] = args.ifMatch;
       }
+      if (args.ifNoneMatch !== undefined) {
+        if (args.ifNoneMatch !== '*' || args.ifMatch !== undefined) throw new Error('Invalid Source creation condition');
+        headers['If-None-Match'] = '*';
+      }
+      if (args.branchInstance !== undefined) {
+        if (!branch || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(args.branchInstance)) {
+          throw new Error('Invalid branch instance precondition');
+        }
+        headers['X-DA-Branch-Instance'] = args.branchInstance;
+      }
       return request(daRsSourceUrl(binding, args.path), { method: 'PUT', headers, body: args.body });
     },
     uploadMedia: async (arg, extra) => {

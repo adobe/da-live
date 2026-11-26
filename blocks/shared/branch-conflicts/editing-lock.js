@@ -2,7 +2,7 @@
 // remain usable. The server's SYNC_IN_PROGRESS guard is the authoritative fence.
 const EDITORS = [
   'ew-editor-doc', 'ew-editor-wysiwyg', 'ew-selection-toolbar',
-  'da-content', '.da-sheet', 'nx-form', 'da-actionbar', 'da-new',
+  'da-content', '.da-sheet', 'da-sheet-tabs', 'nx-form', 'da-actionbar', 'da-new',
 ].join(', ');
 let observer;
 let locked = false;

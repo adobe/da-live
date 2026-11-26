@@ -120,7 +120,7 @@ describe('finishSetup - structural change handlers', () => {
   // in-memory grid until an unrelated cell edit happens to flush it, or is lost on reload.
   // The actual delete-reload-verify behavior is covered end-to-end in test/e2e. Column move
   // has no onmovecolumn binding - columnDrag is off, so there's no UI path to reach it.
-  ['ondeleterow', 'ondeletecolumn', 'onmoverow'].forEach((hookName) => {
+  ['ondeleterow', 'ondeletecolumn', 'onmoverow', 'onresizecolumn'].forEach((hookName) => {
     it(`${hookName} schedules a save, matching onafterchanges`, async () => {
       const data = [{ sheetName: 'data', minDimensions: [20, 20], data: [['Key'], ['A']], columns: [{ width: '300' }] }];
 

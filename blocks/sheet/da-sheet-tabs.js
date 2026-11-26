@@ -75,6 +75,10 @@ class DaSheetTabs extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  get hasPendingEdit() {
+    return this._edit != null;
+  }
+
   focusEditInput() {
     this.updateComplete.then(() => {
       const inputEl = this.shadowRoot.querySelector('input[name="name"]');
@@ -94,9 +98,12 @@ class DaSheetTabs extends LitElement {
     newSheet.name = sheets[0].sheetName;
     newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
 
-    newSheet.options.onafterchanges = () => {
-      handleSave(this.jexcel, this.tabContainer.details.view);
-    };
+    const save = () => handleSave(this.jexcel, this.tabContainer.details.view);
+    newSheet.options.onafterchanges = save;
+    newSheet.options.ondeleterow = save;
+    newSheet.options.ondeletecolumn = save;
+    newSheet.options.onmoverow = save;
+    newSheet.options.onresizecolumn = save;
     makeKeyboardAccessible(newSheet);
     // Keep keys in the name input until the user moves into the new grid
     releaseKeyboard();
@@ -108,6 +115,7 @@ class DaSheetTabs extends LitElement {
     // Set the tab to be in edit mode
     this._edit = this.jexcel.length - 1;
     this.focusEditInput();
+    save();
   }
 
   handleKeydown(e) {
