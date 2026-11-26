@@ -285,6 +285,7 @@ class EwBlockLibraryModal extends LitElement {
                 <use href="${INFO_ICON_SRC}#icon"></use>
               </svg>
             </button>` : nothing}
+          ${this.onInsert ? html`
           <button type="button"
                   class="nx-action-btn-icon nx-btn-sm modal-tree-add"
                   aria-label="Add ${v.name} to page"
@@ -292,7 +293,7 @@ class EwBlockLibraryModal extends LitElement {
             <svg aria-hidden="true" viewBox="0 0 20 20">
               <use href="${ADD_ICON_SRC}#icon"></use>
             </svg>
-          </button>
+          </button>` : nothing}
         </div>
         ${description && isOpen ? html`
           <div class="modal-tree-description">${description}</div>` : nothing}
@@ -375,7 +376,7 @@ class EwBlockLibraryModal extends LitElement {
       <nx-dialog class="modal" @close=${this._onDialogClose}>
         <div class="modal-content">
           <header class="modal-header">
-            <span class="modal-title">${this.heading ?? 'Insert block'}</span>
+            <span class="modal-title">${this.heading ?? (this.onInsert ? 'Insert block' : 'Block library')}</span>
             <button type="button" class="nx-action-btn-icon nx-btn-sm"
                     aria-label="Close" @click=${() => this._close()}>✕</button>
           </header>

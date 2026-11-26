@@ -957,10 +957,10 @@ export function extensionToPanelView(ext, section) {
       openModal: async () => {
         const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
         openBlockLibraryModal({
-          onInsert: (dom) => {
+          onInsert: getExtensionsBridge().view?.editable ? (dom) => {
             const { view } = getExtensionsBridge();
             if (view) insertLibraryBlock(view, dom);
-          },
+          } : undefined,
         });
       },
     };

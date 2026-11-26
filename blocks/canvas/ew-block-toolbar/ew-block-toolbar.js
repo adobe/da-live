@@ -306,18 +306,11 @@ class EwBlockToolbar extends LitElement {
       </da-confirm-dialog>`;
   }
 
-  render() {
+  _renderEditActions() {
     const name = this._blockName || 'Block';
     const { options, values } = this._variantState();
     const hasVariants = options.length > 0;
     return html`
-      <div class="toolbar-wrap" role="toolbar" aria-label="Block actions"
-        aria-orientation="horizontal"
-        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
-        @mousedown=${(e) => e.preventDefault()}
-        @focusin=${(e) => this._onToolbarFocusIn(e)}
-        @keydown=${(e) => this._onToolbarKeydown(e)}
-        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
         <button
           type="button"
           class="toolbar-btn block-replace"
@@ -367,14 +360,34 @@ class EwBlockToolbar extends LitElement {
           title="Delete block"
           @click=${() => this._onDeleteBlock()}
         >${this._icon('delete')}</button>
-        <span class="toolbar-sep" aria-hidden="true"></span>
+        <span class="toolbar-sep" aria-hidden="true"></span>`;
+  }
+
+  _renderReadOnlyLabel() {
+    const label = blockLabel({ name: this._blockName || 'Block', variant: this._currentVariant });
+    return html`
+        <span class="toolbar-label block-name">${label}</span>
+        <span class="toolbar-sep" aria-hidden="true"></span>`;
+  }
+
+  render() {
+    const readOnly = this.view?.editable === false;
+    return html`
+      <div class="toolbar-wrap" role="toolbar" aria-label="Block actions"
+        aria-orientation="horizontal"
+        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
+        @mousedown=${(e) => e.preventDefault()}
+        @focusin=${(e) => this._onToolbarFocusIn(e)}
+        @keydown=${(e) => this._onToolbarKeydown(e)}
+        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
+        ${readOnly ? this._renderReadOnlyLabel() : this._renderEditActions()}
         <button
           type="button"
-          class="toolbar-btn block-comment icon-only"
+          class="toolbar-btn block-comment ${readOnly ? '' : 'icon-only'}"
           aria-label="Comment"
           title="Comment"
           @click=${() => this._onComment()}
-        >${this._icon('comment')}</button>
+        >${this._icon('comment')}${readOnly ? html`<span>Comment</span>` : nothing}</button>
       </div>
       ${this._pendingDelete ? this._renderDeleteDialog() : nothing}
     `;
