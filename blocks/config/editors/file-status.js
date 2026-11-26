@@ -51,5 +51,17 @@ export function renderLibraryStatus(store, lib, { locked, onSetup }) {
   if (lib.missing) {
     return note(FILES.missing(lib.path));
   }
+  if (!lib.registered) {
+    return block(html`
+      <div class="config-note config-library-notice" role="note">
+        <div class="config-library-notice-text">
+          <p class="config-library-notice-title">${FILES.discoveredTitle(title)}</p>
+          <p>${FILES.discovered(lib.path)}</p>
+        </div>
+        <button type="button" class="nx-form-btn-primary" ?disabled=${locked}
+          @click=${onSetup}>${FILES.register}</button>
+      </div>
+    `);
+  }
   return needsPublish(lib.registered) ? note(FILES.needsPublish) : block(nothing);
 }

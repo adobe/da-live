@@ -1,3 +1,17 @@
+## [1.36.7](https://github.com/adobe/da-live/compare/v1.36.6...v1.36.7) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve library discovery and registration ([#1793](https://github.com/adobe/da-live/issues/1793)) ([40e242c](https://github.com/adobe/da-live/commit/40e242c07d7543496e4c65ce503d514b52328342))
+
+## [1.36.6](https://github.com/adobe/da-live/compare/v1.36.5...v1.36.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **permissions:** show full member IDs in pills ([#1801](https://github.com/adobe/da-live/issues/1801)) ([2a4fec7](https://github.com/adobe/da-live/commit/2a4fec7d2f735a7ec0f41885c4c8ef5b61a24305))
+
 ## [1.36.5](https://github.com/adobe/da-live/compare/v1.36.4...v1.36.5) (2026-11-25)
 
 
