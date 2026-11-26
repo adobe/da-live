@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
-import { sanitizeImportedPage, serializeImportedPage, LIMITS, ImportedPageError } from '../../../../blocks/edit/imported-page/sanitize.js';
+import { sanitizeImportedPage, sanitizeAuthorPage, serializeImportedPage, LIMITS, ImportedPageError } from '../../../../blocks/edit/imported-page/sanitize.js';
 import { FRAME_CSS } from '../../../../blocks/edit/imported-page/styles.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -209,6 +209,22 @@ describe('imported page sanitizer', () => {
     const doc = buildSrcdoc('<p>x</p>');
     expect(doc).to.contain("default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
     expect(doc).not.to.contain('<script');
+  });
+
+  it('keeps Author layout markup while refusing active content and arbitrary images', () => {
+    const body = `<style>.cmp-layout { color: red }</style><style>@import url(https://evil/x)</style>
+      <main><div class="cmp-layout" style="font-weight: bold" onclick="evil()"><script>evil()</script>
+      <a href="https://evil">Visible text</a><img src="https://evil/x.jpg">
+      <img src="/content/wknd/a/_jcr_content/root/image.coreimg.jpeg/123/a.jpeg" alt="Demo">
+      <img src="/content/wknd/a/_jcr_content/../secret.coreimg.jpeg/123/a.jpeg"></div></main>`;
+    const result = sanitizeAuthorPage(body);
+    const serialized = serializeImportedPage(result.root, new Map());
+    expect(result.images).to.deep.equal([{ id: 'img-0', path: '/content/wknd/a/_jcr_content/root/image.coreimg.jpeg/123/a.jpeg' }]);
+    expect(serialized).to.contain('class="cmp-layout"');
+    expect(serialized).to.contain('.cmp-layout { color: red }');
+    expect(serialized).to.contain('style="font-weight: bold"');
+    expect(serialized).to.contain('Visible text');
+    ['script', 'onclick', 'https://evil', '_jcr_content', '../secret'].forEach((value) => expect(serialized).not.to.contain(value));
   });
 });
 
@@ -437,10 +453,46 @@ describe('imported page route', () => {
     expect(frame.contentDocument).to.equal(null);
     expect(gets).to.deep.equal(['/o/s/a/b.html', '/o/s/i.png']);
     expect(el.querySelector('.da-imported-page-references a').getAttribute('href')).to.match(/^\/sheet(\?[^#]*)?#\/o\/s\/m\/model%20a$/);
-    expect(el.querySelector('input, button')).to.equal(null);
+    expect([...el.querySelectorAll('button')].map((button) => button.textContent)).to.deep.equal(['Layout', 'Content']);
+    expect(el.querySelector('input')).to.equal(null);
     unmountImportedPage(el);
     expect(frame.isConnected).to.equal(false);
     expect(el.querySelector('[data-imported-page]')).to.equal(null);
+  });
+
+  it('switches Layout and Content with the matching Source mode and safe Author images', async () => {
+    const gets = [];
+    const headers = { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' };
+    const imagePath = '/content/wknd/a/_jcr_content/root/image.coreimg.jpeg/123/a.jpeg';
+    routeDeps.source = async () => ({
+      get: async (path, extra, options) => {
+        gets.push({ path, render: options.render, resource: options.resource });
+        if (options.render === 'author-image') return new Response(Uint8Array.from(atob(PNG), (c) => c.charCodeAt(0)), { headers: { ...headers, 'content-type': 'image/png', 'x-da-source-kind': 'image' } });
+        if (options.render === 'author') return new Response(`<main><h1>Author layout</h1><img src="${imagePath}" alt="Demo"><script>evil()</script></main>`, { headers });
+        return new Response('<main><h1>DA content</h1></main>', { headers });
+      },
+    });
+    document.body.append(el);
+    await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    const [layout, content] = el.querySelectorAll('button');
+    expect(content.getAttribute('aria-pressed')).to.equal('true');
+    expect(el.querySelector('iframe').srcdoc).to.contain('DA content');
+    layout.click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    expect(layout.getAttribute('aria-pressed')).to.equal('true');
+    expect(el.querySelector('iframe').srcdoc).to.contain('Author layout');
+    expect(el.querySelector('iframe').srcdoc).to.contain(`src="${PNG_URL}"`);
+    expect(el.querySelector('iframe').srcdoc).not.to.contain('evil()');
+    expect(gets.map((call) => call.render)).to.deep.equal([undefined, 'author', 'author-image']);
+    expect(gets[2].resource).to.equal(imagePath);
+    content.click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    expect(el.querySelector('iframe').srcdoc).to.contain('DA content');
+    expect(content.getAttribute('aria-pressed')).to.equal('true');
   });
 
   it('keeps reference text inert if sheet navigation is not supported', async () => {

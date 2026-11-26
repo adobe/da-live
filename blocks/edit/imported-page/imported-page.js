@@ -4,7 +4,7 @@ import { discoverDaRsCapabilities, siteItemCapabilities } from '../../shared/da-
 import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import { encodeDaRsAliasPath } from '../../shared/da-rs-alias-path.js';
 import { withDaRsBinding } from '../../shared/da-rs-navigation.js';
-import { LIMITS, ImportedPageError, sanitizeImportedPage, serializeImportedPage } from './sanitize.js';
+import { LIMITS, ImportedPageError, sanitizeImportedPage, sanitizeAuthorPage, serializeImportedPage } from './sanitize.js';
 import { FRAME_CSP, FRAME_CSS, PARENT_CSS } from './styles.js';
 
 export const IMAGE_LIMITS = Object.freeze({
@@ -124,8 +124,10 @@ async function readPage(resp, signal) {
   }
 }
 
-async function fetchImage(source, path, { signal, maxBytes }) {
-  const resp = await source.get(path, undefined, { signal });
+async function fetchImage(source, path, { signal, maxBytes, authorPage }) {
+  const resp = authorPage
+    ? await source.get(authorPage, undefined, { signal, render: 'author-image', resource: path })
+    : await source.get(path, undefined, { signal });
   if (!resp?.ok) return null;
   const type = resp.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
   if (resp.headers.get('x-da-content-profile') !== 'aem-import'
@@ -164,7 +166,7 @@ function imageDataUrl(blob, signal) {
 
 // Bounded, concurrency-limited hydration. Failures become placeholders (null); never a direct URL.
 export async function hydrateImages(images, options) {
-  const { source, isCurrent, signal } = options;
+  const { source, isCurrent, signal, authorPage } = options;
   const limits = options.limits ?? IMAGE_LIMITS;
   const result = new Map();
   let total = 0;
@@ -177,7 +179,8 @@ export async function hydrateImages(images, options) {
       let reserved = 0;
       try {
         const maxBytes = Math.min(limits.maxImageBytes, limits.maxTotalBytes - total);
-        const blob = maxBytes > 0 ? await fetchImage(source, path, { signal, maxBytes }) : null;
+        const blob = maxBytes > 0
+          ? await fetchImage(source, path, { signal, maxBytes, authorPage }) : null;
         if (blob && current() && total + blob.size <= limits.maxTotalBytes) {
           reserved = blob.size;
           total += reserved;
@@ -251,11 +254,11 @@ export function buildSrcdoc(bodyHtml) {
 <style>${FRAME_CSS}</style></head><body>${bodyHtml}</body></html>`;
 }
 
-function buildFrame(bodyHtml) {
+function buildFrame(bodyHtml, view = 'content') {
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-top-navigation-by-user-activation');
   frame.setAttribute('referrerpolicy', 'no-referrer');
-  frame.setAttribute('title', 'Imported AEM page component inspection');
+  frame.setAttribute('title', view === 'layout' ? 'Author page layout' : 'Imported AEM page component inspection');
   frame.srcdoc = buildSrcdoc(bodyHtml);
   return frame;
 }
@@ -271,8 +274,8 @@ function showError(container, message) {
 export async function mountImportedPage({ el, details, caps, isCurrent }) {
   unmountImportedPage(el);
   ensureStyles();
-  const controller = new AbortController();
-  const state = { cleanup: () => controller.abort() };
+  let pending;
+  const state = { cleanup: () => pending?.abort() };
   active = state;
   const current = () => active === state && isCurrent();
 
@@ -280,28 +283,63 @@ export async function mountImportedPage({ el, details, caps, isCurrent }) {
   daTitle.setAttribute(MARK, '');
   daTitle.details = { parent: details.parent, parentName: details.parentName, name: details.name };
   daTitle.readOnly = true;
+  const toolbar = document.createElement('div');
+  toolbar.setAttribute(MARK, '');
+  toolbar.className = 'da-imported-page-toolbar';
+  const toggle = document.createElement('div');
+  toggle.className = 'da-imported-page-segmented';
+  toggle.setAttribute('role', 'group');
+  toggle.setAttribute('aria-label', 'Editor view');
+  const buttons = new Map();
+  let loadView;
+  ['layout', 'content'].forEach((view) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'da-imported-page-segment';
+    button.textContent = view === 'layout' ? 'Layout' : 'Content';
+    button.addEventListener('click', () => { loadView(view); });
+    buttons.set(view, button);
+    toggle.append(button);
+  });
+  toolbar.append(toggle);
   const container = document.createElement('div');
   container.setAttribute(MARK, '');
   container.className = 'da-imported-page';
-  el.replaceChildren(daTitle, container);
+  el.replaceChildren(daTitle, toolbar, container);
   document.title = `View page ${details.name} - DA`;
 
-  try {
-    const source = await routeDeps.source();
-    const { signal } = controller;
-    const text = await readPage(await source.get(details.fullpath, undefined, { signal }), signal);
-    if (!current()) return;
-    const scope = { org: details.org, site: details.site };
-    const { root, images, references } = sanitizeImportedPage(text, scope);
-    const dataUrls = await hydrateImages(images, { source, isCurrent: current, signal });
-    if (!current()) return;
-    const routes = new Map(references.map((ref, index) => [`ref-${index}`, routeFor(caps, ref)]));
-    container.replaceChildren(
-      buildFrame(serializeImportedPage(root, dataUrls, undefined, routes)),
-      referenceList(references, caps),
-    );
-  } catch (error) {
-    if (!current()) return;
-    showError(container, error instanceof ImportedPageError ? error.message : 'Unable to open imported page.');
-  }
+  loadView = async (view) => {
+    pending?.abort();
+    const controller = new AbortController();
+    pending = controller;
+    const viewCurrent = () => current() && pending === controller && !controller.signal.aborted;
+    buttons.forEach((button, name) => {
+      button.classList.toggle('is-selected', name === view);
+      button.setAttribute('aria-pressed', String(name === view));
+    });
+    container.replaceChildren();
+    try {
+      const source = await routeDeps.source();
+      const { signal } = controller;
+      const options = view === 'layout' ? { signal, render: 'author' } : { signal };
+      const text = await readPage(await source.get(details.fullpath, undefined, options), signal);
+      if (!viewCurrent()) return;
+      const scope = { org: details.org, site: details.site };
+      const result = view === 'layout' ? sanitizeAuthorPage(text) : sanitizeImportedPage(text, scope);
+      const authorPage = view === 'layout' ? details.fullpath : undefined;
+      const imageOptions = { source, isCurrent: viewCurrent, signal, authorPage };
+      const dataUrls = await hydrateImages(result.images, imageOptions);
+      if (!viewCurrent()) return;
+      const references = result.references || [];
+      const routes = new Map(references.map((ref, index) => [`ref-${index}`, routeFor(caps, ref)]));
+      const body = serializeImportedPage(result.root, dataUrls, undefined, routes);
+      const frame = buildFrame(body, view);
+      if (view === 'layout') container.replaceChildren(frame);
+      else container.replaceChildren(frame, referenceList(references, caps));
+    } catch (error) {
+      if (!viewCurrent()) return;
+      showError(container, error instanceof ImportedPageError ? error.message : 'Unable to open imported page.');
+    }
+  };
+  await loadView('content');
 }

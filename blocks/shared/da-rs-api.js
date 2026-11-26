@@ -157,19 +157,32 @@ export async function getDaRsApi(basePromise, branch = null, expectedHref = wind
     return binding;
   };
   const sourceRequest = async (arg, extra, opts = {}) => {
+    const { render, resource, ...fetchOptions } = opts;
     const args = validate(argsFor(arg, extra), branch?.context);
     const path = encodeDaRsAliasPath(args.path);
     const binding = await bindingFor(args);
-    const response = await request(daRsSourceUrl(binding, path), opts);
-    if (branch && opts.method === 'HEAD' && response.ok
+    const url = new URL(daRsSourceUrl(binding, path));
+    if (render !== undefined) {
+      if (!['content', 'author', 'author-image'].includes(render)) throw new Error('Invalid Source render mode');
+      url.searchParams.set('render', render);
+    }
+    if (resource !== undefined) {
+      if (render !== 'author-image' || typeof resource !== 'string') throw new Error('Invalid Author image resource');
+      url.searchParams.set('resource', resource);
+    }
+    const response = await request(url.toString(), fetchOptions);
+    if (branch && fetchOptions.method === 'HEAD' && response.ok
       && (response.headers.get('content-branch') !== branch.context.branch
         || response.headers.get('x-da-source-mode') !== 'helix6')) {
       return new Response('Invalid branch Source response', { status: 422 });
     }
     return response;
   };
+  function getSource(arg, extra, { signal, render, resource } = {}) {
+    return sourceRequest(arg, extra, { signal, render, resource });
+  }
   const source = {
-    get: (arg, extra, { signal } = {}) => sourceRequest(arg, extra, signal ? { signal } : {}),
+    get: getSource,
     getMetadata: (arg, extra) => sourceRequest(arg, extra, { method: 'HEAD' }),
     list: async (arg, extra) => {
       const args = validate(argsFor(arg, extra), branch?.context);

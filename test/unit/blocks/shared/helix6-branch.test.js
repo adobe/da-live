@@ -111,6 +111,23 @@ describe('bound Helix 6 branch transport', () => {
     expect(calls.every(({ target }) => new URL(target).origin === DA_ORIGIN)).to.equal(true);
   });
 
+  it('encodes Author render and image options as Source query parameters', async () => {
+    window.history.replaceState(null, '', '/edit?da-source=da-rs#/h6test/work/page');
+    invalidateDaRsDiscovery();
+    const api = await getNx2Api();
+    const path = '/h6test/work/page.html';
+    await api.source.get(path, undefined, { render: 'author' });
+    const resource = '/content/wknd/page/_jcr_content/image.coreimg.jpeg/123/a.jpeg';
+    await api.source.get(path, undefined, { render: 'author-image', resource });
+    const requests = calls.filter(({ target }) => target.includes('/source/page.html?'));
+    expect(requests).to.have.length(2);
+    expect(new URL(requests[0].target).searchParams.get('render')).to.equal('author');
+    expect(new URL(requests[1].target).searchParams.get('render')).to.equal('author-image');
+    expect(new URL(requests[1].target).searchParams.get('resource'))
+      .to.equal('/content/wknd/page/_jcr_content/image.coreimg.jpeg/123/a.jpeg');
+    expect(requests[1].options).not.to.have.property('resource');
+  });
+
   it('keeps qualified history, trash listing, snapshot and media on the same branch', async () => {
     const api = await getNx2Api();
     const path = '/h6test/work~draft/page.html';

@@ -26,6 +26,12 @@ p.aem-empty-page { margin: 12px 0; padding: 12px; border: 1px dashed #777; backg
 `;
 
 export const PARENT_CSS = `
+.da-imported-page-toolbar { display: flex; justify-content: center; padding: 8px 12px; border-bottom: 1px solid var(--s2-gray-200, #ddd); }
+.da-imported-page-segmented { display: inline-flex; align-items: center; padding: var(--s2-spacing-50, 2px); gap: var(--s2-spacing-50, 2px); border-radius: calc(var(--s2-corner-radius-400, 6px) + var(--s2-spacing-50, 2px)); background: var(--s2-gray-100, #eee); }
+.da-imported-page-segment { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 9px; border: 0; border-radius: var(--s2-corner-radius-400, 6px); background: transparent; color: var(--s2-gray-700, #555); font: inherit; font-size: var(--s2-body-size-xs, 12px); font-weight: var(--s2-component-s-medium-font-weight, 600); cursor: pointer; }
+.da-imported-page-segment:hover:not(.is-selected) { background: var(--s2-gray-200, #ddd); color: var(--s2-gray-900, #222); }
+.da-imported-page-segment.is-selected { background: var(--s2-gray-25, #fff); color: var(--s2-gray-800, #333); }
+.da-imported-page-segment:focus-visible { outline: 2px solid var(--s2-blue-800, #0265dc); outline-offset: 1px; }
 .da-imported-page { box-sizing: border-box; width: 100%; min-width: 0; max-width: 1200px; margin: 0 auto; padding: 0 24px 48px; }
 .da-imported-page iframe { box-sizing: border-box; display: block; width: 100%; height: 75vh; min-height: 400px; border: 2px solid #5258e4; background: #fff; resize: vertical; }
 .da-imported-page-references { margin: 16px 0; }

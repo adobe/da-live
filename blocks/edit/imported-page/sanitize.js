@@ -193,6 +193,75 @@ export function sanitizeImportedPage(html, scope) {
   };
 }
 
+// Rebuild Author HTML into an inert tree. Only same-page Core Image paths can be hydrated;
+// scripts, forms, author URLs and event handlers are never copied into the viewer.
+export function sanitizeAuthorPage(html) {
+  if (typeof html !== 'string') throw new ImportedPageError('Imported page has no content.');
+  const source = new DOMParser().parseFromString(html, 'text/html');
+  const out = document.implementation.createHTMLDocument('');
+  const root = out.createElement('div');
+  const images = new Map();
+  let styleCount = 0;
+  let styleBytes = 0;
+  const safeCss = (value) => value.length <= 65536 && !/[<>\\]/.test(value)
+    && !/(?:url\s*\(|expression\s*\(|@import)/i.test(value);
+  source.querySelectorAll('style').forEach((style) => {
+    const text = style.textContent || '';
+    if (styleCount >= 32 || styleBytes + text.length > 262144 || !safeCss(text)) return;
+    styleCount += 1;
+    styleBytes += text.length;
+    const copy = out.createElement('style');
+    copy.textContent = text;
+    root.append(copy);
+  });
+  let nodes = 0;
+  const count = () => {
+    nodes += 1;
+    if (nodes > LIMITS.maxNodes) throw new ImportedPageError('Imported page is too large to display.', 'too-many-nodes');
+  };
+  function walk(node, parent, depth) {
+    if (depth > LIMITS.maxDepth) throw new ImportedPageError('Imported page is nested too deeply.', 'too-deep');
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        count();
+        parent.append(out.createTextNode(child.data.slice(0, LIMITS.maxText)));
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = child.localName;
+      if (DROP.has(tag)) return;
+      count();
+      if (tag === 'img') {
+        const img = out.createElement('img');
+        img.alt = clean(child.getAttribute('alt') || '', LIMITS.maxLabel);
+        const src = child.getAttribute('src') || '';
+        if (src.length <= 2048 && /^\/content\/[A-Za-z0-9_./ -]+\/_jcr_content\/[A-Za-z0-9_./ -]+\.coreimg\.(?:jpeg|png|webp)\/[0-9]+\/[A-Za-z0-9_.-]+$/.test(src)
+          && !src.split('/').some((part) => part === '.' || part === '..')) {
+          if (!images.has(src) && images.size < LIMITS.maxImages) images.set(src, `img-${images.size}`);
+          const id = images.get(src);
+          if (id) img.setAttribute('data-img-id', id);
+        }
+        parent.append(img);
+        return;
+      }
+      if (tag === 'a' || !TAGS.has(tag) || TRANSPARENT.has(tag)) {
+        walk(child, parent, depth + 1);
+        return;
+      }
+      const el = out.createElement(tag);
+      const cls = child.getAttribute('class') || '';
+      if (/^[A-Za-z0-9_ -]{1,512}$/.test(cls)) el.className = cls;
+      const style = child.getAttribute('style');
+      if (style && safeCss(style)) el.setAttribute('style', style);
+      copyAttributes(child, el, tag);
+      parent.append(el);
+      if (tag !== 'br' && tag !== 'hr') walk(child, el, depth + 1);
+    });
+  }
+  walk(source.body, root, 0);
+  return { root, images: [...images].map(([path, id]) => ({ path, id })) };
+}
+
 // 64 MiB of unique image bytes become at most ~85.34 MiB of base64 plus small MIME prefixes.
 // Cap all serialized image URLs too: repeated image nodes duplicate their data in srcdoc.
 const MAX_INLINE_IMAGE_CHARS = 86 * 1024 * 1024;
