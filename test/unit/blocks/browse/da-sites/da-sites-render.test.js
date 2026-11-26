@@ -66,6 +66,7 @@ describe('da-sites render', () => {
     expect(el.shadowRoot.querySelector('.da-double-card-sandbox')).to.exist;
     expect(loadIms.called).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('da-recent-files')).to.equal(null);
   });
 
   it('waits for authentication before rendering recent sites and attaching tiles', async () => {
@@ -74,12 +75,14 @@ describe('da-sites render', () => {
     const tiles = document.createElement('div');
     await fixture(['org/site'], tiles);
     expect(el.shadowRoot.querySelector('.da-site-container')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-recent-files')).to.equal(null);
     expect(tiles.isConnected).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
     finish({ accessToken: { token: 'test-token' } });
     await nextFrame();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.da-site-outer')).to.exist;
+    expect(el.shadowRoot.querySelector('da-recent-files')).to.exist;
     expect(tiles.isConnected).to.equal(true);
     expect(tiles.slot).to.equal('tiles');
     expect(handleSignIn.called).to.equal(false);

@@ -19,6 +19,15 @@ export function getRecentFiles(sitePath) {
   return Array.isArray(recent) ? recent.map(getEntryPath).filter((path) => typeof path === 'string') : [];
 }
 
+export function getRecentFileEntries(sitePath) {
+  const recent = readAll()[sitePath];
+  if (!Array.isArray(recent)) return [];
+  return recent.filter((entry) => typeof entry?.path === 'string'
+    && entry.path.startsWith(`${sitePath}/`)
+    && Number.isFinite(entry.timestamp) && entry.timestamp >= 0)
+    .map(({ path, timestamp }) => ({ path, timestamp }));
+}
+
 export function addRecentFile(path) {
   if (typeof path !== 'string') return;
   const parts = path.split('/');
