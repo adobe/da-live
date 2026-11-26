@@ -266,11 +266,20 @@ describe('EWBrowsePreflight', () => {
       const icons = [...el.shadowRoot.querySelectorAll('.da-preflight-row-actions .ui-artifact-pe-icon')];
       expect(icons.map((i) => i.getAttribute('aria-label'))).to.deep.equal(['Not applicable', 'Not applicable']);
       expect(icons.every((i) => i.classList.contains('ui-artifact-pe-tone-neutral'))).to.be.true;
-      const [cancel, publish] = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
-      expect(cancel.className).to.equal('nx-form-btn-secondary');
-      expect(cancel.textContent.trim()).to.equal('Cancel');
+      const buttons = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
+      expect(buttons).to.have.length(1);
+      const [publish] = buttons;
       expect(publish.className).to.equal('nx-form-btn-primary');
       expect(publish.textContent.trim()).to.equal('Publish Passing (2)');
+    });
+
+    it('shows no footer when the user cannot publish', async () => {
+      window.fetch = () => Promise.resolve(new Response('{}'));
+      mount([{ path: '/o/s/data.json', ext: 'json' }]);
+      el.canPublish = false;
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.da-preflight-footer')).to.be.null;
+      expect(el.shadowRoot.querySelector('da-dialog').action).to.be.null;
     });
 
     it('stays open on Publish Passing and shows "Checking..." while the host checks', async () => {
@@ -286,10 +295,9 @@ describe('EWBrowsePreflight', () => {
 
       el.checking = true;
       await el.updateComplete;
-      const [cancel, publish] = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
+      const publish = el.shadowRoot.querySelector('.da-preflight-footer button');
       expect(publish.textContent.trim()).to.equal('Checking...');
       expect(publish.disabled).to.be.true;
-      expect(cancel.disabled).to.be.true;
       el._handlePublishPassing();
       expect(events).to.have.length(1);
     });

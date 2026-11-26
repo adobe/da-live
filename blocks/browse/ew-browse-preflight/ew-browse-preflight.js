@@ -33,7 +33,7 @@ const REFRESH_ICON = '/img/icons/s2-icon-refresh-20-n.svg';
 const CHEVRON_ICON = '/img/icons/s2-icon-chevronright-20-n.svg';
 
 // da-dialog only renders its footer region when `action` is truthy; we supply our
-// own two buttons via the footer-right slot, so this is just a presence sentinel.
+// own Publish button via the footer-right slot, so this is just a presence sentinel.
 const DIALOG_FOOTER = { style: '', label: '', click: () => {} };
 
 // The result renderer (<nx-page-eval>) lives in da-nx; importing it defines the
@@ -245,23 +245,22 @@ export default class EWBrowsePreflight extends LitElement {
         title="Preflight"
         size="auto"
         emphasis="quiet"
-        .action=${DIALOG_FOOTER}
+        .action=${this.canPublish ? DIALOG_FOOTER : null}
         @close=${this._handleDialogClose}>
         ${this._authError ? html`<p class="da-preflight-error" role="alert">${this._authError}</p>` : nothing}
         <div class="da-preflight-rows">
           ${this._rows.map((row) => this._renderRow(row))}
         </div>
-        <div slot="footer-right" class="da-preflight-footer">
-          <button type="button" class="nx-form-btn-secondary" ?disabled=${this.checking} @click=${this._closeDialog}>Cancel</button>
-          ${this.canPublish ? html`
+        ${this.canPublish ? html`
+          <div slot="footer-right" class="da-preflight-footer">
             <button
               type="button"
               class="nx-form-btn-primary"
               ?disabled=${this.checking || this._busy || passing.length === 0}
               @click=${this._handlePublishPassing}>
               ${this.checking ? 'Checking...' : `Publish Passing${passing.length ? ` (${passing.length})` : ''}`}
-            </button>` : nothing}
-        </div>
+            </button>
+          </div>` : nothing}
       </da-dialog>`;
   }
 }
