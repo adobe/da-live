@@ -1,20 +1,60 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { getNx, setNx } from '../../../../../scripts/utils.js';
-import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
+import { adaptEvaluation } from '../../../../../blocks/shared/preflight/evaluation.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
 const GATE_PAGE = { org: 'org', site: 'site', path: '/a' };
 
+const RUN = 'nx-preflight-run';
+const STATUS = 'nx-preflight-status';
+
+// The da-nx panel registry fixture and the shared publish hook, as Preflight loads them.
+let panel;
+let publishHook;
+let stopPublishHook;
+let checkPage;
+
+before(async () => {
+  setNx('/test/fixtures/nx', { hostname: 'example.com' });
+  panel = await import(`${getNx()}/utils/panel.js`);
+  ({ publishHook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
+});
+
+// Each test starts with the tools panel closed. An editor that publishes starts the hook.
+function setUpPage({ publishing = true } = {}) {
+  panel.setVisiblePanelSections([]);
+  stopPublishHook = publishing ? publishHook.start() : null;
+  // Stands in for the checks of the open page. Tests that evaluate set what they return.
+  checkPage = async () => ({ failed: 0 });
+}
+
+afterEach(() => {
+  stopPublishHook?.();
+  stopPublishHook = null;
+  panel.setVisiblePanelSections([]);
+});
+
+const openToolsPanel = () => panel.setVisiblePanelSections(['tools']);
+const closeToolsPanel = () => panel.setVisiblePanelSections([]);
+const requestRun = (detail) => document.dispatchEvent(new CustomEvent(RUN, { detail }));
+const takeParkedRequest = () => publishHook.takePendingRunRequest();
+
+function createPreflight() {
+  const el = document.createElement('da-preflight');
+  el._checkPage = (target) => checkPage(target);
+  return el;
+}
+
 function createGateElement() {
-  const el = document.createElement('ew-preflight');
+  const el = createPreflight();
   el._hashState = GATE_PAGE;
   return el;
 }
 
-// The gate wiring is what we test here; the REST call (evaluatePage) and the
-// da-nx renderer (ensureRenderer) are external, so every element gets a stubbed
-// `_evaluate` that sets `_data`/`_error` synthetically and resolves to the run's verdict.
+// These tests cover the hook wiring. The checks and the da-nx renderer
+// (ensureRenderer) are external, so every element gets a stubbed `_evaluate` that sets
+// `_data` or `_error` and resolves to the verdict of the run.
 function stubEvaluate(el, { failed = 0, error = null } = {}) {
   el._evaluate = async () => {
     el._error = error;
@@ -24,37 +64,29 @@ function stubEvaluate(el, { failed = 0, error = null } = {}) {
   return el;
 }
 
+// Records each verdict Preflight reports to the publish dialog.
 function captureStatus() {
   const events = [];
-  const handler = (e) => { events.push(e.detail); };
-  document.addEventListener('nx-preflight-status', handler);
-  return {
-    events,
-    stop: () => document.removeEventListener('nx-preflight-status', handler),
-  };
+  const listener = (event) => { events.push(event.detail); };
+  document.addEventListener(STATUS, listener);
+  return { events, stop: () => document.removeEventListener(STATUS, listener) };
 }
 
-describe('ew-preflight preflight gate', () => {
-  let canvasBus;
+describe('da-preflight publish hook', () => {
   let hashChange;
-  let takePendingPreflightRequest;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
-    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    await import('../../../../../blocks/shared/preflight/preflight.js');
     ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
-    const responder = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
-    ({ takePendingPreflightRequest } = responder);
-    responder.initPreflightResponder();
   });
 
   beforeEach(() => {
+    setUpPage();
     hashChange._set(GATE_PAGE);
   });
 
   afterEach(() => {
-    takePendingPreflightRequest();
     hashChange._set({});
   });
 
@@ -209,7 +241,7 @@ describe('ew-preflight preflight gate', () => {
     expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'error', requestId: 'g3', message: 'boom' }]);
   });
 
-  it('a non-gate refresh reports error with the cause when the evaluation errors', async () => {
+  it('a non-hook refresh reports error with the cause when the evaluation errors', async () => {
     const el = stubEvaluate(createGateElement(), { error: 'boom' });
     const cap = captureStatus();
     await el._evaluateAndReport();
@@ -218,52 +250,64 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('reports cancelled when the tools panel closes before the run settles', async () => {
-    const el = createGateElement();
-    let release;
-    el._evaluate = () => new Promise((resolve) => { release = resolve; });
-    const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
+    openToolsPanel();
+    const el = stubEvaluate(createGateElement());
+    document.body.appendChild(el);
+    try {
+      await tick();
+      let release;
+      el._evaluate = () => new Promise((resolve) => { release = resolve; });
+      const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
 
-    const cap = captureStatus();
-    canvasBus.toolPanelViewState.emit(null);
-    cap.stop();
-    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g4' }]);
+      const cap = captureStatus();
+      closeToolsPanel();
+      cap.stop();
+      expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g4' }]);
 
-    // The late-settling evaluate must not emit a second (success) status.
-    const cap2 = captureStatus();
-    release();
-    await running;
-    cap2.stop();
-    expect(cap2.events).to.deep.equal([]);
+      // The late-settling evaluate must not emit a second (success) status.
+      const cap2 = captureStatus();
+      release();
+      await running;
+      cap2.stop();
+      expect(cap2.events).to.deep.equal([]);
+    } finally {
+      el.remove();
+    }
   });
 
   it('keeps the run going when another panel closes or the tool view switches', async () => {
-    const el = createGateElement();
-    let release;
-    el._evaluate = () => new Promise((resolve) => {
-      release = () => {
-        el._error = null;
-        el._data = { failed: 0 };
-        resolve(el._verdictFor({ data: el._data }));
-      };
-    });
-    const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
+    panel.setVisiblePanelSections(['chat', 'tools']);
+    const el = stubEvaluate(createGateElement());
+    document.body.appendChild(el);
+    try {
+      await tick();
+      let release;
+      el._evaluate = () => new Promise((resolve) => {
+        release = () => {
+          el._error = null;
+          el._data = { failed: 0 };
+          resolve(el._verdictFor({ data: el._data }));
+        };
+      });
+      const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
 
-    const cap = captureStatus();
-    // Chat's close button: bubbles to document with no section.
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
-    // The tool panel re-broadcasts / switches view while still open.
-    canvasBus.toolPanelViewState.emit('preflight');
-    canvasBus.toolPanelViewState.emit('files');
-    expect(cap.events).to.deep.equal([]);
+      const cap = captureStatus();
+      // Chat closes while the tools panel stays open, then the author switches views.
+      panel.setVisiblePanelSections(['tools']);
+      el.hidden = true;
+      await el.updateComplete;
+      expect(cap.events).to.deep.equal([]);
 
-    release();
-    await running;
-    cap.stop();
-    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g4b' }]);
+      release();
+      await running;
+      cap.stop();
+      expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g4b' }]);
+    } finally {
+      el.remove();
+    }
   });
 
-  it('_cancelGate emits cancelled for an in-flight gate (disconnect backstop)', () => {
+  it('_cancelGate emits cancelled for an in-flight hook (disconnect backstop)', () => {
     const el = createGateElement();
     el._gateRequestId = 'g5';
     el._gatePath = '/org/site/a.html';
@@ -274,7 +318,7 @@ describe('ew-preflight preflight gate', () => {
     expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g5' }]);
   });
 
-  it('dedupes a repeated requestId — runs the gate once', async () => {
+  it('dedupes a repeated requestId — runs the hook once', async () => {
     const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
@@ -328,7 +372,7 @@ describe('ew-preflight preflight gate', () => {
 
   it('shows the error instead of earlier results when a later run fails', async () => {
     const el = createGateElement();
-    el._resolvePageUrl = async () => { throw new Error('down'); };
+    checkPage = async () => { throw new Error('down'); };
     el._data = { failed: 0 };
     const verdict = await el._evaluate();
     expect(verdict.status).to.equal('error');
@@ -336,7 +380,7 @@ describe('ew-preflight preflight gate', () => {
     expect(el.render().strings.join('')).to.contain('ew-preflight-retry');
   });
 
-  it('a non-gate refresh emits a requestId-less status at the derived doc path', async () => {
+  it('a non-hook refresh emits a requestId-less status at the derived doc path', async () => {
     const el = stubEvaluate(createGateElement(), { failed: 0 });
     el._hashState = { org: 'o', site: 's', path: '/p' };
     const cap = captureStatus();
@@ -345,13 +389,9 @@ describe('ew-preflight preflight gate', () => {
     expect(cap.events).to.deep.equal([{ path: '/o/s/p.html', status: 'success' }]);
   });
 
-  it('runs the gate once on first open via the parked pending request', async () => {
-    const { initPreflightResponder } = await import(
-      '../../../../../blocks/canvas/editor-utils/preflight-responder.js'
-    );
-    initPreflightResponder();
-    // Fire the run before the panel mounts: it is parked, not delivered live.
-    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'g7' });
+  it('runs the hook once on first open via the parked pending request', async () => {
+    // A run that fires before the panel mounts is parked, not delivered live.
+    requestRun({ paths: ['/org/site/a.html'], requestId: 'g7' });
     await tick();
 
     const el = stubEvaluate(createGateElement(), { failed: 0 });
@@ -366,8 +406,6 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('claims live and duplicate requests so a fresh instance does not replay them', async () => {
-    const { initPreflightResponder, peekPendingPreflightRequest } = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
-    initPreflightResponder();
     const el = stubEvaluate(createGateElement());
     const fresh = stubEvaluate(createGateElement());
     const detail = { paths: ['/org/site/a.html'], requestId: 'g8' };
@@ -377,12 +415,12 @@ describe('ew-preflight preflight gate', () => {
       await tick();
       cap = captureStatus();
 
-      canvasBus.preflightRunRequest.emit(detail);
-      expect(peekPendingPreflightRequest()).to.equal(null);
+      requestRun(detail);
+      expect(takeParkedRequest()).to.equal(null);
       await tick();
 
-      canvasBus.preflightRunRequest.emit(detail);
-      expect(peekPendingPreflightRequest()).to.equal(null);
+      requestRun(detail);
+      expect(takeParkedRequest()).to.equal(null);
       await tick();
 
       el.remove();
@@ -397,11 +435,10 @@ describe('ew-preflight preflight gate', () => {
       el.remove();
       fresh.remove();
       cap?.stop();
-      takePendingPreflightRequest();
     }
   });
 
-  it('cancels a mismatched live request once without evaluating or replacing an active gate', async () => {
+  it('cancels a mismatched live request once without evaluating or replacing an active hook', async () => {
     hashChange._set({ ...GATE_PAGE, path: '/b' });
     const el = stubEvaluate(createGateElement());
     let evaluations = 0;
@@ -416,9 +453,9 @@ describe('ew-preflight preflight gate', () => {
       cap = captureStatus();
 
       const detail = { paths: ['/org/site/a.html'], requestId: 'mismatch' };
-      canvasBus.preflightRunRequest.emit(detail);
+      requestRun(detail);
       await tick();
-      canvasBus.preflightRunRequest.emit(detail);
+      requestRun(detail);
       await tick();
 
       expect(cap.events).to.deep.equal([
@@ -428,14 +465,14 @@ describe('ew-preflight preflight gate', () => {
       expect(el._gateRequestId).to.equal('active');
       expect(el._gatePath).to.equal('/org/site/b.html');
       expect(el._gateSettled).to.equal(false);
-      expect(takePendingPreflightRequest()).to.equal(null);
+      expect(takeParkedRequest()).to.equal(null);
     } finally {
       cap?.stop();
       el.remove();
     }
   });
 
-  it('cancels a gate without evaluating when no document context is available', async () => {
+  it('cancels a hook without evaluating when no document context is available', async () => {
     const el = createGateElement();
     el._hashState = {};
     let evaluations = 0;
@@ -454,10 +491,10 @@ describe('ew-preflight preflight gate', () => {
     }
   });
 
-  it('cancels a request parked before navigation instead of evaluating the new page for that gate', async () => {
-    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'parked-a' });
+  it('cancels a request parked before navigation instead of evaluating the new page for that hook', async () => {
+    requestRun({ paths: ['/org/site/a.html'], requestId: 'parked-a' });
     hashChange._set({ ...GATE_PAGE, path: '/b' });
-    canvasBus.toolPanelViewState.emit('preflight');
+    openToolsPanel();
     const el = createGateElement();
     const runs = [];
     el._evaluate = async () => {
@@ -473,27 +510,26 @@ describe('ew-preflight preflight gate', () => {
         { path: '/org/site/a.html', status: 'cancelled', requestId: 'parked-a' },
       ]);
       expect(runs).to.deep.equal([{ path: '/b', requestId: undefined }]);
-      expect(takePendingPreflightRequest()).to.equal(null);
+      expect(takeParkedRequest()).to.equal(null);
     } finally {
       cap.stop();
       el.remove();
-      canvasBus.toolPanelViewState.emit(null);
     }
   });
 });
 
-describe('ew-preflight document navigation', () => {
-  let canvasBus;
+describe('da-preflight document navigation', () => {
   let hashChange;
   const PAGE_A = { org: 'o', site: 's', path: '/a' };
   const PAGE_B = { org: 'o', site: 's', path: '/b' };
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
-    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    await import('../../../../../blocks/shared/preflight/preflight.js');
     ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   });
+
+  beforeEach(() => setUpPage());
 
   // Records which page each evaluation ran for; `hold` keeps the next run pending.
   // Mirrors the real _evaluate's runId guard against stale responses.
@@ -523,10 +559,10 @@ describe('ew-preflight document navigation', () => {
     return runs;
   }
 
-  async function mount(view) {
+  async function mount() {
     hashChange._set(PAGE_A);
-    canvasBus.toolPanelViewState.emit(view);
-    const el = document.createElement('ew-preflight');
+    openToolsPanel();
+    const el = createPreflight();
     const runs = trackEvaluate(el);
     document.body.appendChild(el);
     await tick();
@@ -534,7 +570,7 @@ describe('ew-preflight document navigation', () => {
   }
 
   it('evaluates exactly once on first mount with the view active', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       expect(runs).to.deep.equal(['/a']);
     } finally {
@@ -542,19 +578,19 @@ describe('ew-preflight document navigation', () => {
     }
   });
 
-  it('does not evaluate again when a gate already ran while the view was hidden', async () => {
-    const { el, runs } = await mount('preflight');
+  it('does not evaluate again when a hook already ran while the view was hidden', async () => {
+    const { el, runs } = await mount();
     try {
-      canvasBus.toolPanelViewState.emit('files');
+      el.hidden = true;
       hashChange._set(PAGE_B);
       el.hold = true;
       const running = el._handlePreflightRun({ paths: ['/o/s/b.html'], requestId: 'nav2' });
-      canvasBus.toolPanelViewState.emit('preflight');
+      el.hidden = false;
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
       el.release();
       await running;
-      canvasBus.toolPanelViewState.emit('preflight');
+      el.hidden = false;
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
     } finally {
@@ -563,7 +599,7 @@ describe('ew-preflight document navigation', () => {
   });
 
   it('re-evaluates the new page when navigating while the view is active', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       hashChange._set(PAGE_B);
       await tick();
@@ -575,15 +611,31 @@ describe('ew-preflight document navigation', () => {
   });
 
   it('defers re-evaluation until the view is shown again', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
-      canvasBus.toolPanelViewState.emit('files');
+      el.hidden = true;
       hashChange._set(PAGE_B);
       await tick();
       expect(runs).to.deep.equal(['/a']);
       expect(el._data).to.equal(null);
 
-      canvasBus.toolPanelViewState.emit('preflight');
+      el.hidden = false;
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('defers re-evaluation until the tools panel opens again', async () => {
+    const { el, runs } = await mount();
+    try {
+      closeToolsPanel();
+      hashChange._set(PAGE_B);
+      await tick();
+      expect(runs).to.deep.equal(['/a']);
+
+      openToolsPanel();
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
     } finally {
@@ -592,7 +644,7 @@ describe('ew-preflight document navigation', () => {
   });
 
   it('ignores hash changes that keep the same page', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       hashChange._set({ ...PAGE_A });
       await tick();
@@ -602,8 +654,8 @@ describe('ew-preflight document navigation', () => {
     }
   });
 
-  it('cancels a gate for the old page and drops its late result', async () => {
-    const { el, runs } = await mount('preflight');
+  it('cancels a hook for the old page and drops its late result', async () => {
+    const { el, runs } = await mount();
     try {
       el.hold = true;
       const running = el._handlePreflightRun({ paths: ['/o/s/a.html'], requestId: 'nav1' });
@@ -628,47 +680,258 @@ describe('ew-preflight document navigation', () => {
   });
 });
 
-describe('ew-preflight page URL', () => {
-  const state = { org: 'org', site: 'site', path: '/org/site/a' };
-  const PAGE_URL = /^https:\/\/feat-one--site--org\.[^/]+\/a$/;
-  let canvasBus;
+describe('da-preflight evaluation', () => {
+  before(async () => {
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/shared/preflight/preflight.js');
+  });
+
+  beforeEach(() => setUpPage());
+
+  it('checks the open page', async () => {
+    const targets = [];
+    const data = { failed: 0, sections: [] };
+    checkPage = async (target) => {
+      targets.push(target);
+      return data;
+    };
+    const el = createGateElement();
+    expect(await el._evaluate()).to.deep.equal({ status: 'success' });
+    expect(targets).to.deep.equal([{ org: 'org', site: 'site', path: '/a' }]);
+    expect(el._data).to.equal(data);
+  });
+
+  it('reports fail when a check failed', async () => {
+    checkPage = async () => ({ failed: 2 });
+    expect(await createGateElement()._evaluate()).to.deep.equal({ status: 'fail' });
+  });
+
+  it('reports the reason when the checks cannot run', async () => {
+    checkPage = async () => {
+      throw Object.assign(new Error('Branch not resolved'), { detail: 'No preview branch.' });
+    };
+    const el = createGateElement();
+    expect(await el._evaluate()).to.deep.equal({ status: 'error', message: 'No preview branch.' });
+    expect(el._error).to.equal('No preview branch.');
+  });
+
+  it('reports a generic reason when the error has no detail', async () => {
+    checkPage = async () => {
+      throw new Error('boom');
+    };
+    expect(await createGateElement()._evaluate()).to.deep.equal({
+      status: 'error',
+      message: 'Could not evaluate the page. Try again.',
+    });
+  });
+
+  it('drops the result of a run that a newer run superseded', async () => {
+    const releases = [];
+    checkPage = () => new Promise((resolve) => { releases.push(resolve); });
+    const el = createGateElement();
+    const older = el._evaluate();
+    const newer = el._evaluate();
+    releases[1]({ failed: 0 });
+    releases[0]({ failed: 3 });
+    expect(await older).to.equal(null);
+    expect(await newer).to.deep.equal({ status: 'success' });
+    expect(el._data).to.deep.equal({ failed: 0 });
+  });
+
+  it('skips the checks when no page is open', async () => {
+    let calls = 0;
+    checkPage = async () => {
+      calls += 1;
+      return { failed: 0 };
+    };
+    const el = createGateElement();
+    el._hashState = {};
+    expect(await el._evaluate()).to.deep.equal({ status: 'error', message: 'No page is open.' });
+    expect(calls).to.equal(0);
+  });
+});
+
+describe('da-preflight page checks', () => {
+  const PAGE = { org: 'org', site: 'site', path: '/a' };
+  let saved;
+  let checkedUrls;
+  let respond;
+  let respondToConfig;
 
   before(async () => {
-    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
-    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/shared/preflight/preflight.js');
   });
 
-  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+  // An author opens a branch with `?ref`.
+  function setSearch(search) {
+    const url = new URL(window.location.href);
+    url.search = search;
+    window.history.replaceState(null, '', url);
+  }
 
-  it('evaluates the canvas branch instead of main', async () => {
-    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
-    const pageUrl = await createGateElement()._resolvePageUrl();
-    expect(pageUrl).to.match(PAGE_URL);
+  beforeEach(() => {
+    saved = {
+      fetch: window.fetch,
+      ims: window.adobeIMS,
+      nxIms: localStorage.getItem('nx-ims'),
+      search: window.location.search,
+    };
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+    checkedUrls = [];
+    respond = () => new Response('{}', { status: 200 });
+    // The site configures no preview branch unless a test says otherwise.
+    respondToConfig = () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+    window.fetch = async (url, init) => {
+      if (!String(url).endsWith('/api/v0/evaluate/page')) {
+        return respondToConfig();
+      }
+
+      checkedUrls.push(JSON.parse(init.body).url);
+      return respond();
+    };
   });
 
-  it('waits for a pending branch to resolve instead of failing', async () => {
-    canvasBus.branchState.emit({ ...state, status: 'pending' });
-    const resolving = createGateElement()._resolvePageUrl();
-    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
-    expect(await resolving).to.match(PAGE_URL);
-  });
-
-  it('ignores the previous page branch while the new page resolves', async () => {
-    canvasBus.branchState.emit({ ...state, path: '/org/site/b', status: 'ready', branch: 'old' });
-    const resolving = createGateElement()._resolvePageUrl();
-    canvasBus.branchState.emit({ ...state, status: 'pending' });
-    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
-    expect(await resolving).to.match(PAGE_URL);
-  });
-
-  it('fails instead of guessing a branch when resolution fails', async () => {
-    canvasBus.branchState.emit({ ...state, status: 'error', error: 'down' });
-    let error;
-    try {
-      await createGateElement()._resolvePageUrl();
-    } catch (e) {
-      error = e;
+  afterEach(() => {
+    window.fetch = saved.fetch;
+    window.adobeIMS = saved.ims;
+    if (saved.nxIms === null) {
+      localStorage.removeItem('nx-ims');
+    } else {
+      localStorage.setItem('nx-ims', saved.nxIms);
     }
-    expect(error?.detail).to.contain('preview branch');
+    setSearch(saved.search);
+  });
+
+  const createChecked = () => document.createElement('da-preflight');
+
+  it('checks the preview of the page on the branch the author opened', async () => {
+    setSearch('?ref=Feat/One');
+    await createChecked()._checkPage(PAGE);
+    expect(checkedUrls).to.have.lengthOf(1);
+    expect(checkedUrls[0]).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+  });
+
+  it('checks the preview on the branch the site configures for the page', async () => {
+    // A site of its own, because a loaded config stays cached.
+    const data = [{ key: 'ew.wysiwygBranch', value: '/cfg-org/cfg-site/a=feature' }];
+    respondToConfig = () => new Response(JSON.stringify({ data }), { status: 200 });
+    await createChecked()._checkPage({ org: 'cfg-org', site: 'cfg-site', path: '/a' });
+    expect(checkedUrls[0]).to.match(/^https:\/\/feature--cfg-site--cfg-org\.[^/]+\/a$/);
+  });
+
+  it('checks the site root when no page path is open', async () => {
+    await createChecked()._checkPage({ org: 'org', site: 'site' });
+    expect(checkedUrls[0]).to.match(/^https:\/\/main--site--org\.[^/]+$/);
+  });
+
+  it('resolves to the renderer data of the response', async () => {
+    const response = {
+      site_code_evaluation: {
+        evaluations: [{
+          check_title: 'Page has exactly one H1',
+          alignment: 'NO',
+          reasoning: 'No H1 heading found.',
+          suggestions: null,
+          category: null,
+        }],
+      },
+    };
+    respond = () => new Response(JSON.stringify(response), { status: 200 });
+    const data = await createChecked()._checkPage(PAGE);
+    expect(data).to.deep.equal(adaptEvaluation(response));
+    expect(data.failed).to.equal(1);
+  });
+
+  it('rejects with the reason instead of guessing a branch', async () => {
+    // A site of its own, because a failed lookup stays cached.
+    respondToConfig = () => Promise.reject(new TypeError('Failed to fetch'));
+    const offline = { org: 'offline-org', site: 'site', path: '/a' };
+    const error = await createChecked()._checkPage(offline).catch((e) => e);
+    expect(error).to.be.instanceOf(Error);
+    expect(error.detail).to.contain('preview branch');
+    expect(checkedUrls).to.deep.equal([]);
+  });
+
+  it('rejects with the reason of the API when the checks cannot run', async () => {
+    respond = () => new Response(JSON.stringify({ detail: 'Page not found' }), { status: 404 });
+    const error = await createChecked()._checkPage(PAGE).catch((e) => e);
+    expect(error.detail).to.equal('Page not found (404)');
+  });
+});
+
+describe('da-preflight without publishing', () => {
+  let hashChange;
+
+  before(async () => {
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/shared/preflight/preflight.js');
+    ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
+  });
+
+  beforeEach(() => {
+    setUpPage({ publishing: false });
+    hashChange._set(GATE_PAGE);
+    openToolsPanel();
+  });
+
+  afterEach(() => {
+    hashChange._set({});
+  });
+
+  // Mounts Preflight in an editor that never starts the publish hook. Each evaluation
+  // records its page.
+  async function mountWithoutGate() {
+    const el = document.createElement('da-preflight');
+    const runs = [];
+    el._evaluate = async () => {
+      runs.push(el._hashState.path);
+      el._data = { failed: 0 };
+      return el._verdictFor({ data: el._data });
+    };
+    document.body.appendChild(el);
+    await tick();
+    return { el, runs };
+  }
+
+  it('evaluates on first open and shows the results', async () => {
+    const { el, runs } = await mountWithoutGate();
+    try {
+      expect(runs).to.deep.equal(['/a']);
+      expect(el.shadowRoot.querySelector('nx-page-eval')).to.exist;
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('evaluates a new page once the view is shown again', async () => {
+    const { el, runs } = await mountWithoutGate();
+    try {
+      el.hidden = true;
+      hashChange._set({ ...GATE_PAGE, path: '/b' });
+      await tick();
+      expect(runs).to.deep.equal(['/a']);
+
+      el.hidden = false;
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('refreshes from the header when nothing publishes', async () => {
+    const { el, runs } = await mountWithoutGate();
+    try {
+      el.getHeaderActions().click();
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/a']);
+      // Awaited directly so a failing report would reject here.
+      await el._evaluateAndReport();
+      expect(runs).to.deep.equal(['/a', '/a', '/a']);
+    } finally {
+      el.remove();
+    }
   });
 });

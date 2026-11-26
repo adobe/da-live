@@ -1,4 +1,6 @@
-import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
+import {
+  DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN, normalizeBranch,
+} from './constants.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
@@ -442,6 +444,41 @@ export const fetchDaConfigs = (() => {
     return configs;
   };
 })();
+
+export async function fetchWysiwygBranch({ org, site, path }) {
+  if (!org || !site) return 'main';
+  const branchParam = new URLSearchParams(window.location.search).get('ref');
+  if (branchParam && branchParam !== 'local') return normalizeBranch(branchParam);
+
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const rows = configs.filter((c) => {
+    if (c?.error) {
+      // eslint-disable-next-line no-console
+      console.warn(c.error, c.status);
+      return false;
+    }
+    return Boolean(c);
+  }).reverse().flatMap((c) => getFirstSheet(c) || []);
+  const branchRows = rows.filter((r) => r?.key === 'ew.wysiwygBranch'
+    && typeof r.value === 'string');
+  if (!branchRows.length) return 'main';
+
+  const fullPath = path ? `/${path}` : `/${org}/${site}`;
+  const matched = branchRows
+    .map((row) => {
+      const eqIdx = row.value.indexOf('=');
+      if (eqIdx === -1) return null;
+      return {
+        prefix: row.value.slice(0, eqIdx).replace(/\/+$/, ''),
+        branch: row.value.slice(eqIdx + 1).trim(),
+      };
+    })
+    .filter((entry) => entry?.branch
+      && (fullPath === entry.prefix || fullPath.startsWith(`${entry.prefix}/`)))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+
+  return normalizeBranch(matched?.branch || 'main');
+}
 
 export const fetchConfigBusOptions = (() => {
   const inFlight = {};

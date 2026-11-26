@@ -1654,6 +1654,21 @@ describe('getCanvasToolPanelViews', () => {
     expect(preflight.cacheKey).to.equal(undefined);
   });
 
+  it('keeps the order of the first-party views', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    expect(views.filter((v) => v.section === 'Editor').map((v) => v.id))
+      .to.deep.equal(['outline', 'metadata', 'files', 'versions', 'comments', 'preflight']);
+  });
+
+  it('loads the canvas outline and the shared Preflight', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const load = (id) => views.find((v) => v.id === id).load();
+    expect((await load('outline')).localName).to.equal('ew-page-outline');
+    expect((await load('preflight')).localName).to.equal('da-preflight');
+  });
+
   it('includes only the AEM assets rail panel with a modal pop-out', async () => {
     const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
     setDaConfigs([{ data: [REPO] }]);
