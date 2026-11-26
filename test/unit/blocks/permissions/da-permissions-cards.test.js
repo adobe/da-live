@@ -10,7 +10,7 @@ function baseSlot(overrides = {}) {
   return {
     path: 'CONFIG',
     kind: 'config',
-    label: 'Experience Workspace configurations',
+    label: 'Org configurations',
     read: [],
     write: [],
     none: [],
@@ -47,7 +47,7 @@ describe('da-permissions-cards', () => {
   });
 
   it('groups slots into config and content sections in order (org view)', async () => {
-    const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'Experience Workspace configurations' });
+    const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'Org configurations' });
     const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });
     const el = await mount({ slots: [configSlot, contentSlot], scopeName: 'myorg' });
 
@@ -72,17 +72,17 @@ describe('da-permissions-cards', () => {
     expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folder Permissions');
   });
 
-  it('uses Experience Workspace in organization configuration accessibility labels', async () => {
+  it('uses org scope in organization configuration accessibility labels', async () => {
     const slots = buildSlots([{ path: 'CONFIG', groups: 'reader@example.com', actions: 'read' }], null);
     const el = await mount({ slots, adding: { path: 'CONFIG', level: 'read' } });
     const card = el.shadowRoot.querySelector('article[data-path="CONFIG"]');
     const row = card.querySelector('.level-row[data-level="read"]');
 
-    expect(card.getAttribute('aria-label')).to.equal('Experience Workspace configurations');
-    expect(row.querySelector('nx-pills').label).to.equal('Experience Workspace configurations Read');
-    expect(row.querySelector('.row-add').getAttribute('aria-label')).to.equal('Add to Experience Workspace configurations Read');
-    expect(row.querySelector('input').getAttribute('aria-label')).to.equal('Add to Experience Workspace configurations Read');
-    expect(row.querySelector('.row-add-cancel').getAttribute('aria-label')).to.equal('Cancel adding to Experience Workspace configurations Read');
+    expect(card.getAttribute('aria-label')).to.equal('Org configurations');
+    expect(row.querySelector('nx-pills').label).to.equal('Org configurations Read');
+    expect(row.querySelector('.row-add').getAttribute('aria-label')).to.equal('Add to Org configurations Read');
+    expect(row.querySelector('input').getAttribute('aria-label')).to.equal('Add to Org configurations Read');
+    expect(row.querySelector('.row-add-cancel').getAttribute('aria-label')).to.equal('Cancel adding to Org configurations Read');
   });
 
   it('shows card titles only for folder and other rules, and names every card', async () => {

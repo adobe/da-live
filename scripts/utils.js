@@ -32,12 +32,6 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
 
 export const PRODUCT_NAME = 'Experience Workspace';
 
-/**
- * Sets a dynamically generated document title as `<name> | Experience Workspace`,
- * or just the product name when no page name is given.
- * Content-authored page titles should be maintained in the content instead.
- * @param {string} [name] - The action or page name.
- */
 export function setPageTitle(name) {
   document.title = name ? `${name} | ${PRODUCT_NAME}` : PRODUCT_NAME;
 }
