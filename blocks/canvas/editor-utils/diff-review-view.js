@@ -8,7 +8,6 @@ import {
 import { getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getDiffLabels } from '../../edit/utils/helpers.js';
-import { htmlDiff } from '../../shared/version/htmldiff.js';
 import { applyResolution, getDiffEngine, loadDiffEngine } from '../../edit/prose/diff/diff-engine.js';
 import { hasGroupedMarkup } from './diff-review.js';
 
@@ -185,6 +184,21 @@ function toHtml(fragment) {
   return div.innerHTML.replace(/ (?:da-diff-added|dadiffadded|data-id|dataid)="[^"]*"/g, '');
 }
 
+let htmlDiff;
+let htmlDiffLoading;
+export function loadHtmlDiff() {
+  htmlDiffLoading ??= import('../../shared/version/htmldiff.js')
+    .then((mod) => {
+      htmlDiff = mod.htmlDiff;
+      return htmlDiff;
+    })
+    .catch((error) => {
+      htmlDiffLoading = undefined;
+      throw error;
+    });
+  return htmlDiffLoading;
+}
+
 function diffView(before, after, label) {
   const diff = el('div', 'diff-group-side-diff');
   diff.setAttribute('role', 'group');
@@ -297,12 +311,20 @@ class GroupCardView {
       side.append(content);
       const [reference, referenceLabel] = bases.length ? [bases, BASE_LABEL] : [other, otherLabel];
       if (canDiff(entries, reference)) {
-        side.classList.add('has-diff');
-        side.append(diffView(
-          toHtml(serialize(schema, reference)),
-          toHtml(serialize(schema, entries)),
-          `Changes from ${referenceLabel} to ${label}`,
-        ));
+        const addDiff = () => {
+          side.classList.add('has-diff');
+          side.append(diffView(
+            toHtml(serialize(schema, reference)),
+            toHtml(serialize(schema, entries)),
+            `Changes from ${referenceLabel} to ${label}`,
+          ));
+        };
+        if (htmlDiff) addDiff();
+        else {
+          loadHtmlDiff().then(() => {
+            if (!this.destroyed) addDiff();
+          }).catch(() => {});
+        }
       }
       sides.append(side);
     });
@@ -358,6 +380,7 @@ class GroupCardView {
   }
 
   destroy() {
+    this.destroyed = true;
     this.unsubscribe?.();
     this.resizeObserver?.disconnect();
   }

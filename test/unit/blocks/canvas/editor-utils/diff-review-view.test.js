@@ -5,6 +5,7 @@ import {
   createReviewNodeViews,
   createReviewPlugin,
   groupTitle,
+  loadHtmlDiff,
   reasonText,
 } from '../../../../../blocks/canvas/editor-utils/diff-review-view.js';
 import { createMergeConflictsPlugin } from '../../../../../blocks/canvas/editor-utils/prose-merge-conflicts.js';
@@ -31,8 +32,8 @@ const fallback = {
   diff_deleted: () => ({ dom: Object.assign(document.createElement('span'), { className: 'legacy-deleted' }) }),
 };
 
-async function openEditor(html, { withPlugin = false } = {}) {
-  await loadDiffEngine();
+async function openEditor(html, { withPlugin = false, withDiff = true } = {}) {
+  await Promise.all([loadDiffEngine(), withDiff && loadHtmlDiff()]);
   const ydoc = new Y.Doc();
   aem2doc(html, ydoc);
   const doc = yDocToProsemirror(getSchema(), ydoc);
@@ -56,6 +57,18 @@ describe('diff-review-view', () => {
   afterEach(() => {
     destroyEditor(editor);
     editor = undefined;
+  });
+
+  describe('loading', () => {
+    it('shows plain panes first and adds the diff once it loads', async () => {
+      editor = await openEditor(PAGE, { withDiff: false });
+      const g1 = card(editor.view, 'g1');
+      expect(g1.querySelector('.is-source .diff-group-side-content').textContent).to.include('Alpha source');
+      expect(g1.querySelectorAll('.diff-group-side-diff')).to.have.length(0);
+      await loadHtmlDiff();
+      await waitFor(0);
+      expect(g1.querySelectorAll('.has-diff .diff-group-side-diff')).to.have.length(2);
+    });
   });
 
   describe('text', () => {
