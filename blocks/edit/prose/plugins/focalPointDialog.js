@@ -124,9 +124,12 @@ export async function openFocalPointDialog(view, pos, node) {
   const imageContainer = document.createElement('div');
   imageContainer.className = 'focal-point-image-container';
 
+  // The editor loads ./media_ images from the preview origin, so use the src it shows
+  const src = view.nodeDOM(pos)?.querySelector('img')?.src || node.attrs.src;
+
   const img = document.createElement('img');
   img.crossOrigin = 'anonymous';
-  img.src = node.attrs.src;
+  img.src = src;
   img.className = 'focal-point-image';
   img.draggable = false;
 
@@ -136,7 +139,7 @@ export async function openFocalPointDialog(view, pos, node) {
   img.addEventListener('error', () => {
     corsAvailable = false;
     img.crossOrigin = null;
-    img.src = node.attrs.src;
+    img.src = src;
   }, { once: true });
 
   const indicator = document.createElement('div');
