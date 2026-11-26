@@ -290,10 +290,29 @@ function findUnbalanced(tokens) {
   return unbalanced;
 }
 
-function wrap(html, klass) {
+function wrap(html, klass, tag = klass === 'diffins' ? 'ins' : 'del') {
   if (!html) return '';
-  const tag = klass === 'diffins' ? 'ins' : 'del';
   return `<${tag} class="${klass}">${html}</${tag}>`;
+}
+
+function markModified(openTag) {
+  return openTag.replace(/\s*\/?>$/, (end) => ` data-diffmod=""${end.trim()}`);
+}
+
+/**
+ * Detect a tag that kept its name but changed attributes (a link's href, a class): one
+ * deleted open tag directly followed by one inserted open tag of the same name. Render
+ * the new tag once, marked with data-diffmod, so its matching close stays balanced.
+ */
+function tryAttributeChange(opIndex, ops, oldTokens, newTokens) {
+  const op = ops[opIndex];
+  const next = ops[opIndex + 1];
+  if (op.type !== 'delete' || next?.type !== 'insert') return null;
+  if (op.oldEnd - op.oldStart !== 1 || next.newEnd - next.newStart !== 1) return null;
+  const oldTag = oldTokens[op.oldStart];
+  const newTag = newTokens[next.newStart];
+  if (oldTag.kind !== 'open' || newTag.kind !== 'open' || oldTag.name !== newTag.name) return null;
+  return { html: markModified(newTag.content), consumed: 2 };
 }
 
 function renderEditTokens(tokens, klass) {
@@ -318,6 +337,39 @@ function tokensToString(tokens) {
   let s = '';
   for (const t of tokens) s += t.content;
   return s;
+}
+
+const sliceOf = (op, oldTokens, newTokens) => (op.type === 'insert'
+  ? newTokens.slice(op.newStart, op.newEnd)
+  : oldTokens.slice(op.oldStart, op.oldEnd));
+
+const FORMAT_TAGS = new Set(['a', 'b', 'code', 'em', 'i', 'mark', 's', 'span', 'strong', 'sub', 'sup', 'u']);
+
+const allKind = (tokens, kind) => tokens.length > 0 && tokens.every((t) => t.kind === kind);
+
+const allFormatting = (tokens) => tokens.every((t) => FORMAT_TAGS.has(t.name));
+
+const closesMatch = (opens, closes) => opens.length === closes.length
+  && closes.every((t, i) => t.name === opens[opens.length - 1 - i].name);
+
+/**
+ * Detect formatting swapped around unchanged text (<strong>x</strong> became <em>x</em>):
+ * deleted opens, inserted opens, an equal run, deleted closes, inserted closes. Render the
+ * new formatting once, around the equal content, marked as a modification.
+ */
+function tryFormatSwap(opIndex, ops, oldTokens, newTokens) {
+  const [delOpen, insOpen, equal, delClose, insClose] = ops.slice(opIndex, opIndex + 5);
+  if (delOpen?.type !== 'delete' || insOpen?.type !== 'insert' || equal?.type !== 'equal') return null;
+  if (delClose?.type !== 'delete' || insClose?.type !== 'insert') return null;
+  const [oldOpens, newOpens, oldCloses, newCloses] = [delOpen, insOpen, delClose, insClose]
+    .map((op) => sliceOf(op, oldTokens, newTokens));
+  if (!allKind(oldOpens, 'open') || !allKind(newOpens, 'open')) return null;
+  if (!allFormatting(oldOpens) || !allFormatting(newOpens)) return null;
+  if (!closesMatch(oldOpens, oldCloses) || !closesMatch(newOpens, newCloses)) return null;
+  const inner = tokensToString(newOpens)
+    + tokensToString(newTokens.slice(equal.newStart, equal.newEnd))
+    + tokensToString(newCloses);
+  return { html: wrap(inner, 'diffmod', 'ins'), consumed: 5 };
 }
 
 /**
@@ -383,7 +435,8 @@ function tryWrapAround(opIndex, ops, oldTokens, newTokens) {
     oldTokens.slice(next.oldStart, next.oldEnd),
   );
   for (const t of usedCloses) inner += t.content;
-  html += wrap(inner, klass);
+  const tag = op.type === 'insert' ? 'ins' : 'del';
+  html += allFormatting(usedOpens) ? wrap(inner, 'diffmod', tag) : wrap(inner, klass);
 
   if (closeRest.length) html += renderEditTokens(closeRest, klass);
 
@@ -400,7 +453,9 @@ function renderOps(ops, oldTokens, newTokens) {
       out += tokensToString(newTokens.slice(op.newStart, op.newEnd));
       i += 1;
     } else {
-      const wrapped = tryWrapAround(i, ops, oldTokens, newTokens);
+      const wrapped = tryFormatSwap(i, ops, oldTokens, newTokens)
+        ?? tryAttributeChange(i, ops, oldTokens, newTokens)
+        ?? tryWrapAround(i, ops, oldTokens, newTokens);
       if (wrapped) {
         out += wrapped.html;
         i += wrapped.consumed;
@@ -474,7 +529,9 @@ function segmentTopLevelBlocks(html) {
       depth -= 1;
       if (depth === 0) {
         const blockHtml = html.substring(blockStart, m.index + m[0].length);
-        const text = blockHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        const images = [...blockHtml.matchAll(/<img\b[^>]*?\ssrc="([^"]*)"/gi)].map((img) => img[1]);
+        const words = blockHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        const text = images.length ? `${words} ${images.join(' ')}` : words;
         const topName = (blockHtml.match(/^<\s*([a-zA-Z][a-zA-Z0-9-]*)/) || [])[1] || '';
         units.push({ kind: 'block', html: blockHtml, text, name: topName.toLowerCase() });
         inlineStart = m.index + m[0].length;

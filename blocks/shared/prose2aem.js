@@ -297,7 +297,7 @@ export default function prose2aem(
     convertLocalUrlsToRelative(editor);
   }
 
-  const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
+  const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted, da-diff-base');
   removeEls(daDiffDeletedEls);
 
   removeEditorArtifacts(editor);

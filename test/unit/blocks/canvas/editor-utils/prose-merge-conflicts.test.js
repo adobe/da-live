@@ -1,6 +1,23 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { Y, yDocToProsemirror } from 'da-y-wrapper';
+import { aem2doc, getSchema } from 'da-parser';
 import { createMergeConflictsPlugin } from '../../../../../blocks/canvas/editor-utils/prose-merge-conflicts.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { loadDiffEngine } from '../../../../../blocks/edit/prose/diff/diff-engine.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
+
+const GROUPED = `<body><main><div>
+<da-diff-deleted data-mdast="ignore" data-diff-group="g1" data-diff-side="source" data-diff-kind="changed"><p>Alpha source</p></da-diff-deleted>
+<p da-diff-added="" data-diff-group="g1" data-diff-side="local" data-diff-kind="changed">Alpha local</p>
+</div></main></body>`;
+
+async function openGrouped(plugin) {
+  const ydoc = new Y.Doc();
+  aem2doc(GROUPED, ydoc);
+  const doc = yDocToProsemirror(getSchema(), ydoc);
+  return createTestEditor({ doc, ydoc, additionalPlugins: [plugin] });
+}
 
 const waitFor = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -63,5 +80,45 @@ describe('createMergeConflictsPlugin', () => {
     await waitFor(600);
 
     expect(calls).to.deep.equal([]);
+  });
+
+  describe('with grouped markup', () => {
+    let engine;
+    let states;
+    let unsubscribe;
+
+    beforeEach(async () => {
+      engine = await loadDiffEngine();
+      states = [];
+      unsubscribe = canvasBus.diffReviewState.subscribe((detail) => states.push(detail));
+    });
+
+    afterEach(() => {
+      unsubscribe();
+      sinon.restore();
+    });
+
+    const bar = () => editor.view.dom.parentNode?.querySelector('.diff-review-bar');
+
+    it('shows the review bar and clears the review state when the view goes', async () => {
+      editor = await openGrouped(createMergeConflictsPlugin(() => {}));
+      await waitFor(600);
+      expect(bar()).to.not.equal(null);
+      expect(states.at(-1).summary.groups).to.have.length(1);
+      destroyEditor(editor);
+      editor = undefined;
+      expect(states.at(-1)).to.equal(null);
+    });
+
+    it('falls back to the legacy check when the summary fails', async () => {
+      sinon.stub(engine, 'reviewSummary').throws(new Error('broken'));
+      sinon.stub(console, 'warn');
+      const calls = [];
+      editor = await openGrouped(createMergeConflictsPlugin((value) => calls.push(value)));
+      await waitFor(600);
+      expect(calls).to.deep.equal([true]);
+      expect(bar()).to.equal(null);
+      expect(states.filter(Boolean)).to.deep.equal([]);
+    });
   });
 });

@@ -1,115 +1,13 @@
 /* eslint-disable max-len */
 // User action handlers - only loaded when user actually clicks action buttons
 
-import { Fragment, Slice, Y } from 'da-y-wrapper';
-import { doc2aem, prosemirrorToYXmlFragment } from 'da-parser';
 import {
   createElement,
   createButton,
   createTooltip,
-  getDaMetadata,
-  setDaMetadata,
   getDiffLabels,
 } from '../../utils/helpers.js';
-
-const HASH_LENGTH = 12;
-export const REJECTED_KEY = 'rejectedHashes';
-export const ACCEPTED_KEY = 'acceptedHashes';
-
-let objectHashLoaded = false;
-const objHash = async (obj) => {
-  if (!objectHashLoaded) {
-    await import('./object_hash.js');
-    objectHashLoaded = true;
-  }
-  return window.objectHash(obj).substring(0, HASH_LENGTH);
-};
-
-// When content is parsed from <da-diff-added>, each direct child gets a
-// `daDiffAdded: ''` attribute (added by the diff_added parseDOM contentElement
-// in the schema). When accepting the addition, strip that attribute so the
-// accepted content no longer serializes with `da-diff-added=""` on every child.
-export function stripDaDiffAddedAttrs(nodes) {
-  return nodes.map((node) => {
-    if (node.attrs && node.attrs.daDiffAdded != null) {
-      return node.type.create(
-        { ...node.attrs, daDiffAdded: null },
-        node.content,
-        node.marks,
-      );
-    }
-    return node;
-  });
-}
-
-function escapeHTML(str) {
-  return str.replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function trimTextNodes(node) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    node.textContent = node.textContent.trim();
-  } else if (node.nodeType === Node.ELEMENT_NODE) {
-    node.childNodes.forEach(trimTextNodes);
-  }
-}
-
-function getOuterHTMLWithSortedAttributes(element) {
-  const tagName = element.tagName.toLowerCase();
-  const attrs = Array.from(element.attributes)
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((attr) => `${attr.name}="${escapeHTML(attr.value)}"`)
-    .join(' ');
-  const voidElements = new Set([
-    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-    'link', 'meta', 'param', 'source', 'track', 'wbr',
-  ]);
-  if (voidElements.has(tagName)) {
-    return `<${tagName}${attrs ? ` ${attrs}` : ''}>`;
-  }
-  let inner = '';
-  for (const child of element.childNodes) {
-    if (child.nodeType === Node.ELEMENT_NODE) {
-      inner += getOuterHTMLWithSortedAttributes(child);
-    } else if (child.nodeType === Node.TEXT_NODE) {
-      inner += escapeHTML(child.textContent);
-    } else if (child.nodeType === Node.COMMENT_NODE) {
-      // Sanitize comment content to avoid '-->'
-      inner += `<!--${child.textContent.replace(/-->/g, '--&gt;')}-->`;
-    }
-  }
-  return `<${tagName}${attrs ? ` ${attrs}` : ''}>${inner}</${tagName}>`;
-}
-
-// Serialize like the editor saves, normalized like the loc merge, so both compute the same hash
-function nodeToHtml(node) {
-  const ydoc = new Y.Doc();
-  const doc = node.type.schema.topNodeType.create(null, node.content);
-  prosemirrorToYXmlFragment(doc, ydoc.getXmlFragment('prosemirror'));
-  const saved = new DOMParser().parseFromString(doc2aem(ydoc), 'text/html');
-  saved.querySelectorAll('[da-diff-added]').forEach((el) => el.removeAttribute('da-diff-added'));
-  const block = saved.querySelector('main > div > *');
-  if (!block) return null;
-  trimTextNodes(block);
-  return getOuterHTMLWithSortedAttributes(block)
-    .replace(/>\s+</g, '><')
-    .replace(/[\n\r\t]/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
-export const addToHashMetadata = async (node, mdKey) => {
-  const html = nodeToHtml(node);
-  if (!html) return;
-  const hash = await objHash(html);
-  const hashStr = getDaMetadata(mdKey);
-  const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
-  hashes.add(hash);
-  setDaMetadata(mdKey, Array.from(hashes).join(','));
-};
+import { applyResolution, loadDiffEngine } from './diff-engine.js';
 
 function createCompositeButton({
   label, id, handler, variant, tooltip, switchTooltip, isActive = false,
@@ -177,84 +75,39 @@ export function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSw
   return actionsContainer;
 }
 
-export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode) {
+function currentLocPos(view, getPos, isValidPosition, isLocNode) {
+  const currentPos = getPos();
+  if (!isValidPosition(currentPos)) {
+    // eslint-disable-next-line no-console
+    console.warn('Could not get current position for single node');
+    return null;
+  }
+  if (!isLocNode(view.state.doc.nodeAt(currentPos))) {
+    // eslint-disable-next-line no-console
+    console.warn('Current node is not a loc node');
+    return null;
+  }
+  return currentPos;
+}
+
+async function handleSingleNode(view, getPos, isValidPosition, isLocNode, pick) {
   try {
-    const currentPos = getPos();
-    if (!isValidPosition(currentPos)) {
-      // eslint-disable-next-line no-console
-      console.warn('Could not get current position for single node delete');
-      return;
-    }
-
-    const { doc } = view.state;
-    const resolvedPos = doc.resolve(currentPos);
-    const { parent } = resolvedPos;
-    const indexInParent = resolvedPos.index();
-    const currentNode = parent.child(indexInParent);
-
-    if (!isLocNode(currentNode)) {
-      // eslint-disable-next-line no-console
-      console.warn('Current node is not a loc node');
-      return;
-    }
-
-    addToHashMetadata(currentNode, REJECTED_KEY);
-
-    // Check if parent is a list item for special handling
-    if (resolvedPos.parent.type.name === 'list_item') {
-      const parentPos = resolvedPos.before(resolvedPos.depth);
-      const transaction = view.state.tr.delete(
-        parentPos,
-        parentPos + resolvedPos.parent.nodeSize,
-      );
-      view.dispatch(transaction);
-    } else {
-      const transaction = view.state.tr.delete(
-        currentPos,
-        currentPos + currentNode.nodeSize,
-      );
-      view.dispatch(transaction);
-    }
+    const { CHOICE } = await loadDiffEngine();
+    const pos = currentLocPos(view, getPos, isValidPosition, isLocNode);
+    if (pos === null) return;
+    applyResolution(view, 'resolveMarkers', { positions: [pos], choice: pick(CHOICE) });
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('Error deleting single loc node:', error);
+    console.warn('Error resolving single loc node:', error);
   }
 }
 
-export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode, filterNodeContent, dispatchContentTransaction) {
-  try {
-    const currentPos = getPos();
-    if (!isValidPosition(currentPos)) {
-      // eslint-disable-next-line no-console
-      console.warn('Could not get current position for single node keep');
-      return;
-    }
+export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode) {
+  return handleSingleNode(view, getPos, isValidPosition, isLocNode, (CHOICE) => CHOICE.neither);
+}
 
-    const { doc } = view.state;
-    const resolvedPos = doc.resolve(currentPos);
-    const { parent } = resolvedPos;
-    const indexInParent = resolvedPos.index();
-    const currentNode = parent.child(indexInParent);
-
-    if (!isLocNode(currentNode)) {
-      // eslint-disable-next-line no-console
-      console.warn('Current node is not a loc node');
-      return;
-    }
-
-    addToHashMetadata(currentNode, ACCEPTED_KEY);
-
-    // Use the improved content filtering like the tabbed interface.
-    const filteredContent = stripDaDiffAddedAttrs(filterNodeContent(currentNode));
-    dispatchContentTransaction(
-      currentPos,
-      currentPos + currentNode.nodeSize,
-      filteredContent,
-    );
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('Error keeping single loc node:', error);
-  }
+export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode) {
+  return handleSingleNode(view, getPos, isValidPosition, isLocNode, (CHOICE) => CHOICE.both);
 }
 
 export function getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair) {
@@ -306,28 +159,16 @@ export function getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, 
   }
 }
 
-export function getPairRange(pair) {
-  const { deletedPos, addedPos, deletedNode, addedNode } = pair;
-  return {
-    startPos: Math.min(deletedPos, addedPos),
-    endPos: Math.max(
-      deletedPos + deletedNode.nodeSize,
-      addedPos + addedNode.nodeSize,
-    ),
-  };
-}
-
-function handleOperation(context, { acceptAdded, acceptDeleted, getContent }) {
+async function handleOperation(context, pick) {
   const {
     view,
     getPos,
     isValidPosition,
     isLocNode,
     canFormLocPair,
-    filterNodeContent,
-    dispatchContentTransaction,
   } = context;
 
+  const { CHOICE } = await loadDiffEngine();
   const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
   if (!currentPair) {
     // eslint-disable-next-line no-console
@@ -335,56 +176,18 @@ function handleOperation(context, { acceptAdded, acceptDeleted, getContent }) {
     return;
   }
 
-  const { addedNode, deletedNode } = currentPair;
-
-  // Update metadata based on which nodes are accepted/rejected
-  addToHashMetadata(addedNode, acceptAdded ? ACCEPTED_KEY : REJECTED_KEY);
-  addToHashMetadata(deletedNode, acceptDeleted ? ACCEPTED_KEY : REJECTED_KEY);
-
-  const content = getContent({ addedNode, deletedNode, filterNodeContent });
-  const { startPos, endPos } = getPairRange(currentPair);
-
-  dispatchContentTransaction(startPos, endPos, content);
+  const { deletedPos, addedPos } = currentPair;
+  applyResolution(view, 'resolveMarkers', { positions: [deletedPos, addedPos], choice: pick(CHOICE) });
 }
 
-export async function handleKeepDeleted(context) {
-  const { filterNodeContent } = context;
-  handleOperation(context, {
-    acceptAdded: false,
-    acceptDeleted: true,
-    getContent: ({ deletedNode }) => filterNodeContent(deletedNode),
-  });
+export function handleKeepDeleted(context) {
+  return handleOperation(context, (CHOICE) => CHOICE.source);
 }
 
 export function handleKeepAdded(context) {
-  const { filterNodeContent } = context;
-  handleOperation(context, {
-    acceptAdded: true,
-    acceptDeleted: false,
-    getContent: ({ addedNode }) => stripDaDiffAddedAttrs(filterNodeContent(addedNode)),
-  });
+  return handleOperation(context, (CHOICE) => CHOICE.mine);
 }
 
 export function handleKeepBoth(context) {
-  const { filterNodeContent } = context;
-  handleOperation(context, {
-    acceptAdded: true,
-    acceptDeleted: true,
-    getContent: ({ deletedNode, addedNode }) => {
-      const deletedContent = filterNodeContent(deletedNode);
-      const addedContent = stripDaDiffAddedAttrs(filterNodeContent(addedNode));
-      return [...deletedContent, ...addedContent];
-    },
-  });
-}
-
-export function applyKeepOperation(tr, node, pos, simpleFilterContent) {
-  const filteredContent = simpleFilterContent(node.content.content);
-  if (filteredContent.length > 0) {
-    const newFragment = Fragment.fromArray(filteredContent);
-    const newSlice = new Slice(newFragment, 0, 0);
-    tr.replace(pos, pos + node.nodeSize, newSlice);
-  } else {
-    tr.delete(pos, pos + node.nodeSize);
-  }
+  return handleOperation(context, (CHOICE) => CHOICE.both);
 }

@@ -1,8 +1,4 @@
-import {
-  DOMSerializer,
-  Fragment,
-  Slice,
-} from 'da-y-wrapper';
+import { DOMSerializer } from 'da-y-wrapper';
 import getSheet from '../../../shared/sheet.js';
 import { createElement, getDiffLabels } from '../../utils/helpers.js';
 
@@ -22,49 +18,12 @@ async function loadActions() {
   return userActionsModule;
 }
 
-function createContentTransaction(view, startPos, endPos, filteredContent) {
-  const { tr } = view.state;
-
-  if (filteredContent.length > 0) {
-    const newFragment = Fragment.fromArray(filteredContent);
-    const newSlice = new Slice(newFragment, 1, 1);
-    return tr.replace(startPos, endPos, newSlice);
-  }
-
-  return tr.delete(startPos, endPos);
-}
-
 function isLocNode(node) {
   return node?.type?.name === 'diff_deleted' || node?.type?.name === 'diff_added';
 }
 
 function isValidPosition(pos) {
   return pos !== null && pos !== undefined;
-}
-
-function filterNodeContent(node) {
-  if (!node?.content?.content) {
-    return [];
-  }
-
-  return node.content.content.filter((child) => {
-    if (child.type.name === 'text') {
-      return child.text?.trim().length > 0;
-    }
-
-    if (child.content) {
-      if (child.content?.content?.length > 0) {
-        return true;
-      }
-      return child.attrs || child.marks?.length > 0;
-    }
-
-    return true;
-  });
-}
-
-function simpleFilterContent(content) {
-  return content.filter((c) => c.content?.content?.length);
 }
 
 const activeViews = new Set();
@@ -110,12 +69,7 @@ async function loadGlobalDialog() {
 async function showGlobalDialog(view) {
   try {
     const globalDialog = await loadGlobalDialog();
-    globalDialog.showGlobalDialog(
-      view,
-      activeViews,
-      simpleFilterContent,
-      isLocNode,
-    );
+    globalDialog.showGlobalDialog(view, activeViews);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load global dialog:', error);
@@ -178,7 +132,7 @@ function hasMatchingContent(nodeA, nodeB) {
   return true;
 }
 
-export function checkForLocNodes(view, hostEl) {
+export function checkForLocNodes(view, hostEl, { showDialog = true } = {}) {
   const { doc } = view.state;
 
   const hasListLocNode = (node) => (node.type.name === 'bullet_list' || node.type.name === 'ordered_list')
@@ -190,7 +144,8 @@ export function checkForLocNodes(view, hostEl) {
 
   if (hasLocNodes) {
     loadLocCss(hostEl);
-    showGlobalDialog(view);
+    if (showDialog) showGlobalDialog(view);
+    else hideGlobalDialog();
   } else {
     hideGlobalDialog();
   }
@@ -512,16 +467,11 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         && hasMatchingContent(nodeA, nodeB);
     }
 
-    dispatchContentTransaction(startPos, endPos, filteredContent) {
-      const transaction = createContentTransaction(this.view, startPos, endPos, filteredContent);
-      this.view.dispatch(transaction);
-    }
-
     // Generic handler to eliminate duplication in user action calls
     async callUserAction(actionName, actionParams, errorContext) {
       try {
         const userActions = await loadActions();
-        userActions[actionName](...actionParams);
+        await userActions[actionName](...actionParams);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn(`Failed to load user actions for ${errorContext}:`, error);
@@ -538,14 +488,6 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       ];
     }
 
-    get singleNodeParams() {
-      return [
-        ...this.baseParams,
-        filterNodeContent,
-        this.dispatchContentTransaction.bind(this),
-      ];
-    }
-
     get pairNodeContext() {
       return {
         view: this.view,
@@ -553,8 +495,6 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         isValidPosition,
         isLocNode,
         canFormLocPair: this.canFormLocPair.bind(this),
-        filterNodeContent,
-        dispatchContentTransaction: this.dispatchContentTransaction.bind(this),
       };
     }
 
@@ -563,7 +503,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     async handleKeepSingleNode() {
-      await this.callUserAction('handleKeepSingleNode', this.singleNodeParams, 'keep');
+      await this.callUserAction('handleKeepSingleNode', this.baseParams, 'keep');
     }
 
     async handleKeepDeleted() {

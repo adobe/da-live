@@ -47,6 +47,7 @@ import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
+import { createReviewNodeViews, createReviewPlugin } from '../editor-utils/diff-review-view.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -239,7 +240,11 @@ export default async function initProse({
 
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
-    plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
+    plugins.push(
+      imageFocalPoint(),
+      createMergeConflictsPlugin(onMergeConflictsChange, hostEl),
+      createReviewPlugin(),
+    );
   }
 
   let state = EditorState.create({ schema, plugins });
@@ -247,7 +252,7 @@ export default async function initProse({
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-  const diffNodeViews = canWrite ? {
+  const diffNodeViews = canWrite ? createReviewNodeViews({
     diff_added(node, view, getPos) {
       const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false, hostEl });
       return new MergeConflictsAddedView(node, view, getPos);
@@ -256,7 +261,7 @@ export default async function initProse({
       const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl });
       return new MergeConflictsDeletedView(node, view, getPos);
     },
-  } : undefined;
+  }) : undefined;
 
   viewRef = new EditorView(editor, {
     state,

@@ -890,6 +890,10 @@ da-diff-deleted, da-diff-added {
   position: relative;
 }
 
+da-diff-base {
+  display: none;
+}
+
 .loc-dialog {
   padding: 10px;
   border-radius: 4px;

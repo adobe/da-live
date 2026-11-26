@@ -36,14 +36,14 @@ describe('HTML Diff', () => {
       const result = htmlDiff(oldHtml, newHtml);
       // Wrap-around insertion: <strong> opened around equal content "world" and closed
       // again all in one logical change, so it renders as one wrapper instead of two.
-      expect(result).to.equal('<p>Hello <ins class="diffins"><strong>world</strong></ins></p>');
+      expect(result).to.equal('<p>Hello <ins class="diffmod"><strong>world</strong></ins></p>');
     });
 
     it('should handle HTML tag removals', () => {
       const oldHtml = '<p>Hello <strong>world</strong></p>';
       const newHtml = '<p>Hello world</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>Hello <del class="diffdel"><strong>world</strong></del></p>');
+      expect(result).to.equal('<p>Hello <del class="diffmod"><strong>world</strong></del></p>');
     });
 
     it('should handle complex HTML structures', () => {
@@ -177,11 +177,34 @@ describe('HTML Diff', () => {
       expect(result).to.equal('<p>Hello world</p>');
     });
 
-    it('should handle tag attribute changes (tags treated as different)', () => {
+    it('marks a tag whose attributes changed instead of deleting and inserting it', () => {
       const oldHtml = '<p class="old">Hello</p>';
       const newHtml = '<p class="new">Hello</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<del class="diffdel"><p class="old"></del><ins class="diffins"><p class="new"></ins>Hello</p>');
+      expect(result).to.equal('<p class="new" data-diffmod="">Hello</p>');
+    });
+
+    it('marks a link whose href changed', () => {
+      const oldHtml = '<p>Visit <a href="/a">our store</a> today</p>';
+      const newHtml = '<p>Visit <a href="/b">our store</a> today</p>';
+      expect(htmlDiff(oldHtml, newHtml)).to.equal('<p>Visit <a href="/b" data-diffmod="">our store</a> today</p>');
+    });
+
+    it('keeps a block tag wrapped around unchanged text as an insertion', () => {
+      expect(htmlDiff('<div>Hello <span>x</span></div>', '<div><blockquote>Hello </blockquote><span>x</span></div>'))
+        .to.equal('<div><ins class="diffins"><blockquote>Hello </blockquote></ins><span>x</span></div>');
+    });
+
+    it('marks formatting swapped around unchanged text', () => {
+      const oldHtml = '<p>Members get <strong>early access</strong> to the sale.</p>';
+      const newHtml = '<p>Members get <em>early access</em> to the spring sale.</p>';
+      expect(htmlDiff(oldHtml, newHtml)).to.equal('<p>Members get <ins class="diffmod"><em>early access</em></ins> to the <ins class="diffins">spring </ins>sale.</p>');
+    });
+
+    it('marks formatting and text changes separately in one paragraph', () => {
+      const oldHtml = '<p>Save 20% on garden furniture until April</p>';
+      const newHtml = '<p>Save <strong>20%</strong> on garden furniture until May</p>';
+      expect(htmlDiff(oldHtml, newHtml)).to.equal('<p>Save <ins class="diffmod"><strong>20%</strong></ins> on garden furniture until <del class="diffdel">April</del><ins class="diffins">May</ins></p>');
     });
 
     it('should handle completely different HTML structures', () => {
@@ -258,6 +281,14 @@ describe('HTML Diff', () => {
       const newHtml = '<p>One</p><p>Three</p>';
       const result = htmlDiff(oldHtml, newHtml);
       expect(result).to.equal('<p>One</p><del class="diffdel"><p>Two</p></del><p>Three</p>');
+    });
+
+    it('diffs a block whose only change is an image', () => {
+      const oldHtml = '<p>Intro</p><table><tr><td><img src="/a.png"></td><td>Same text</td></tr></table>';
+      const newHtml = '<p>Intro</p><table><tr><td><img src="/b.png"></td><td>Same text</td></tr></table>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.include('<del class="diffdel"><img src="/a.png"></del>');
+      expect(result).to.include('<ins class="diffins"><img src="/b.png"></ins>');
     });
 
     it('pairs siblings of the same tag even with no shared words', () => {
