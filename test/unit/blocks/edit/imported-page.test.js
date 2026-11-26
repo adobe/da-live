@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
 import { sanitizeImportedPage, sanitizeAuthorPage, serializeImportedPage, LIMITS, ImportedPageError } from '../../../../blocks/edit/imported-page/sanitize.js';
-import { FRAME_CSS } from '../../../../blocks/edit/imported-page/styles.js';
+import { FRAME_CSS, WKND_FONT_STYLESHEET } from '../../../../blocks/edit/imported-page/styles.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const {
@@ -232,6 +232,51 @@ describe('imported page sanitizer', () => {
     const doc = buildSrcdoc('<p>x</p>');
     expect(doc).to.contain("default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'");
     expect(doc).not.to.contain('<script');
+  });
+
+  it('allows only the specific Author font stylesheet and its font host in Layout', () => {
+    const body = `<link rel="stylesheet" href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}"><p>Text</p>`;
+    const result = sanitizeAuthorPage(body);
+    expect(result.allowWkndFonts).to.equal(true);
+    const html = buildSrcdoc(serializeImportedPage(result.root, new Map()), 'layout', result.allowWkndFonts);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    expect(doc.head.querySelector('link[rel="stylesheet"]').getAttribute('href')).to.equal(WKND_FONT_STYLESHEET);
+    expect(doc.head.querySelector('link[rel="stylesheet"]').getAttribute('referrerpolicy')).to.equal('no-referrer');
+    expect(doc.querySelectorAll('link')).to.have.length(1);
+    expect(doc.head.querySelector('meta[http-equiv="Content-Security-Policy"]').content)
+      .to.contain("style-src 'unsafe-inline' https://fonts.googleapis.com/css2; font-src https://fonts.gstatic.com");
+    expect(doc.head.querySelector('meta[http-equiv="Content-Security-Policy"]').content).to.contain("default-src 'none'");
+    const content = buildSrcdoc('<p>Content</p>', 'content', true);
+    expect(content).not.to.contain('fonts.googleapis.com');
+    expect(content).not.to.contain('fonts.gstatic.com');
+  });
+
+  it('does not allow other stylesheet links or query parameters', () => {
+    const urls = [
+      'https://evil.example/css2?family=Asar',
+      WKND_FONT_STYLESHEET.replace('https://', 'http://'),
+      WKND_FONT_STYLESHEET.replace('fonts.googleapis.com', 'fonts.googleapis.com.evil.example'),
+      WKND_FONT_STYLESHEET.replace('fonts.googleapis.com', 'user@fonts.googleapis.com'),
+      WKND_FONT_STYLESHEET.replace('/css2?', '/other?'),
+      `${WKND_FONT_STYLESHEET}&text=private`,
+      `${WKND_FONT_STYLESHEET}#fragment`,
+      WKND_FONT_STYLESHEET.replace('family=Asar', 'family=Other'),
+      '/css2?family=Asar',
+    ];
+    urls.forEach((url) => {
+      const { allowWkndFonts } = sanitizeAuthorPage(`<link rel="stylesheet" href="${url.replaceAll('&', '&amp;')}">`);
+      expect(allowWkndFonts, url).to.equal(false);
+    });
+    ['alternate stylesheet', 'preload'].forEach((rel) => {
+      expect(sanitizeAuthorPage(`<link rel="${rel}" href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}">`).allowWkndFonts).to.equal(false);
+    });
+    expect(sanitizeAuthorPage(`<link rel="stylesheet" disabled href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}">`).allowWkndFonts).to.equal(false);
+  });
+
+  it('does not load the approved stylesheet while sanitizing the Author response', () => {
+    const { root, allowWkndFonts } = sanitizeAuthorPage(`<link rel="stylesheet" href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}">`);
+    expect(allowWkndFonts).to.equal(true);
+    expect(root.querySelector('link')).to.equal(null);
   });
 
   it('keeps Author layout markup while refusing active content and arbitrary images', () => {
@@ -495,16 +540,16 @@ describe('imported page route', () => {
       get: async (path, extra, options) => {
         gets.push({ path, render: options.render, resource: options.resource });
         if (options.render === 'author-image') return new Response(Uint8Array.from(atob(PNG), (c) => c.charCodeAt(0)), { headers: { ...headers, 'content-type': 'image/png', 'x-da-source-kind': 'image' } });
-        if (options.render === 'author') return new Response(`<main><h1>Author layout</h1><img src="${imagePath}" alt="Demo"><script>evil()</script></main>`, { headers });
+        if (options.render === 'author') return new Response(`<link rel="stylesheet" href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}"><main><h1>Author layout</h1><img src="${imagePath}" alt="Demo"><script>evil()</script></main>`, { headers });
         return new Response('<main><h1>DA content</h1></main>', { headers });
       },
     });
-    document.body.append(el);
     await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
     const [layout, content] = el.querySelectorAll('button');
     expect(layout.getAttribute('aria-pressed')).to.equal('true');
     expect(content.getAttribute('aria-pressed')).to.equal('false');
     expect(el.querySelector('iframe').srcdoc).to.contain('Author layout');
+    expect(el.querySelector('iframe').srcdoc).to.contain('fonts.googleapis.com/css2');
     expect(el.querySelector('iframe').srcdoc).to.contain(`src="${PNG_URL}"`);
     expect(el.querySelector('iframe').srcdoc).not.to.contain('evil()');
     expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image']);
@@ -514,6 +559,7 @@ describe('imported page route', () => {
       await new Promise((resolve) => { setTimeout(resolve, 10); });
     }
     expect(el.querySelector('iframe').srcdoc).to.contain('DA content');
+    expect(el.querySelector('iframe').srcdoc).not.to.contain('fonts.googleapis.com');
     expect(content.getAttribute('aria-pressed')).to.equal('true');
     expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image', undefined]);
     layout.click();

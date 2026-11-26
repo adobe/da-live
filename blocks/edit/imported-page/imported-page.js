@@ -5,7 +5,7 @@ import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import { encodeDaRsAliasPath } from '../../shared/da-rs-alias-path.js';
 import { withDaRsBinding } from '../../shared/da-rs-navigation.js';
 import { LIMITS, ImportedPageError, sanitizeImportedPage, sanitizeAuthorPage, serializeImportedPage } from './sanitize.js';
-import { FRAME_CSP, FRAME_CSS, PARENT_CSS } from './styles.js';
+import { FRAME_CSP, AUTHOR_FONT_CSP, WKND_FONT_STYLESHEET, FRAME_CSS, PARENT_CSS } from './styles.js';
 
 export const IMAGE_LIMITS = Object.freeze({
   concurrency: 4,
@@ -248,18 +248,21 @@ function referenceList(references, caps) {
   return section;
 }
 
-export function buildSrcdoc(bodyHtml) {
+export function buildSrcdoc(bodyHtml, view = 'content', allowWkndFonts = false) {
+  const useFonts = view === 'layout' && allowWkndFonts;
+  const csp = useFonts ? AUTHOR_FONT_CSP : FRAME_CSP;
+  const stylesheet = useFonts ? `<link rel="stylesheet" referrerpolicy="no-referrer" href="${WKND_FONT_STYLESHEET.replaceAll('&', '&amp;')}">` : '';
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">
-<style>${FRAME_CSS}</style></head><body>${bodyHtml}</body></html>`;
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<style>${FRAME_CSS}</style>${stylesheet}</head><body>${bodyHtml}</body></html>`;
 }
 
-function buildFrame(bodyHtml, view = 'content') {
+function buildFrame(bodyHtml, view = 'content', allowWkndFonts = false) {
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-top-navigation-by-user-activation');
   frame.setAttribute('referrerpolicy', 'no-referrer');
   frame.setAttribute('title', view === 'layout' ? 'Author page layout' : 'Imported AEM page component inspection');
-  frame.srcdoc = buildSrcdoc(bodyHtml);
+  frame.srcdoc = buildSrcdoc(bodyHtml, view, allowWkndFonts);
   return frame;
 }
 
@@ -333,7 +336,7 @@ export async function mountImportedPage({ el, details, caps, isCurrent }) {
       const references = result.references || [];
       const routes = new Map(references.map((ref, index) => [`ref-${index}`, routeFor(caps, ref)]));
       const body = serializeImportedPage(result.root, dataUrls, undefined, routes);
-      const frame = buildFrame(body, view);
+      const frame = buildFrame(body, view, result.allowWkndFonts);
       if (view === 'layout') container.replaceChildren(frame);
       else container.replaceChildren(frame, referenceList(references, caps));
     } catch (error) {

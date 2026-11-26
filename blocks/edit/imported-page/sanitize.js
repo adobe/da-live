@@ -204,12 +204,32 @@ export function sanitizeImportedPage(html, scope) {
 
 // Rebuild Author HTML into an inert tree. Only same-page Core Image paths can be hydrated;
 // scripts, forms, author URLs and event handlers are never copied into the viewer.
+function isWkndFontStylesheet(link) {
+  if (link.getAttribute('rel')?.toLowerCase() !== 'stylesheet' || link.hasAttribute('disabled')
+    || (link.hasAttribute('media') && link.getAttribute('media').toLowerCase() !== 'all')) return false;
+  const href = link.getAttribute('href');
+  if (!href || href.length > 2048) return false;
+  try {
+    const url = new URL(href);
+    const params = [...url.searchParams];
+    const families = url.searchParams.getAll('family');
+    return url.origin === 'https://fonts.googleapis.com' && url.pathname === '/css2'
+      && !url.username && !url.password && !url.hash && params.length === 3
+      && url.searchParams.getAll('display').length === 1 && url.searchParams.get('display') === 'swap'
+      && families.length === 2 && families.includes('Asar')
+      && families.includes('Source Sans Pro:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600');
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizeAuthorPage(html) {
   if (typeof html !== 'string') throw new ImportedPageError('Imported page has no content.');
   const source = new DOMParser().parseFromString(html, 'text/html');
   const out = document.implementation.createHTMLDocument('');
   const root = out.createElement('div');
   const images = new Map();
+  const allowWkndFonts = [...source.querySelectorAll('link[rel]')].some(isWkndFontStylesheet);
   let styleCount = 0;
   let styleBytes = 0;
   const safeCss = (value) => value.length <= 65536 && !/[<>\\]/.test(value)
@@ -268,7 +288,7 @@ export function sanitizeAuthorPage(html) {
     });
   }
   walk(source.body, root, 0);
-  return { root, images: [...images].map(([path, id]) => ({ path, id })) };
+  return { root, images: [...images].map(([path, id]) => ({ path, id })), allowWkndFonts };
 }
 
 // 64 MiB of unique image bytes become at most ~85.34 MiB of base64 plus small MIME prefixes.

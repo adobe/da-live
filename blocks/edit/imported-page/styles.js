@@ -1,4 +1,6 @@
 export const FRAME_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+export const AUTHOR_FONT_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline' https://fonts.googleapis.com/css2; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'none'";
+export const WKND_FONT_STYLESHEET = 'https://fonts.googleapis.com/css2?family=Asar&family=Source+Sans+Pro%3Aital%2Cwght%400%2C300%3B0%2C400%3B0%2C600%3B1%2C300%3B1%2C400%3B1%2C600&display=swap';
 
 export const FRAME_CSS = `
 :root { color-scheme: light; }
