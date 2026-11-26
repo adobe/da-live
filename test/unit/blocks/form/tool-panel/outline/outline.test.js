@@ -37,6 +37,17 @@ function sampleRoot() {
   };
 }
 
+const asset = (pointer) => ({
+  kind: 'object',
+  sharedSchemaName: 'image',
+  pointer,
+  label: 'Image',
+  children: [
+    { kind: 'string', key: 'src', pointer: `${pointer}/src` },
+    { kind: 'string', key: 'alt', pointer: `${pointer}/alt` },
+  ],
+});
+
 const mounted = [];
 
 async function mountOutline() {
@@ -73,6 +84,27 @@ describe('ew-form-outline', () => {
     ]);
     expect(item(outline, '/data/cards/1').textContent).to.equal('#2 Card');
     expect(item(outline, '/data/cards/1').title).to.equal('#2 Card');
+  });
+
+  it('lists groups but not asset fields, which are single fields', async () => {
+    const root = {
+      kind: 'object',
+      pointer: '/data',
+      label: 'Data',
+      children: [
+        asset('/data/heroImage'),
+        {
+          kind: 'array',
+          pointer: '/data/gallery',
+          label: 'Gallery',
+          items: [asset('/data/gallery/0')],
+        },
+      ],
+    };
+    formEvents.formState.emit({ model: { root } });
+    const outline = await mountOutline();
+
+    expect(pointers(outline)).to.deep.equal(['/data', '/data/gallery']);
   });
 
   it('asks the editor to reveal a group on click', async () => {

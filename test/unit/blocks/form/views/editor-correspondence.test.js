@@ -2,6 +2,8 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../../blocks/form/views/editor.js';
+import { isAssetType } from '../../../../../blocks/form/assets/asset-types.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 // Component-level UI tests for ew-form-fields. The engine is the real bundled SDK
 // (same one the form block ships); we feed its getState() into the component
@@ -16,6 +18,7 @@ const settle = async (el) => {
 
 const CONTROL_TAGS = [
   'EW-FORM-INPUT', 'EW-FORM-TEXTAREA', 'EW-FORM-RICH-TEXT', 'EW-FORM-NUMBER-FIELD', 'EW-FORM-CHECKBOX', 'EW-FORM-PICKER',
+  'EW-FORM-ASSET',
 ];
 
 const mounted = [];
@@ -31,6 +34,7 @@ async function mountEditor(schema, doc) {
   });
   el.editor = engine;
   el.onSelect = () => {};
+  el.assetSources = [];
   el.nav = {};
   el.state = engine.getState();
   window.document.body.append(el);
@@ -46,11 +50,24 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
-  if (Array.isArray(node.enumValues)) return 'EW-FORM-PICKER';
-  if (node.kind === 'boolean') return 'EW-FORM-CHECKBOX';
-  if (node.kind === 'number' || node.kind === 'integer') return 'EW-FORM-NUMBER-FIELD';
-  if (node.kind === 'string' && node.semanticType === 'rich-text') return 'EW-FORM-RICH-TEXT';
-  if (node.kind === 'string' && node.semanticType === 'long-text') return 'EW-FORM-TEXTAREA';
+  if (isAssetType(node.sharedSchemaName)) {
+    return 'EW-FORM-ASSET';
+  }
+  if (Array.isArray(node.enumValues)) {
+    return 'EW-FORM-PICKER';
+  }
+  if (node.kind === 'boolean') {
+    return 'EW-FORM-CHECKBOX';
+  }
+  if (node.kind === 'number' || node.kind === 'integer') {
+    return 'EW-FORM-NUMBER-FIELD';
+  }
+  if (node.kind === 'string' && node.semanticType === 'rich-text') {
+    return 'EW-FORM-RICH-TEXT';
+  }
+  if (node.kind === 'string' && node.semanticType === 'long-text') {
+    return 'EW-FORM-TEXTAREA';
+  }
   return 'EW-FORM-INPUT';
 }
 
@@ -63,6 +80,7 @@ const FEATURE_SCHEMA = {
     title: { type: 'string', title: 'Title', minLength: 3, maxLength: 255 },
     status: { type: 'string', title: 'Status', enum: ['draft', 'in-review', 'published', 'archived'], default: 'draft' },
     body: { type: 'string', title: 'Body', 'x-semantic-type': 'long-text' },
+    heroImage: { $ref: IMAGE_URL, title: 'Hero image' },
     priority: { type: 'integer', title: 'Priority', minimum: 1, maximum: 10 },
     featured: { type: 'boolean', title: 'Featured', default: false },
     tags: { type: 'array', title: 'Tags', minItems: 1, items: { type: 'string', title: 'Tag' } },
@@ -95,6 +113,7 @@ const featureDoc = (data = {}) => ({
     title: 'Launch Announcement',
     status: 'published',
     body: 'Body copy.',
+    heroImage: { src: './media_example.png', alt: 'A hero' },
     priority: 3,
     featured: true,
     tags: ['news', 'launch'],
@@ -122,7 +141,7 @@ describe('ew-form-fields loads', () => {
 describe('ew-form-fields renders the model state', () => {
   function walk(el, node) {
     expect(allAt(el, node.pointer).length, `element for ${node.pointer}`).to.be.greaterThan(0);
-    if (node.kind === 'object') {
+    if (node.kind === 'object' && node.sharedSchemaName === undefined) {
       (node.children ?? []).forEach((child) => walk(el, child));
       return;
     }
@@ -248,7 +267,7 @@ describe('ew-form-fields array item menu actions', () => {
   });
 });
 
-const DEBOUNCE_MS = 350; // mirrors editor.js text-input debounce
+const DEBOUNCE_DELAY_MILLISECONDS = 350; // mirrors editor.js text-input debounce
 const aTimeout = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 // Leaf errors live in the field's own shadow (.form-field-error); array/object
@@ -279,7 +298,7 @@ async function typeInto(el, ptr, value) {
   const input = controlAt(el, ptr).shadowRoot.querySelector('input, textarea');
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-  await aTimeout(DEBOUNCE_MS + 80);
+  await aTimeout(DEBOUNCE_DELAY_MILLISECONDS + 80);
   await settle(el);
 }
 

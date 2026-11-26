@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../../scripts/utils.js';
 import { NAV_ORIGIN, formEvents } from '../../events.js';
+import { isStructured } from '../../utils/model.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
@@ -8,14 +9,12 @@ const style = await loadStyle(import.meta.url);
 
 const EL_NAME = 'ew-form-outline';
 
-const isGroup = (node) => node?.kind === 'object' || node?.kind === 'array';
-
 // Array items carry their 1-based position, which the outline shows as "#n".
 function childGroups(node) {
   const children = node.kind === 'array'
     ? (node.items ?? []).map((child, position) => ({ child, index: position + 1 }))
     : (node.children ?? []).map((child) => ({ child, index: null }));
-  return children.filter(({ child }) => isGroup(child));
+  return children.filter(({ child }) => isStructured(child));
 }
 
 /**
@@ -76,7 +75,7 @@ class FormOutline extends LitElement {
   }
 
   render() {
-    if (!isGroup(this._root)) {
+    if (!isStructured(this._root)) {
       return html`<p class="placeholder">The outline appears once a document is open.</p>`;
     }
 

@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -17,8 +17,8 @@ before(async () => {
     dataUrlByteLength,
     showImageTooLarge,
     refuseOversizedImage,
-  } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
-  ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
+  } = await import('../../../../blocks/shared/image-upload.js'));
+  ({ toasts } = await import('../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
 // isHlx6 memoizes its answer per site, so each case needs its own org/site.

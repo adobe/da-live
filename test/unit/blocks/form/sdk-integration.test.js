@@ -6,6 +6,7 @@ import {
   convertHtmlToJson,
 } from '../../../../deps/da-sc-sdk/dist/index.js';
 import { attachPersistence } from '../../../../blocks/form/utils/persistence.js';
+import { IMAGE_URL } from './helpers/sdk-types.js';
 
 // These tests create a real engine with the bundled SDK in
 // deps/da-sc-sdk/dist/index.js. The persistence tests in
@@ -117,6 +118,30 @@ describe('SDK state shape', () => {
     expect(findByPointer(root, '/data/body').semanticType).to.equal('long-text');
     // Unrecognized value is not surfaced — the node carries no hint.
     expect(findByPointer(root, '/data/swatch').semanticType).to.equal(undefined);
+  });
+
+  it('surfaces an asset as an object with src and alt children (read by editor.js)', () => {
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL, title: 'Hero image' } },
+    };
+    const asset = { src: './media_example.png', alt: 'A hero' };
+    const engine = createEngine({ schema, document: validDoc({ heroImage: asset }) });
+    const node = findByPointer(engine.getState().model.root, '/data/heroImage');
+    expect(node.kind).to.equal('object');
+    expect(node.sharedSchemaName).to.equal('image');
+    expect(node.value).to.deep.equal(asset);
+    expect(node.children.map((child) => child.key)).to.deep.equal(['src', 'alt']);
+    expect(engine.getState().document.data.heroImage).to.deep.equal(asset);
+  });
+
+  it('reports a filled asset without a file on its src (read by editor.js)', () => {
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL } },
+    };
+    const engine = createEngine({ schema, document: validDoc({ heroImage: { alt: 'A hero' } }) });
+    expect(engine.getState().validation.errors['/data/heroImage/src']?.message).to.be.a('string');
   });
 
   it('validation.errors entries carry a .message field (read by editor.js)', () => {
@@ -268,6 +293,25 @@ describe('SDK × attachPersistence (end-to-end)', () => {
     p.detach();
   });
 
+  it('saves image fields as HTML images from the engine model', async () => {
+    let p;
+    const calls = [];
+    const save = async ({ html }) => { calls.push(html); };
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL } },
+    };
+
+    const editor = createEngine({ schema, document: validDoc(), onChange: () => p?.notify() });
+    p = attachPersistence(editor, { path: '/smoke', save });
+
+    editor.setField('/data/heroImage', { src: 'https://content.da.live/org/site/hero.png' });
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(calls[0]).to.include('<img src="https://content.da.live/org/site/hero.png" alt="">');
+    p.detach();
+  });
+
   it('does not save when no real mutation occurs', async () => {
     let p;
     const calls = [];
@@ -376,16 +420,14 @@ describe('SDK model.root node shape', () => {
   });
 });
 
-// editor.js — describeIssue switches on issue.reason and reads the offending
-// value from issue.details (details.keyword / details.type / details.ref).
-// If the SDK issue shape drifts, the dialog would silently render "unknown";
-// these assertions catch that.
+// views/editor.js lists every schema issue by its pointer and message. If the
+// SDK issue shape drifts, the dialog would render empty lines; these assertions
+// catch that.
 describe('SDK schemaIssues entry shape', () => {
   const issueSchema = {
     type: 'object',
     properties: {
-      // oneOf at a property is known unsupported by the form's renderer —
-      // editor.js maps `reason: 'unsupported-composition'` to a human-readable string.
+      // oneOf at a property is known unsupported by the form's renderer.
       weird: { oneOf: [{ type: 'string' }, { type: 'number' }] },
     },
   };
@@ -396,15 +438,11 @@ describe('SDK schemaIssues entry shape', () => {
     expect(issues).to.be.an('array').that.is.not.empty;
   });
 
-  it('each entry carries reason + message + schemaPath + pointer + details', () => {
+  it('each entry carries a pointer and a message (read by editor.js)', () => {
     const engine = createEngine({ schema: issueSchema, document: validDoc() });
     const [issue] = engine.getState().schemaIssues;
-    expect(issue.reason).to.be.a('string');
-    expect(issue.message).to.be.a('string');
-    expect(issue.schemaPath).to.be.a('string');
     expect(issue.pointer).to.be.a('string');
-    // Composition folds its keyword into details — describeIssue reads it there.
-    expect(issue.details.keyword, 'issue.details.keyword').to.be.a('string');
+    expect(issue.message).to.be.a('string');
   });
 });
 

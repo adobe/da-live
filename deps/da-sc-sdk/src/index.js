@@ -3,6 +3,7 @@ import {
   validateSchema,
   convertJsonToHtml,
   convertHtmlToJson,
+  getSharedSchema,
 } from '@adobe/da-sc-sdk';
 
 export {
@@ -10,4 +11,5 @@ export {
   validateSchema,
   convertJsonToHtml,
   convertHtmlToJson,
+  getSharedSchema,
 };
