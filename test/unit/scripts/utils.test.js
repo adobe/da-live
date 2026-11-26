@@ -1,5 +1,7 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName, setPageTitle } from '../../../scripts/utils.js';
+import {
+  setNx, sanitizePath, sanitizePathParts, sanitizeName, setPageTitle, parseSubdomain,
+} from '../../../scripts/utils.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
@@ -51,6 +53,63 @@ describe('Libs', () => {
 
     it('Sanitizes name without preserving dots', async () => {
       expect(sanitizeName('branch.name', false)).to.equal('branch-name');
+    });
+  });
+
+  describe('parseSubdomain', () => {
+    it('Extracts org and site from AEM URLs', () => {
+      ['hlx.live', 'hlx.page', 'aem.live', 'aem.page'].forEach((domain) => {
+        expect(parseSubdomain(`https://main--my-site--my-org.${domain}/`))
+          .to.equal('#/my-org/my-site');
+      });
+    });
+
+    it('Accepts paths, query parameters and the default HTTPS port', () => {
+      expect(parseSubdomain('https://main--repo--org.aem.page:443/folder/page?preview=1#content'))
+        .to.equal('#/org/repo');
+    });
+
+    it('Rejects non-HTTPS URLs', () => {
+      ['http', 'ftp'].forEach((protocol) => {
+        expect(parseSubdomain(`${protocol}://main--repo--org.aem.page/`)).to.equal(null);
+      });
+    });
+
+    it('Rejects credentials and nonstandard ports', () => {
+      [
+        'https://user@main--repo--org.aem.page/',
+        'https://:password@main--repo--org.aem.page/',
+        'https://main--repo--org.aem.page:8443/',
+      ].forEach((href) => {
+        expect(parseSubdomain(href)).to.equal(null);
+      });
+    });
+
+    it('Rejects lookalike domains and additional hostname labels', () => {
+      [
+        'https://main--repo--org.notaem.page/',
+        'https://main--repo--org.aem.page.example.com/',
+        'https://main--repo--org.extra.aem.page/',
+      ].forEach((href) => {
+        expect(parseSubdomain(href)).to.equal(null);
+      });
+    });
+
+    it('Requires exactly three non-empty hostname parts', () => {
+      [
+        'https://main--repo--org--extra.aem.page/',
+        'https://--repo--org.aem.page/',
+        'https://main----org.aem.page/',
+        'https://main--repo--.aem.page/',
+      ].forEach((href) => {
+        expect(parseSubdomain(href)).to.equal(null);
+      });
+    });
+
+    it('Returns null for non-AEM, incomplete or invalid URLs', () => {
+      expect(parseSubdomain('https://example.com/')).to.equal(null);
+      expect(parseSubdomain('https://main--repo.hlx.live/')).to.equal(null);
+      expect(parseSubdomain('not a url')).to.equal(null);
     });
   });
 
