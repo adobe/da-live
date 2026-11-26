@@ -5,6 +5,7 @@ export const FRAME_CSS = `
 body { margin: 0; padding: 16px; font: 15px/1.5 system-ui, sans-serif; color: #222; background: #fff; overflow-wrap: anywhere; }
 img { max-width: 100%; height: auto; }
 table { border-collapse: collapse; } th, td { border: 1px solid #999; padding: 4px 8px; }
+table.aem-franklin-block > thead > tr > th { background: #f3f3f3; }
 .aem-component { margin: 12px 0; border: 1px solid #d5d1cc; border-radius: 6px; background: #fff; }
 .aem-component--container { border-style: dashed; }
 .aem-component:hover, .aem-component:focus-within { border-color: #999; box-shadow: 0 2px 8px #00000014; }

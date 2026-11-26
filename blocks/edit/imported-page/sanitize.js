@@ -38,6 +38,7 @@ const CLASS_BY_TAG = {
   dl: /^aem-component__properties$/,
   div: /^aem-component__(?:content|children)$/,
   p: /^aem-empty-page$/,
+  table: /^aem-franklin-block$/,
 };
 const ID = /^[A-Za-z][\w-]{0,63}$/;
 const META_VALUE = /^[\w .,:;%/|=+-]{0,256}$/;

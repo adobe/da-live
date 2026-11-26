@@ -28,6 +28,29 @@ const clean = (html) => sanitizeImportedPage(html, SCOPE);
 const out = (html) => serializeImportedPage(clean(html).root, new Map());
 
 describe('imported page sanitizer', () => {
+  it('styles only Franklin block headers light gray', () => {
+    const markup = `<table class="aem-franklin-block"><thead><tr><th colspan="2">hero</th></tr></thead>
+      <tbody><tr><td>text</td><td>value</td></tr></tbody></table>
+      <table><thead><tr><th colspan="2">ordinary</th></tr></thead></table>
+      <table class="aem-franklin-block untrusted"><tr><th>untrusted</th></tr></table>`;
+    const { root } = clean(markup);
+    const style = document.createElement('style');
+    style.textContent = FRAME_CSS;
+    document.head.append(style);
+    document.body.append(root);
+    try {
+      const tables = root.querySelectorAll('table');
+      expect(tables[0].className).to.equal('aem-franklin-block');
+      expect(tables[2].className).to.equal('');
+      expect(getComputedStyle(tables[0].querySelector('th')).backgroundColor).to.equal('rgb(243, 243, 243)');
+      expect(getComputedStyle(tables[1].querySelector('th')).backgroundColor).to.equal('rgba(0, 0, 0, 0)');
+      expect(getComputedStyle(tables[0].querySelector('td')).backgroundColor).to.equal('rgba(0, 0, 0, 0)');
+    } finally {
+      root.remove();
+      style.remove();
+    }
+  });
+
   it('keeps nested card vocabulary, tables inside cards and crop metadata', () => {
     const { root, images } = clean(CARDS);
     expect(root.querySelectorAll('section.aem-component').length).to.equal(3);
@@ -505,7 +528,7 @@ describe('imported page route', () => {
   it('displays Franklin block table content and authenticated images in Content view', async () => {
     const headers = { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' };
     const paths = [];
-    const block = `<table><thead><tr><th colspan="2">hero</th></tr></thead><tbody>
+    const block = `<table class="aem-franklin-block"><thead><tr><th colspan="2">hero</th></tr></thead><tbody>
       <tr><td>image</td><td><img data-da-source-path="/o/s/assets/hero.png" data-da-source-kind="image" data-aem-image-path="/content/dam/frescopa/hero.png" alt="Hero"></td></tr>
       <tr><td>text</td><td><h1>Café Vibes, Anywhere</h1></td></tr></tbody></table>`;
     routeDeps.source = async () => ({
@@ -521,6 +544,7 @@ describe('imported page route', () => {
       await new Promise((resolve) => { setTimeout(resolve, 10); });
     }
     const frameDoc = new DOMParser().parseFromString(el.querySelector('iframe').srcdoc, 'text/html');
+    expect(frameDoc.querySelector('table.aem-franklin-block')).to.exist;
     expect(frameDoc.querySelector('th[colspan="2"]').textContent).to.equal('hero');
     expect(frameDoc.querySelectorAll('tbody tr')).to.have.length(2);
     expect(frameDoc.querySelector('tbody img').getAttribute('src')).to.equal(PNG_URL);
