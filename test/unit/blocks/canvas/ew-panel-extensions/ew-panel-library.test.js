@@ -598,8 +598,8 @@ describe('Ew panel library blocks sidebar', () => {
 
   it('offers browsing only to read-only users (#1808)', async () => {
     getExtensionsBridge().view = { editable: false };
+    canvasBus.editorHtmlState.emit('<body></body>');
     el._expandedBlock = '/hero';
-    el.requestUpdate();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.equal(null);
     expect(el.shadowRoot.querySelector('.ext-variant-title').disabled).to.be.true;
@@ -608,6 +608,20 @@ describe('Ew panel library blocks sidebar', () => {
     const modal = document.querySelector('ew-block-library-modal');
     await modal.updateComplete;
     expect(modal.onInsert).to.equal(undefined);
+  });
+
+  it('restores add controls when a writable editor replaces a read-only one', async () => {
+    el._expandedBlock = '/hero';
+    getExtensionsBridge().view = { editable: false };
+    canvasBus.editorHtmlState.emit('');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.equal(null);
+
+    getExtensionsBridge().view = { editable: true };
+    canvasBus.editorHtmlState.emit('<body></body>');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.exist;
+    expect(el.shadowRoot.querySelector('.ext-variant-title').disabled).to.be.false;
   });
 
   it('expands groups and filters automatically expanded variants by metadata', async () => {

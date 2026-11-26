@@ -50,12 +50,17 @@ class EwPanelLibrary extends LitElement {
     _hashState: { state: true },
     _search: { state: true },
     _actionError: { state: true },
+    _canWrite: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._canWrite = !!getExtensionsBridge().view?.editable;
+    this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
+      this._canWrite = !!getExtensionsBridge().view?.editable;
+    });
     this._unsubBranch = canvasBus.branchState.subscribe((state) => {
       if (!state?.path) {
         this._previewRequest = null;
@@ -68,6 +73,7 @@ class EwPanelLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubHtml?.();
     this._dragListeners?.abort();
     this._dragSession?.cancel();
     this._previewRequest = null;
@@ -138,10 +144,6 @@ class EwPanelLibrary extends LitElement {
       next.set(block.path, variants ?? []);
       this._blockVariants = next;
     }
-  }
-
-  get _canWrite() {
-    return !!getExtensionsBridge().view?.editable;
   }
 
   _insertBlock(variant) {
