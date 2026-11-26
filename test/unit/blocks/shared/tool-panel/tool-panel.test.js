@@ -92,6 +92,21 @@ describe('DaToolPanel — modal experience', () => {
   });
 
   describe('showPanel', () => {
+    const inline = (id) => ({ id, label: id, load: async () => document.createElement('div') });
+
+    it('places a view with pinAfter right after that tab, otherwise at the end', async () => {
+      const agent = { ...inline('agent-activity'), pinAfter: 'outline' };
+      const panel = createPanel([inline('files'), inline('outline'), inline('metadata'), agent]);
+      panel._pinnedIds = ['files', 'outline', 'metadata'];
+      await panel.showPanel('agent-activity');
+      expect(panel._pinnedIds).to.deep.equal(['files', 'outline', 'agent-activity', 'metadata']);
+      expect(panel.activeId).to.equal('agent-activity');
+
+      const unpinned = createPanel([inline('files'), inline('outline'), agent]);
+      unpinned._pinnedIds = ['files'];
+      await unpinned.showPanel('agent-activity');
+      expect(unpinned._pinnedIds).to.deep.equal(['files', 'agent-activity']);
+    });
     it('invokes openModal and does not activate the view for a modal experience', async () => {
       let opened = 0;
       const openModal = async () => { opened += 1; };

@@ -58,4 +58,7 @@ export const canvasBus = Object.freeze({
   versionCreatedState: createChannel(),
 
   preflightStatusState: createChannel(),
+
+  // Latest chat turn's page activity; replays so the lazily loaded panel catches up.
+  agentActivityState: createChannel({ replay: Boolean }),
 });

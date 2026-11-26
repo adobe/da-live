@@ -1646,6 +1646,16 @@ describe('getCanvasToolPanelViews', () => {
     expect(views.map((v) => v.id)).to.include('metadata');
   });
 
+  it('lists Agent Activity after Outline and pins its tab beside Outline', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const ids = views.map((v) => v.id);
+    expect(ids.indexOf('agent-activity')).to.equal(ids.indexOf('outline') + 1);
+    const view = views.find((v) => v.id === 'agent-activity');
+    expect(view).to.include({ label: 'Agent Activity', section: 'Editor', firstParty: true, pinAfter: 'outline' });
+    expect((await view.load()).localName).to.equal('ew-agent-activity');
+  });
+
   it('ignores a custom Preflight configured in the prepare sheet', async () => {
     setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
