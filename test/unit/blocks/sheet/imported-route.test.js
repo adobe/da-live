@@ -10,8 +10,14 @@ const { source, config } = await getNx2Api();
 
 const IMPORTED = { contentProfile: 'aem-import', readOnly: true, openKinds: ['image', 'sheet'], collaboration: false, branching: false };
 const NATIVE = { contentProfile: 'native-da', readOnly: false, openKinds: ['page', 'sheet', 'image', 'asset'], collaboration: true, branching: true };
-const sheetResp = () => new Response(JSON.stringify({
-  total: 1, limit: 1, offset: 0, data: [{ 2: 'two', Key: '=SUM(A1)' }], ':type': 'sheet', 'x-da-columns': ['Key', '2'],
+const sheetResp = (extra = {}) => new Response(JSON.stringify({
+  total: 1,
+  limit: 1,
+  offset: 0,
+  data: [{ 2: 'two', Key: '=SUM(A1)' }],
+  ':type': 'sheet',
+  'x-da-columns': ['Key', '2'],
+  ...extra,
 }), {
   status: 200,
   headers: {
@@ -84,7 +90,24 @@ describe('sheet route init gating', () => {
     const [options] = ctx.tabs.firstCall.args[1];
     expect(options.editable).to.equal(false);
     expect(options.data).to.deep.equal([['Key', '2'], ['=SUM(A1)', 'two']]);
+    expect(el.querySelector('.da-sheet').classList.contains('is-content-fragment')).to.be.false;
     expect(document.querySelector('da-sheet-tabs')).to.equal(null);
+  });
+
+  it('renders content fragment columns without metadata and marks the grid for top alignment', async () => {
+    setup(IMPORTED);
+    sinon.stub(source, 'get').resolves(sheetResp({
+      'x-da-columns': ['_path', '_model', '_title', '_variations', 'field:author', 'field:description'],
+      data: [{ _title: 'Metadata', 'field:author': 'Ada', 'field:description': 'Line one\nLine two' }],
+    }));
+    window.history.replaceState(null, '', '/sheet#/demo/wknd/authors');
+    const el = document.createElement('div');
+    await init(el);
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    const [options] = ctx.tabs.firstCall.args[1];
+    expect(options.data).to.deep.equal([['author', 'description'], ['Ada', 'Line one\nLine two']]);
+    expect(options.editable).to.equal(false);
+    expect(el.querySelector('.da-sheet').classList.contains('is-content-fragment')).to.be.true;
   });
 
   it('fails closed without a default sheet when the imported response is wrong', async () => {

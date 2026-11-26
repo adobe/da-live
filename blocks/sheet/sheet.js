@@ -226,6 +226,7 @@ async function setSheet(details, daTitle, daSheet) {
 async function setImported(details, daTitle, daSheet, ui, gen) {
   staleCheck.stop();
   clearGrid(daSheet);
+  daSheet.classList.remove('is-content-fragment');
   daTitle.readOnly = true;
   daTitle.permissions = [];
   daTitle.details = details;
@@ -242,11 +243,13 @@ async function setImported(details, daTitle, daSheet, ui, gen) {
     validateImportedResponse(resp);
     const json = await resp.json();
     if (gen !== navGen) return;
-    const options = buildImportedSheet(parseImportedEnvelope(json));
+    const parsed = parseImportedEnvelope(json);
+    const options = buildImportedSheet(parsed);
     if (!options) {
       showLoadStatus({ ...ui, errMsg: 'This sheet has no columns.' });
       return;
     }
+    daSheet.classList.toggle('is-content-fragment', parsed.isContentFragment);
     const { initImported } = await import('./utils/index.js');
     const grid = await initImported(daSheet, options, () => gen === navGen);
     if (!grid || gen !== navGen) return;

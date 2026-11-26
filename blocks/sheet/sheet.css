@@ -170,6 +170,10 @@ button.new-sheet {
   text-align: left !important;
 }
 
+.da-sheet.is-content-fragment .jexcel > tbody > tr > td:not(:first-child) {
+  vertical-align: top;
+}
+
 /* JSuites Context Menu */
 
 .jcontextmenu.jcontextmenu-focus {

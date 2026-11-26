@@ -53,6 +53,40 @@ describe('imported sheet envelope', () => {
     expect(rows).to.deep.equal([['k', 't']]);
   });
 
+  it('hides fragment metadata and strips field prefixes without changing source row mapping', () => {
+    const source = envelope({
+      'x-da-columns': ['_path', '_model', '_title', '_variations', 'field:author', 'field:_private', 'field:title', '_extra'],
+      data: [{ 'field:title': 'Story', _title: 'Metadata', 'field:author': 'Ada', 'field:_private': 'hidden' },
+        { 'field:author': 'Grace' }],
+    });
+    const parsed = parseImportedEnvelope(source);
+    expect(parsed.isContentFragment).to.equal(true);
+    expect(parsed.columns).to.deep.equal(['author', 'title']);
+    expect(parsed.rows).to.deep.equal([['Ada', 'Story'], ['Grace', '']]);
+    expect(source['x-da-columns'][2]).to.equal('_title');
+    expect(source.data[0]._title).to.equal('Metadata');
+  });
+
+  it('preserves underscore and field-prefixed columns on other imported sheets', () => {
+    const parsed = parseImportedEnvelope(envelope({
+      'x-da-columns': ['_title', 'field:author'],
+      data: [{ _title: 'Title', 'field:author': 'Ada' }],
+    }));
+    expect(parsed.isContentFragment).to.equal(false);
+    expect(parsed.columns).to.deep.equal(['_title', 'field:author']);
+    expect(parsed.rows).to.deep.equal([['Title', 'Ada']]);
+  });
+
+  it('handles a fragment sheet with only metadata columns', () => {
+    const parsed = parseImportedEnvelope(envelope({
+      'x-da-columns': ['_path', '_model', '_title', '_variations'],
+      data: [{ _title: 'A' }],
+    }));
+    expect(parsed.isContentFragment).to.equal(true);
+    expect(parsed.columns).to.deep.equal([]);
+    expect(buildImportedSheet(parsed)).to.equal(null);
+  });
+
   it('handles numeric-looking keys in declared order', () => {
     const json = JSON.parse('{":type":"sheet","x-da-columns":["10","2","a"],"data":[{"2":"two","a":"A","10":"ten"}]}');
     expect(parseImportedEnvelope(json).rows).to.deep.equal([['ten', 'two', 'A']]);
@@ -113,6 +147,27 @@ describe('imported grid options', () => {
       .forEach((key) => expect(options[key], key).to.equal(undefined));
     expect(options.onbeforepaste()).to.equal(false);
     options.columns.forEach((col) => expect(col.readOnly).to.equal(true));
+  });
+});
+
+describe('content fragment sheet styles', () => {
+  it('top-aligns data cells without changing other sheet cells', async () => {
+    const style = document.createElement('style');
+    style.textContent = await (await fetch('/blocks/sheet/sheet.css')).text();
+    const root = document.createElement('div');
+    root.innerHTML = `<div class="da-sheet is-content-fragment"><table class="jexcel"><tbody><tr>
+      <td>1</td><td>fragment</td></tr></tbody></table></div>
+      <div class="da-sheet"><table class="jexcel"><tbody><tr><td>1</td><td>other</td></tr></tbody></table></div>`;
+    document.head.append(style);
+    document.body.append(root);
+    try {
+      const cells = root.querySelectorAll('td:nth-child(2)');
+      expect(getComputedStyle(cells[0]).verticalAlign).to.equal('top');
+      expect(getComputedStyle(cells[1]).verticalAlign).to.equal('middle');
+    } finally {
+      style.remove();
+      root.remove();
+    }
   });
 });
 

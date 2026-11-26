@@ -7,6 +7,13 @@ export class ImportedSheetError extends Error {}
 const fail = (message) => { throw new ImportedSheetError(message); };
 const isPlainObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const FRAGMENT_METADATA = ['_path', '_model', '_title', '_variations'];
+
+// da-rs currently identifies content-fragment sheets by their reserved column signature.
+function isFragmentSheet(columns) {
+  return FRAGMENT_METADATA.every((name, index) => columns[index] === name)
+    && columns.slice(FRAGMENT_METADATA.length).every((name) => name.startsWith('field:') || name.startsWith('_'));
+}
 
 export function validateImportedResponse(resp) {
   if (!resp?.ok) {
@@ -37,18 +44,23 @@ export function parseImportedEnvelope(json) {
   if (!isPlainObject(json) || json[':type'] !== 'sheet' || hasOwn(json, ':names') || hasOwn(json, ':private')) {
     fail('Imported sheet has an unsupported format.');
   }
-  const columns = json['x-da-columns'];
-  if (!Array.isArray(columns) || columns.length > MAX_IMPORTED_COLUMNS
-    || columns.some((col) => typeof col !== 'string')) {
+  const sourceColumns = json['x-da-columns'];
+  if (!Array.isArray(sourceColumns) || sourceColumns.length > MAX_IMPORTED_COLUMNS
+    || sourceColumns.some((col) => typeof col !== 'string')) {
     fail('Imported sheet has invalid columns.');
   }
   const { data } = json;
   if (!Array.isArray(data) || data.length > MAX_IMPORTED_ROWS || !data.every(isPlainObject)) {
     fail('Imported sheet has invalid rows.');
   }
-  const rows = data.map((row) => columns.map((col) => (hasOwn(row, col) ? toCell(row[col]) : '')));
+  const isContentFragment = isFragmentSheet(sourceColumns);
+  const visibleColumns = isContentFragment
+    ? sourceColumns.filter((col) => !col.startsWith('_') && !col.replace(/^field:/, '').startsWith('_'))
+    : sourceColumns;
+  const columns = visibleColumns.map((col) => (isContentFragment ? col.replace(/^field:/, '') : col));
+  const rows = data.map((row) => visibleColumns.map((col) => (hasOwn(row, col) ? toCell(row[col]) : '')));
   const sheetName = typeof json[':sheetname'] === 'string' && json[':sheetname'] ? json[':sheetname'] : 'data';
-  return { columns, rows, sheetName };
+  return { columns, rows, sheetName, isContentFragment };
 }
 
 // Returns jspreadsheet options with every mutation path disabled,
