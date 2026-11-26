@@ -303,5 +303,15 @@ describe('HTML Diff', () => {
       // SHARED is a real word equal between two edits — it must anchor and split them.
       expect(result).to.equal('<p><del class="diffdel">alpha</del><ins class="diffins">gamma</ins> SHARED <del class="diffdel">beta</del><ins class="diffins">delta</ins></p>');
     });
+
+    it('marks an added section break as an insertion', () => {
+      const result = htmlDiff('<p>One</p><p>Two</p>', '<p>One</p><hr><p>Two</p>');
+      expect(result).to.equal('<p>One</p><ins class="diffins"><hr></ins><p>Two</p>');
+    });
+
+    it('marks a removed section break as a deletion', () => {
+      const result = htmlDiff('<p>One</p><hr><p>Two</p>', '<p>One</p><p>Two</p>');
+      expect(result).to.equal('<p>One</p><del class="diffdel"><hr></del><p>Two</p>');
+    });
   });
 });

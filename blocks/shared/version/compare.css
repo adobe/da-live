@@ -174,3 +174,47 @@
   text-decoration: line-through;
   color: var(--s2-red-1100);
 }
+
+/* Section breaks (<hr>) get the editor's "Section Break" line and label, tinted when added or removed. */
+.da-compare-body hr {
+  position: relative;
+  overflow: visible;
+  margin: 24px 0;
+  border: 1px solid #b3b3b3;
+  border-radius: 1px;
+  color: #b3b3b3;
+}
+
+.da-compare-body hr::after {
+  content: 'Section Break';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  background: #FFF;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.da-compare-body ins.diffins:has(> hr),
+.da-compare-body del.diffdel:has(> hr) {
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  text-decoration: none;
+}
+
+.da-compare-body ins.diffins > hr {
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+
+.da-compare-body del.diffdel > hr {
+  border-color: #c62828;
+  color: #c62828;
+}
