@@ -93,6 +93,17 @@ describe('Libs', () => {
       });
     });
 
+    it('Requires exactly three non-empty hostname parts', () => {
+      [
+        'https://main--repo--org--extra.aem.page/',
+        'https://--repo--org.aem.page/',
+        'https://main----org.aem.page/',
+        'https://main--repo--.aem.page/',
+      ].forEach((href) => {
+        expect(parseSubdomain(href)).to.equal(null);
+      });
+    });
+
     it('Returns null for non-AEM, incomplete or invalid URLs', () => {
       expect(parseSubdomain('https://example.com/')).to.equal(null);
       expect(parseSubdomain('https://main--repo.hlx.live/')).to.equal(null);

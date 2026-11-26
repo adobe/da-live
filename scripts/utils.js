@@ -37,8 +37,10 @@ export function parseSubdomain(siteUrl) {
     if (!/^[a-z0-9-]+\.(?:hlx|aem)\.(?:live|page)$/.test(url.hostname)) return null;
     const helixString = url.hostname.split('.')[0];
     if (!helixString) return null;
-    const [, site, org] = helixString.split('--');
-    if (!site || !org) return null;
+    const parts = helixString.split('--');
+    if (parts.length !== 3) return null;
+    const [branch, site, org] = parts;
+    if (!branch || !site || !org) return null;
     return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
   } catch {
     return null;
