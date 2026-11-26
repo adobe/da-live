@@ -21,6 +21,7 @@ import {
   MAX_SECTION_NAME,
 } from '../editor-utils/blocks.js';
 import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
+import { blockOperatorHost } from '../editor-utils/block-operators.js';
 import {
   blockLabel,
   contentChildLabel,
@@ -32,6 +33,7 @@ const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 const MORE_ICON_SRC = '/img/icons/s2-icon-more-20-n.svg';
 const FOCUS_TARGETS = '[role="row"]';
+const OPERATOR_MOUNT = 'operator-outline';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import('../../shared/da-confirm-dialog/da-confirm-dialog.js');
@@ -54,6 +56,12 @@ const DROP_POSITIONS = {
   BEFORE: 'before',
   AFTER: 'after',
 };
+
+// Events from inside a block operator's outline mount belong to the operator: its own
+// keyboard, clicks and drag and drop must not drive the outline's treegrid or drop logic.
+function fromOperatorMount(e) {
+  return (e.composedPath?.() ?? []).some((el) => el.classList?.contains(OPERATOR_MOUNT));
+}
 
 function contentChildEqual(child, other) {
   return child.proseIndex === other.proseIndex && child.innerText === other.innerText
@@ -94,7 +102,15 @@ class EwPageOutline extends LitElement {
     _draftName: { state: true },
     _pickup: { state: true },
     _announcement: { state: true },
+    _expandedOperators: { state: true },
   };
+
+  constructor() {
+    super();
+    this._operatorMounts = new Map();
+    this._expandedOperators = new Set();
+    this._operatorHost = blockOperatorHost;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -130,6 +146,8 @@ class EwPageOutline extends LitElement {
         this._selectedProseIndex = proseIndex;
         if (proseIndex != null) this._expandRunForProse(proseIndex);
       });
+    this._unsubscribeOperators = canvasBus.blockOperatorInstanceState
+      .subscribe(() => this.requestUpdate());
   }
 
   disconnectedCallback() {
@@ -137,6 +155,8 @@ class EwPageOutline extends LitElement {
     this._unsubHash?.();
     this._unsubscribeHtml?.();
     this._unsubscribeSelect?.();
+    this._unsubscribeOperators?.();
+    this._unmountOperators();
     document.removeEventListener('pointerdown', this._onPickupOutside, true);
   }
 
@@ -189,9 +209,56 @@ class EwPageOutline extends LitElement {
   }
 
   updated() {
+    this._syncOperatorMounts();
     treegridEnsureTabStop(this.shadowRoot);
     this._focusRenameInput();
     this._resolvePendingFocus();
+  }
+
+  _operatorOutline(blockIndex) {
+    const instance = this._operatorHost.getInstance(blockIndex);
+    return typeof instance?.outline?.mount === 'function' ? instance : null;
+  }
+
+  _toggleOperator(e, blockIndex) {
+    e.stopPropagation();
+    const next = new Set(this._expandedOperators);
+    if (next.has(blockIndex)) next.delete(blockIndex);
+    else next.add(blockIndex);
+    this._expandedOperators = next;
+  }
+
+  _unmountOperators(keep = new Set()) {
+    this._operatorMounts.forEach((mount, container) => {
+      if (keep.has(container)) return;
+      this._operatorMounts.delete(container);
+      mount.handle?.unmount();
+    });
+  }
+
+  // Lit only renders the empty container; the operator owns everything inside it.
+  _syncOperatorMounts() {
+    const containers = [...this.shadowRoot.querySelectorAll(`.${OPERATOR_MOUNT}`)];
+    const live = new Set();
+    containers.forEach((container) => {
+      const blockIndex = Number(container.dataset.blockIndex);
+      const instance = this._operatorOutline(blockIndex);
+      const current = this._operatorMounts.get(container);
+      if (current && current.instance === instance) {
+        live.add(container);
+        return;
+      }
+      if (current) {
+        this._operatorMounts.delete(container);
+        current.handle?.unmount();
+      }
+      if (!instance) return;
+      const handle = this._operatorHost.mountOutline(blockIndex, container);
+      if (!handle) return;
+      this._operatorMounts.set(container, { instance, handle });
+      live.add(container);
+    });
+    this._unmountOperators(live);
   }
 
   _focusRenameInput() {
@@ -348,13 +415,14 @@ class EwPageOutline extends LitElement {
   }
 
   _onGridDragOver = (e) => {
-    if (!this._dragTargets || this._pickup) return;
+    if (!this._dragTargets || this._pickup || fromOperatorMount(e)) return;
     const target = this._dragTargets[this._targetIndexAt(e.clientY, this._dragTargets)]?.target;
     this._showDropTarget(target);
     if (this._dropTarget) e.preventDefault();
   };
 
   _onDrop = (e) => {
+    if (fromOperatorMount(e)) return;
     e.preventDefault();
     e.stopPropagation();
     const { _dragging, _dropTarget } = this;
@@ -391,6 +459,7 @@ class EwPageOutline extends LitElement {
   };
 
   _onDragLeave = (e) => {
+    if (fromOperatorMount(e)) return;
     if (!e.currentTarget.contains(e.relatedTarget)) {
       this._clearDropIndicator();
       this._dropTarget = null;
@@ -398,10 +467,12 @@ class EwPageOutline extends LitElement {
   };
 
   _onGridFocusIn = (e) => {
+    if (fromOperatorMount(e)) return;
     treegridFocusIn(e, { root: this.shadowRoot });
   };
 
   _onGridKeydown = (e) => {
+    if (fromOperatorMount(e)) return;
     const isMenuKey = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
     if (isMenuKey && this._openRowMenu(e)) return;
     if (this._pickup) {
@@ -412,6 +483,7 @@ class EwPageOutline extends LitElement {
   };
 
   _onGridContextMenu = (e) => {
+    if (fromOperatorMount(e)) return;
     const row = e.composedPath().find((el) => el.getAttribute?.('role') === 'row');
     if (row?.querySelector('nx-menu')?.open) e.preventDefault();
   };
@@ -429,6 +501,7 @@ class EwPageOutline extends LitElement {
   _onGridClickCapture = {
     handleEvent: (e) => {
       if (!this._pickup || e.composedPath().includes(this._pickup.handle)) return;
+      if (fromOperatorMount(e)) return;
       e.preventDefault();
       e.stopPropagation();
       if (this._dropTarget) this._dropPickup();
@@ -918,6 +991,9 @@ class EwPageOutline extends LitElement {
   }
 
   _renderBlock(item, posinset, setsize) {
+    if (this._operatorOutline(item.blockIndex)) {
+      return this._renderOperatorBlock(item, posinset, setsize);
+    }
     const selected = this._selectedBlockIndex === item.blockIndex;
     const label = `${blockLabel(item)} block`;
     return html`
@@ -936,6 +1012,43 @@ class EwPageOutline extends LitElement {
           <span class="block-name">${blockLabel(item)}</span>
           ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
         </div>
+      </li>`;
+  }
+
+  // A block whose operator implements `outline`: an expand chevron, and under the row a
+  // container the operator mounts into (see _syncOperatorMounts).
+  _renderOperatorBlock(item, posinset, setsize) {
+    const { blockIndex } = item;
+    const selected = this._selectedBlockIndex === blockIndex;
+    const expanded = this._expandedOperators.has(blockIndex);
+    const label = `${blockLabel(item)} block`;
+    return html`
+      <li class="operator-block" role="none">
+        <div class="block-item ${selected ? 'selected' : ''}" role="row"
+            aria-level="2" aria-posinset="${posinset}" aria-setsize="${setsize}"
+            aria-label="${label}" aria-expanded="${expanded}"
+            data-block-index="${blockIndex}"
+            tabindex="-1" aria-selected="${selected}"
+            draggable="${this._canWrite}"
+            @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.BLOCK, blockIndex)}
+            @dragend=${this._onDragEnd}
+            @click=${() => this._select(blockIndex)}>
+          <div class="row-cell" role="gridcell">
+            ${this._renderDragHandle(OUTLINE_TYPES.BLOCK, blockIndex, label)}
+            <button type="button" class="operator-toggle" tabindex="-1" draggable="false"
+                    aria-label="${expanded ? 'Collapse' : 'Expand'} ${label}"
+                    aria-expanded="${expanded}"
+                    @pointerdown=${(e) => e.stopPropagation()}
+                    @click=${(e) => this._toggleOperator(e, blockIndex)}>
+              ${this._renderChevron(0)}
+            </button>
+            <span class="block-name">${blockLabel(item)}</span>
+            ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, blockIndex)}
+          </div>
+        </div>
+        ${expanded
+    ? html`<div class="${OPERATOR_MOUNT}" data-block-index="${blockIndex}"></div>`
+    : nothing}
       </li>`;
   }
 

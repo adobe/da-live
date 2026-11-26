@@ -614,6 +614,59 @@ export function resetBlockOptionsCache() {
   librarySheetCache.clear();
 }
 
+/** Block names as the "editor" sheet matches them: case, spaces, `-` and `_` don't matter. */
+export function normalizeBlockName(name) {
+  return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+}
+
+/**
+ * Block operators from "editor" sheet rows (`property: operator`): normalized block name →
+ * module URL. The first row per block wins; `resolveUrl` resolves site-relative values.
+ */
+export function operatorRegistryFromRows(rows, resolveUrl = (value) => value.trim()) {
+  const operators = new Map();
+  (rows || []).forEach((row) => {
+    if (row?.property?.toLowerCase().trim() !== 'operator') return;
+    const name = normalizeBlockName(row.block);
+    const value = typeof row.value === 'string' ? row.value.trim() : '';
+    if (!name || !value || operators.has(name)) return;
+    operators.set(name, resolveUrl(value));
+  });
+  return operators;
+}
+
+// Site-relative operator modules load from the DA preview origin: aem.live sends no CORS
+// headers, so a cross-origin module import from there fails.
+export function resolveOperatorUrl(org, site, value) {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('/')) return trimmed;
+  if (ref === 'local') return `http://localhost:3000${trimmed}`;
+  return `https://main--${site}--${org}.preview.da.live${trimmed}`;
+}
+
+/** The block operator registry for an org/site; empty when no `operator` rows exist. */
+export async function loadBlockOperators(org, site) {
+  if (!org || !site) return new Map();
+  const rows = await loadBlockEditor(org, site);
+  return operatorRegistryFromRows(rows, (value) => resolveOperatorUrl(org, site, value));
+}
+
+const operatorModuleCache = new Map();
+
+/** Import (once per URL) an operator module and return its default export. */
+export function loadOperatorModule(url) {
+  if (!operatorModuleCache.has(url)) {
+    operatorModuleCache.set(url, import(url).then((mod) => {
+      const operator = mod?.default;
+      if (typeof operator?.create !== 'function') {
+        throw new Error(`Block operator ${url} has no default export with create()`);
+      }
+      return operator;
+    }));
+  }
+  return operatorModuleCache.get(url);
+}
+
 /** Like fetchBlocks, including the `authError` flag, for OOTB item sheets. */
 export async function fetchItems(sources, format, context) {
   const items = [];

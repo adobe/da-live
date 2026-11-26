@@ -1,4 +1,4 @@
-import { loadBlockLibrary, loadBlockEditor } from '../ew-panel-extensions/helpers.js';
+import { loadBlockLibrary, loadBlockEditor, normalizeBlockName as normalize } from '../ew-panel-extensions/helpers.js';
 
 /**
  * "Multi blocks" — blocks (e.g. cards) whose body is a repeating list of item rows.
@@ -6,10 +6,6 @@ import { loadBlockLibrary, loadBlockEditor } from '../ew-panel-extensions/helper
  * the block toolbar offers an "Add item" button that appends a copy of the library
  * block's first item row.
  */
-
-function normalize(name) {
-  return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
-}
 
 function tableBlockName(table) {
   const header = table.rows?.[0]?.cells?.[0]?.textContent || '';

@@ -58,4 +58,8 @@ export const canvasBus = Object.freeze({
   versionCreatedState: createChannel(),
 
   preflightStatusState: createChannel(),
+
+  // Block operators (editor-utils/block-operators.js): `{ blockIndex }` when a block's
+  // operator instance is created, replaced or dropped.
+  blockOperatorInstanceState: createChannel(),
 });

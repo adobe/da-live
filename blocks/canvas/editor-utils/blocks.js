@@ -1,4 +1,4 @@
-import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
+import { DOMParser as PMDOMParser, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getFirstSectionName, setFirstSectionName } from '../../shared/section-name.js';
 
 export const MAX_SECTION_NAME = 100;
@@ -109,6 +109,91 @@ export function getActiveBlockIndex(view) {
     if (node && cursorPos >= start && cursorPos < start + node.nodeSize) return i;
   }
   return -1;
+}
+
+/**
+ * Map a doc position to the block it sits in and a block operator position:
+ * `{ blockIndex, position: { row, cell, textOffset } }`. `row` excludes the header row;
+ * `position` is null when `pos` is in the header row or not inside a cell (e.g. the
+ * whole block is selected). Returns null when `pos` is outside every block.
+ */
+export function resolveBlockPosition(view, pos = view?.state?.selection?.from) {
+  if (!view?.state || typeof pos !== 'number') return null;
+  const { doc } = view.state;
+  const positions = getBlockPositions(view);
+  const blockIndex = positions.findIndex((start) => (
+    pos > start && pos < start + doc.nodeAt(start).nodeSize
+  ));
+  if (blockIndex === -1) return null;
+  const start = positions[blockIndex];
+  const $pos = doc.resolve(pos);
+  let tableDepth = -1;
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.before(d) === start) {
+      tableDepth = d;
+      break;
+    }
+  }
+  if (tableDepth === -1 || $pos.depth < tableDepth + 2) return { blockIndex, position: null };
+  const rowIndex = $pos.index(tableDepth);
+  if (rowIndex === 0) return { blockIndex, position: null };
+  const cellStart = $pos.start(tableDepth + 2);
+  return {
+    blockIndex,
+    position: {
+      row: rowIndex - 1,
+      cell: $pos.index(tableDepth + 1),
+      textOffset: doc.textBetween(cellStart, pos, '', '').length,
+    },
+  };
+}
+
+/** Inverse of resolveBlockPosition: the doc position of a block operator position, or null. */
+export function blockPositionToPos(view, blockIndex, position) {
+  if (!view?.state) return null;
+  const { row, cell, textOffset } = position ?? {};
+  if (!Number.isInteger(row) || !Number.isInteger(cell) || row < 0 || cell < 0) return null;
+  const { doc } = view.state;
+  const start = getBlockPositions(view)[blockIndex];
+  if (start == null) return null;
+  const table = doc.nodeAt(start);
+  const rowNode = table.maybeChild(row + 1);
+  const cellNode = rowNode?.maybeChild(cell);
+  if (!cellNode) return null;
+  let cellPos = start + 1;
+  for (let r = 0; r <= row; r += 1) cellPos += table.child(r).nodeSize;
+  cellPos += 1;
+  for (let c = 0; c < cell; c += 1) cellPos += rowNode.child(c).nodeSize;
+  const contentStart = cellPos + 1;
+
+  let remaining = Number.isInteger(textOffset) && textOffset > 0 ? textOffset : 0;
+  let result = null;
+  let firstTextblock = null;
+  let lastTextEnd = null;
+  cellNode.descendants((node, offset) => {
+    if (result != null) return false;
+    const abs = contentStart + offset;
+    if (node.isTextblock && firstTextblock == null) firstTextblock = abs + 1;
+    if (node.isText) {
+      if (remaining <= node.text.length) {
+        result = abs + remaining;
+        return false;
+      }
+      remaining -= node.text.length;
+      lastTextEnd = abs + node.text.length;
+    }
+    return true;
+  });
+  return result ?? lastTextEnd ?? firstTextblock ?? contentStart;
+}
+
+/** Put a caret at a block operator position. Returns whether the position resolved. */
+export function setBlockSelection(view, blockIndex, position) {
+  const pos = blockPositionToPos(view, blockIndex, position);
+  if (pos == null) return false;
+  const sel = TextSelection.near(view.state.doc.resolve(pos));
+  view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+  return true;
 }
 
 // Shared by every single-node move; adjusts insertPos for the shift the delete causes,

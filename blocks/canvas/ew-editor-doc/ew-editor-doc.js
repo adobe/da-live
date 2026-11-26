@@ -38,6 +38,7 @@ import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createEditorComments } from './utils/editor-comments.js';
+import { blockOperatorHost } from '../editor-utils/block-operators.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -374,6 +375,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
+    blockOperatorHost.detach();
     canvasBus.editorHtmlState.emit('');
   }
 
@@ -461,6 +463,7 @@ export class EwEditorDoc extends LitElement {
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
+      blockOperatorHost.attach({ org: context.org, site: context.repo });
       this._comments.setupGutter();
 
       this._setupController();

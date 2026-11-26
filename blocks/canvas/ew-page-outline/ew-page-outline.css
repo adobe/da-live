@@ -215,6 +215,34 @@ input {
   transition: transform 0.15s;
 }
 
+.operator-block {
+  margin: 0;
+  padding: 0;
+}
+
+.operator-toggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.operator-toggle > .chevron::before {
+  content: '›';
+}
+
+.operator-toggle[aria-expanded="true"] > .chevron {
+  transform: rotate(90deg);
+}
+
+.operator-outline {
+  padding-inline-start: calc(12px + var(--s2-spacing-75));
+}
+
 .content-item[aria-expanded] > .row-cell > .chevron::before {
   content: '›';
 }

@@ -1400,3 +1400,81 @@ describe('ew-page-outline - treegrid', () => {
     );
   });
 });
+
+describe('ew-page-outline - block operators', () => {
+  let el;
+  let mounts;
+  let unmounts;
+
+  beforeEach(async () => {
+    mounts = [];
+    unmounts = 0;
+    const instance = { outline: { mount() {} } };
+    el = await createOutline();
+    el._operatorHost = {
+      getInstance: (i) => (i === 0 ? instance : null),
+      mountOutline: (blockIndex, container) => {
+        mounts.push(blockIndex);
+        container.innerHTML = '<button class="op-item">Item</button>';
+        return { unmount: () => { unmounts += 1; } };
+      },
+    };
+    el._sections = [{
+      sectionIndex: 0,
+      name: '',
+      blocks: [],
+      items: [
+        { type: 'block', name: 'accordion', variant: '', blockIndex: 0 },
+        { type: 'block', name: 'hero', variant: '', blockIndex: 1 },
+      ],
+    }];
+    await el.updateComplete;
+  });
+
+  afterEach(() => el.remove());
+
+  const root = () => el.shadowRoot;
+
+  it('renders a chevron for operator blocks only and mounts the outline when expanded', async () => {
+    expect(root().querySelectorAll('.operator-toggle')).to.have.length(1);
+    expect(root().querySelector('li.block-item[data-block-index="1"]')).to.exist;
+    expect(root().querySelector('.operator-outline')).to.equal(null);
+
+    root().querySelector('.operator-toggle').click();
+    await el.updateComplete;
+    const container = root().querySelector('.operator-outline');
+    expect(mounts).to.deep.equal([0]);
+    expect(container.querySelector('.op-item')).to.exist;
+    expect(root().querySelector('[data-block-index="0"][role="row"]').getAttribute('aria-expanded')).to.equal('true');
+
+    el.requestUpdate();
+    await el.updateComplete;
+    expect(mounts).to.deep.equal([0]);
+
+    root().querySelector('.operator-toggle').click();
+    await el.updateComplete;
+    expect(unmounts).to.equal(1);
+    expect(root().querySelector('.operator-outline')).to.equal(null);
+  });
+
+  it('leaves keyboard and drop events from inside a mount to the operator', async () => {
+    root().querySelector('.operator-toggle').click();
+    await el.updateComplete;
+    treegridCalls.length = 0;
+    const item = root().querySelector('.op-item');
+    const key = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true, cancelable: true });
+    item.dispatchEvent(key);
+    const drop = new DragEvent('drop', { bubbles: true, composed: true, cancelable: true });
+    item.dispatchEvent(drop);
+    expect(treegridCalls.filter((c) => c.name === 'keydown')).to.have.length(0);
+    expect(key.defaultPrevented).to.equal(false);
+    expect(drop.defaultPrevented).to.equal(false);
+  });
+
+  it('unmounts operator outlines when disconnected', async () => {
+    root().querySelector('.operator-toggle').click();
+    await el.updateComplete;
+    el.remove();
+    expect(unmounts).to.equal(1);
+  });
+});
