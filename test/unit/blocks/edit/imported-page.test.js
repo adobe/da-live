@@ -437,6 +437,10 @@ describe('imported page route', () => {
     });
     document.body.append(el);
     await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    el.querySelectorAll('button')[1].click();
+    for (let i = 0; i < 50 && !el.querySelector('.da-imported-page-references'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
     expect(el.querySelector('.da-imported-page-banner')).to.equal(null);
     expect(el.querySelector('da-title').readOnly).to.equal(true);
     const frame = el.querySelector('iframe');
@@ -451,7 +455,7 @@ describe('imported page route', () => {
       await new Promise((resolve) => { frame.addEventListener('load', resolve, { once: true }); });
     }
     expect(frame.contentDocument).to.equal(null);
-    expect(gets).to.deep.equal(['/o/s/a/b.html', '/o/s/i.png']);
+    expect(gets).to.deep.equal(['/o/s/a/b.html', '/o/s/a/b.html', '/o/s/i.png']);
     expect(el.querySelector('.da-imported-page-references a').getAttribute('href')).to.match(/^\/sheet(\?[^#]*)?#\/o\/s\/m\/model%20a$/);
     expect([...el.querySelectorAll('button')].map((button) => button.textContent)).to.deep.equal(['Layout', 'Content']);
     expect(el.querySelector('input')).to.equal(null);
@@ -460,7 +464,7 @@ describe('imported page route', () => {
     expect(el.querySelector('[data-imported-page]')).to.equal(null);
   });
 
-  it('switches Layout and Content with the matching Source mode and safe Author images', async () => {
+  it('defaults to Layout and switches views with the matching Source mode and safe Author images', async () => {
     const gets = [];
     const headers = { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' };
     const imagePath = '/content/wknd/a/_jcr_content/root/image.coreimg.jpeg/123/a.jpeg';
@@ -475,30 +479,37 @@ describe('imported page route', () => {
     document.body.append(el);
     await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
     const [layout, content] = el.querySelectorAll('button');
-    expect(content.getAttribute('aria-pressed')).to.equal('true');
-    expect(el.querySelector('iframe').srcdoc).to.contain('DA content');
-    layout.click();
-    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
-      await new Promise((resolve) => { setTimeout(resolve, 10); });
-    }
     expect(layout.getAttribute('aria-pressed')).to.equal('true');
+    expect(content.getAttribute('aria-pressed')).to.equal('false');
     expect(el.querySelector('iframe').srcdoc).to.contain('Author layout');
     expect(el.querySelector('iframe').srcdoc).to.contain(`src="${PNG_URL}"`);
     expect(el.querySelector('iframe').srcdoc).not.to.contain('evil()');
-    expect(gets.map((call) => call.render)).to.deep.equal([undefined, 'author', 'author-image']);
-    expect(gets[2].resource).to.equal(imagePath);
+    expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image']);
+    expect(gets[1].resource).to.equal(imagePath);
     content.click();
     for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
       await new Promise((resolve) => { setTimeout(resolve, 10); });
     }
     expect(el.querySelector('iframe').srcdoc).to.contain('DA content');
     expect(content.getAttribute('aria-pressed')).to.equal('true');
+    expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image', undefined]);
+    layout.click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    expect(layout.getAttribute('aria-pressed')).to.equal('true');
+    expect(el.querySelector('iframe').srcdoc).to.contain('Author layout');
+    expect(gets.map((call) => call.render)).to.deep.equal(['author', 'author-image', undefined, 'author', 'author-image']);
   });
 
   it('keeps reference text inert if sheet navigation is not supported', async () => {
     const body = '<a data-da-source-path="/o/s/model.json" data-da-source-kind="sheet" href="https://evil">Open model Sheet</a>';
     routeDeps.source = async () => ({ get: async () => new Response(body, { headers: { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } }) });
     await mountImportedPage({ el, details, caps: { ...CAPS, openKinds: ['page'] }, isCurrent: () => true });
+    el.querySelectorAll('button')[1].click();
+    for (let i = 0; i < 50 && !el.querySelector('iframe'); i += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
     const frame = el.querySelector('iframe');
     expect(frame.srcdoc).to.contain('Open model Sheet');
     expect(frame.srcdoc).not.to.contain('<a ');
@@ -512,6 +523,9 @@ describe('imported page route', () => {
       get: (path, extra, opts) => {
         signals.push(opts?.signal);
         if (path === details.fullpath) {
+          if (opts.render === 'author') {
+            return Promise.resolve(new Response('<p>Layout</p>', { headers: { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } }));
+          }
           return Promise.resolve(new Response('<img data-da-source-path="/o/s/i.png" data-da-source-kind="image">', { headers: { 'content-type': 'text/html', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } }));
         }
         return new Promise((resolve, reject) => {
@@ -523,11 +537,11 @@ describe('imported page route', () => {
       },
     });
     const fetchSpy = sinon.spy(window, 'fetch');
-    const mounted = mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    await mountImportedPage({ el, details, caps: CAPS, isCurrent: () => true });
+    el.querySelectorAll('button')[1].click();
     await new Promise((resolve) => { setTimeout(resolve, 30); });
     unmountImportedPage(el);
-    await mounted;
-    expect(signals.length).to.equal(2);
+    expect(signals.length).to.equal(3);
     expect(signals.every((s) => s instanceof AbortSignal && s.aborted)).to.equal(true);
     expect(pending).to.deep.equal(['aborted']);
     expect(el.querySelector('iframe')).to.equal(null);

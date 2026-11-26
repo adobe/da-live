@@ -341,5 +341,5 @@ export async function mountImportedPage({ el, details, caps, isCurrent }) {
       showError(container, error instanceof ImportedPageError ? error.message : 'Unable to open imported page.');
     }
   };
-  await loadView('content');
+  await loadView('layout');
 }

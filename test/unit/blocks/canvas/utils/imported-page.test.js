@@ -37,8 +37,8 @@ describe('Canvas imported Page inspection without route navigation', () => {
     const url = window.location.href;
     const paths = [];
     routeDeps.source = async () => ({
-      get: async (path) => {
-        paths.push(path);
+      get: async (path, extra, options) => {
+        paths.push({ path, render: options.render });
         return new Response('<section class="aem-component"><header class="aem-component__header"><code>example/title</code></header><div class="aem-component__content"><h1>Imported</h1></div></section>', { headers: { 'content-type': 'text/html; charset=utf-8', 'x-da-content-profile': 'aem-import', 'x-da-source-kind': 'page', 'x-da-source-collaboration': 'false' } });
       },
     });
@@ -47,12 +47,17 @@ describe('Canvas imported Page inspection without route navigation', () => {
       expect(await mountCanvasInspection({ mountRoot, isCurrent: () => true })).to.equal(true);
       expect(window.location.href).to.equal(url);
       expect(mountRoot.querySelector('iframe').getAttribute('sandbox')).to.equal('allow-top-navigation-by-user-activation');
+      expect(mountRoot.querySelector('iframe').getAttribute('title')).to.equal('Author page layout');
+      expect(mountRoot.querySelector('button').getAttribute('aria-pressed')).to.equal('true');
       expect(mountRoot.querySelector('da-title').readOnly).to.equal(true);
       expect(mountRoot.querySelector('ew-editor-doc,ew-editor-wysiwyg,da-content')).to.equal(null);
       unmountCanvasInspection(mountRoot);
       expect(mountRoot.querySelector('iframe')).to.equal(null);
     }
-    expect(paths).to.deep.equal(['/demo/wknd/a space_under.html', '/demo/wknd/a space_under.html']);
+    expect(paths).to.deep.equal([
+      { path: '/demo/wknd/a space_under.html', render: 'author' },
+      { path: '/demo/wknd/a space_under.html', render: 'author' },
+    ]);
   });
 
   it('does not mount native, branch, non-Page or stale routes', async () => {
