@@ -18,7 +18,8 @@ main:has(.start-page) {
     var(--s2-gray-25);
 }
 
-.start-page {
+.start-page,
+.app-frame .section.start-page {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

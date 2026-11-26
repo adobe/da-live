@@ -67,6 +67,37 @@ describe('authored Start page', () => {
     expect(surface.classList.contains('start-page')).to.be.true;
   });
 
+  it('centers content despite the shared section rule and keeps overflowing content accessible', () => {
+    const meta = document.createElement('meta');
+    meta.content = 'edge-delivery';
+    const shared = new CSSStyleSheet();
+    shared.replaceSync('html:has(meta[content="edge-delivery"]) { .section { display: block; } }');
+    document.adoptedStyleSheets.push(shared);
+    container.className = 'app-frame';
+    container.style.cssText = 'height: 600px; --s2-spacing-400: 24px';
+    surface.className = 'section';
+    const content = document.createElement('div');
+    content.style.height = '80px';
+    surface.replaceChildren(entry, content);
+    document.head.append(meta);
+
+    try {
+      init(entry);
+      expect(getComputedStyle(surface).display).to.equal('flex');
+      const surfaceRect = surface.getBoundingClientRect();
+      const contentRect = content.getBoundingClientRect();
+      expect(surfaceRect.height).to.equal(600);
+      expect(contentRect.top - surfaceRect.top)
+        .to.be.closeTo(surfaceRect.bottom - contentRect.bottom, 1);
+
+      container.style.height = '60px';
+      expect(content.getBoundingClientRect().top - surface.getBoundingClientRect().top)
+        .to.equal(24);
+    } finally {
+      meta.remove();
+    }
+  });
+
   it('inherits the application theme without changing unrelated pages', () => {
     container.style.cssText = `
       --s2-red-100: pink;
