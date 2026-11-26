@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/adobe/da-live/compare/v1.36.9...v1.37.0) (2026-11-26)
+
+
+### Features
+
+* **start:** add existing-site form and cards panel ([#1712](https://github.com/adobe/da-live/issues/1712)) ([8c23555](https://github.com/adobe/da-live/commit/8c235556e149b28d71199f604bc15f929d318620)), closes [#1707](https://github.com/adobe/da-live/issues/1707)
+
 ## [1.36.9](https://github.com/adobe/da-live/compare/v1.36.8...v1.36.9) (2026-11-26)
 
 
