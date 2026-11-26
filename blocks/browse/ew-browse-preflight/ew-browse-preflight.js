@@ -211,7 +211,7 @@ export default class EWBrowsePreflight extends LitElement {
 
   _renderRow(row) {
     return html`
-      <details class="da-preflight-row">
+      <details class="da-preflight-row" name="da-preflight-row">
         <summary class="da-preflight-summary">
           <span class="da-preflight-chevron">
             <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CHEVRON_ICON}#icon"></use></svg>

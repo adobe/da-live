@@ -239,6 +239,17 @@ describe('EWBrowsePreflight', () => {
   });
 
   describe('rows', () => {
+    it('opens one file row at a time', async () => {
+      mountPages(2);
+      await el.updateComplete;
+      const [first, second] = el.shadowRoot.querySelectorAll('details.da-preflight-row');
+      first.querySelector('summary').click();
+      expect(first.open).to.be.true;
+      second.querySelector('summary').click();
+      expect(second.open).to.be.true;
+      expect(first.open).to.be.false;
+    });
+
     it('marks non-page files not applicable without evaluating and offers them in Publish Passing', async () => {
       let calls = 0;
       window.fetch = () => {
