@@ -1,3 +1,10 @@
+## [1.36.9](https://github.com/adobe/da-live/compare/v1.36.8...v1.36.9) (2026-11-26)
+
+
+### Bug Fixes
+
+* show Helix 6 media images in the focal point dialog ([#1810](https://github.com/adobe/da-live/issues/1810)) ([61009e3](https://github.com/adobe/da-live/commit/61009e34686480910e7284052cb618022f38eb86))
+
 ## [1.36.8](https://github.com/adobe/da-live/compare/v1.36.7...v1.36.8) (2026-11-26)
 
 
