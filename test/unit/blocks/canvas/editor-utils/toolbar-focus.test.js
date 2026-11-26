@@ -324,4 +324,39 @@ describe('toolbar keyboard access (#1542)', () => {
       expect(suppressesFocus(btb.shadowRoot.querySelector('nx-picker'))).to.be.false;
     });
   });
+
+  describe('read-only document', () => {
+    let reader;
+
+    beforeEach(async () => {
+      reader = await createTestEditor({ editable: false });
+      toolbarController.setDocView(reader.view);
+    });
+
+    afterEach(() => destroyEditor(reader));
+
+    it('names the selected block and offers only Comment (#1808)', async () => {
+      activateWysiwyg({ block: { name: 'cards', variant: 'grid' } });
+      expect(btb.open).to.be.true;
+      await btb.updateComplete;
+      expect(btb.shadowRoot.querySelector('.toolbar-label').textContent).to.equal('cards (grid)');
+      const buttons = [...btb.shadowRoot.querySelectorAll('button')].map((b) => b.textContent.trim());
+      expect(buttons).to.deep.equal(['Comment']);
+    });
+
+    it('offers only Comment on a text selection, and nothing for a caret (#1808)', async () => {
+      const { view } = reader;
+      view.dispatch(view.state.tr.insertText('hello', 1));
+      activateWysiwyg();
+      expect(tb.open).to.be.false;
+
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 6)));
+      activateWysiwyg();
+      expect(tb.open).to.be.true;
+      await tb.updateComplete;
+      const labels = [...tb.shadowRoot.querySelectorAll('.toolbar-actions button')]
+        .map((b) => b.textContent.trim());
+      expect(labels).to.deep.equal(['Comment']);
+    });
+  });
 });
