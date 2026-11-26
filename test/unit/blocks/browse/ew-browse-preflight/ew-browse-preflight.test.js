@@ -279,7 +279,9 @@ describe('EWBrowsePreflight', () => {
       el.canPublish = false;
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('.da-preflight-footer')).to.be.null;
-      expect(el.shadowRoot.querySelector('da-dialog').action).to.be.null;
+      const dialog = el.shadowRoot.querySelector('da-dialog');
+      expect(dialog.action).to.be.null;
+      expect(dialog.classList.contains('no-footer')).to.be.true;
     });
 
     it('stays open on Publish Passing and shows "Checking..." while the host checks', async () => {

@@ -1,7 +1,9 @@
-/* Keep the header (title + close) and footer (actions) in view: only the content scrolls. */
+/* Keep the header (title + close) and footer (actions) in view: only the content scrolls.
+   Fixed height so opening and closing rows doesn't resize the dialog. */
 da-dialog::part(inner) {
   display: flex;
   flex-direction: column;
+  height: 85vh;
   overflow: hidden;
 }
 
@@ -14,6 +16,11 @@ da-dialog::part(content) {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+
+/* The quiet dialog only pads its bottom when it has a footer. */
+da-dialog.no-footer::part(content) {
+  padding-bottom: 24px;
 }
 
 .da-preflight-rows {

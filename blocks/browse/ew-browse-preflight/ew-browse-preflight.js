@@ -245,6 +245,7 @@ export default class EWBrowsePreflight extends LitElement {
         title="Preflight"
         size="auto"
         emphasis="quiet"
+        class=${this.canPublish ? '' : 'no-footer'}
         .action=${this.canPublish ? DIALOG_FOOTER : null}
         @close=${this._handleDialogClose}>
         ${this._authError ? html`<p class="da-preflight-error" role="alert">${this._authError}</p>` : nothing}
