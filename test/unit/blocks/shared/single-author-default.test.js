@@ -39,6 +39,12 @@ describe('da-rs demo authoring default', () => {
     expect(bootstrap.isSingleAuthorDemo()).to.equal(true);
   });
 
+  it('keeps local demo access and single-author mode with the shared Stage service', async () => {
+    const bootstrap = await load(Response.json({ ...config, adminEnv: 'rspoc' }), 'local-shared-service');
+    expect(bootstrap.getDaRsDemoState().config.org).to.equal('demo');
+    expect(bootstrap.isSingleAuthorDemo()).to.equal(true);
+  });
+
   it('does not enable single-author mode when no demo is configured', async () => {
     const bootstrap = await load(new Response('', { status: 404 }), 'no-demo');
     expect(bootstrap.isSingleAuthorDemo()).to.equal(false);

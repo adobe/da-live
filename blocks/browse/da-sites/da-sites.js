@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, sanitizeName } from '../../../scripts/utils.js';
 import { isDaRsDemoActive } from '../../shared/da-rs-bootstrap.js';
+import { initIms } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -18,6 +19,7 @@ export default class DaSites extends LitElement {
     _urlError: { state: true },
     _catalog: { state: true },
     _catalogError: { state: true },
+    _catalogAuthRequired: { state: true },
   };
 
   constructor() {
@@ -36,7 +38,11 @@ export default class DaSites extends LitElement {
   }
 
   async loadCatalog() {
+    this._catalogError = undefined;
+    this._catalogAuthRequired = false;
     try {
+      // Wait for the shared IMS session to restore before asking the protected catalog.
+      await initIms();
       const [{ getDaRsDemoConfig }, { listDaRsCatalog }] = await Promise.all([
         import('../../shared/da-rs-provider.js'),
         import('../../shared/da-rs-api.js'),
@@ -50,7 +56,19 @@ export default class DaSites extends LitElement {
         style: `da-card-style-${getRandom()}`,
       }));
     } catch (error) {
+      this._catalogAuthRequired = error.status === 401;
       this._catalogError = error.message;
+    }
+  }
+
+  async signInToDemo() {
+    try {
+      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+      await loadIms();
+      handleSignIn();
+    } catch {
+      this._catalogAuthRequired = false;
+      this._catalogError = 'Could not start sign-in. Please reload and try again.';
     }
   }
 
@@ -225,6 +243,10 @@ export default class DaSites extends LitElement {
   }
 
   renderCatalog() {
+    if (this._catalogAuthRequired) {
+      return html`<div role="alert"><p>Sign in with your Adobe.com Stage IMS account to view demo sites.</p>
+        <button type="button" @click=${this.signInToDemo}>Sign in</button></div>`;
+    }
     if (this._catalogError) {
       return html`<p role="alert">Unable to load the demo sites: ${this._catalogError}</p>`;
     }

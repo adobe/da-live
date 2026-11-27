@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { render } from 'da-lit';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -39,6 +40,27 @@ describe('da-sites render', () => {
     await fixture([]);
     expect(el.shadowRoot.querySelector('.da-no-site-well')).to.exist;
     expect(el.shadowRoot.querySelector('form')).to.exist;
+  });
+
+  it('offers Stage sign-in when the demo catalog requires authentication', async () => {
+    await fixture([]);
+    const savedIms = window.adobeIMS;
+    const marker = localStorage.getItem('nx-ims');
+    let signedIn = false;
+    window.adobeIMS = { signIn: () => { signedIn = true; } };
+    const container = document.createElement('div');
+    try {
+      el._catalogAuthRequired = true;
+      render(el.renderCatalog(), container);
+      expect(container.querySelector('[role="alert"]').textContent).to.contain('Adobe.com Stage IMS');
+      expect(container.querySelector('button').textContent).to.equal('Sign in');
+      await el.signInToDemo();
+      expect(signedIn).to.equal(true);
+    } finally {
+      if (marker === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', marker);
+      window.adobeIMS = savedIms;
+    }
   });
 
   it('Renders site cards when there are recents', async () => {

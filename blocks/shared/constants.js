@@ -1,4 +1,4 @@
-import { daRsDemoEnvDefault, getDaRsDemoState, isDaRsSelected } from './da-rs-bootstrap.js';
+import { daRsDemoEnvDefault, getDaRsDemoState, isDaRsSelected, isDaRsDemoEligible, isHostedDaRsDemo } from './da-rs-bootstrap.js';
 
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
@@ -23,11 +23,15 @@ const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
   stage: 'https://stage-admin.da.live',
   prod: 'https://admin.da.live',
+  rspoc: 'https://da-rs-ns-team-aem-cm-prd-n147252.corp.ethos14-prod-gbr9.ethos.adobe.net',
 };
 
 export function isAllowedDaAdminOrigin(origin) {
+  if (origin === DA_ADMIN_ENVS.rspoc) {
+    return isDaRsSelected() && (isDaRsDemoEligible() || isHostedDaRsDemo());
+  }
   return Object.values(DA_ADMIN_ENVS).some((value) => (
-    origin === value || origin === value.replace('.live', '.page')
+    value !== DA_ADMIN_ENVS.rspoc && (origin === value || origin === value.replace('.live', '.page'))
   ));
 }
 
@@ -69,6 +73,13 @@ const DA_ETC_ENVS = {
 function getDaEnv(location, key, envs) {
   const { href } = location;
   const query = new URL(href).searchParams.get(key);
+  // The hosted demo stays on its approved service, regardless of env settings.
+  if (key === 'da-admin' && isHostedDaRsDemo(location) && isDaRsSelected(href)) {
+    return DA_ADMIN_ENVS.rspoc;
+  }
+  const allowedRspoc = isDaRsSelected(href)
+    && (isDaRsDemoEligible(location) || isHostedDaRsDemo(location));
+  if (key === 'da-admin' && query === 'rspoc' && !allowedRspoc) return undefined;
   if (query && query === 'reset') {
     localStorage.removeItem(key);
   } else if (query) {
@@ -82,6 +93,7 @@ function getDaEnv(location, key, envs) {
     if (demo && getDaRsDemoState().status === 'failed') return undefined;
     selected = (demo && daRsDemoEnvDefault(key)) || localStorage.getItem(key) || 'prod';
   }
+  if (key === 'da-admin' && selected === 'rspoc' && !allowedRspoc) return undefined;
   const env = envs[selected];
   if (!env) return undefined;
   // TODO: INFRA

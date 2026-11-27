@@ -74,8 +74,8 @@ const CATALOG_PAGES = 100;
 
 export async function listDaRsCatalog(org) {
   const { href } = window.location;
-  const generation = daRsDiscoveryGeneration();
   if (!isDaRsBinding() || !isValidDaRsSegment(org)) throw new Error('Invalid da-rs catalog request');
+  const generation = daRsDiscoveryGeneration();
   const names = new Map();
   let token = null;
   for (let page = 0; page < CATALOG_PAGES; page += 1) {
@@ -93,7 +93,11 @@ export async function listDaRsCatalog(org) {
     ) {
       throw new Error('da-rs context changed');
     }
-    if (!resp.ok || resp.redirected) throw new Error(`da-rs catalog unavailable (${resp.status})`);
+    if (!resp.ok || resp.redirected) {
+      const error = new Error(`da-rs catalog unavailable (${resp.status})`);
+      error.status = resp.status;
+      throw error;
+    }
     // eslint-disable-next-line no-await-in-loop
     const records = await resp.json();
     if (!Array.isArray(records)) throw new Error('Invalid da-rs catalog response');

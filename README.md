@@ -62,6 +62,14 @@ do not edit the same document in multiple tabs or clients. Saves use Source
 ETags; on a conflict or failed save, copy unsaved edits before leaving the editor.
 Browser or tab closure may also interrupt a pending save.
 
+The exact preview `https://rspoc--da-live--adobe.aem.page/` is configured for
+the shared Kubernetes da-rs demo and uses single-author mode. For the same
+service from a loopback-hosted da-live, serve the demo configuration above with
+`"adminEnv": "rspoc"`; `"collabEnv"` remains required but unused in single-author
+mode. Existing `"adminEnv": "local"` configurations continue to use their local
+da-rs service or proxy. Access to the shared service requires corporate network
+access and an Adobe.com Stage IMS identity; the service enforces permissions.
+
 ### Edge Delivery
 If you wish to do any testing that involves Edge Delivery, please note the following:
 

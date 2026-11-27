@@ -118,6 +118,12 @@ describe('da-rs capability discovery and catalog', () => {
     invalidateDaRsDiscovery();
   });
 
+  it('preserves the catalog HTTP status for the sign-in flow', async () => {
+    window.fetch = async () => new Response('', { status: 401 });
+    const error = await listDaRsCatalog('demo').catch((e) => e);
+    expect(error.status).to.equal(401);
+  });
+
   it('discovers and caches imported capabilities for the same context', async () => {
     const [one, two] = await Promise.all([
       discoverDaRsCapabilities('demo', 'wknd'),

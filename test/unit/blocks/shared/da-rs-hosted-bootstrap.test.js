@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { isDaRsDemoEligible, loadDaRsDemoState, isDaRsSelected } from '../../../../blocks/shared/da-rs-bootstrap.js';
+import { isDaRsDemoEligible, isHostedDaRsDemo, loadDaRsDemoState, isDaRsSelected } from '../../../../blocks/shared/da-rs-bootstrap.js';
 
 const DEMO = { apiVersion: 1, provider: 'da-rs', org: 'demo', adminEnv: 'local', collabEnv: 'local' };
 const at = (origin) => {
@@ -41,6 +41,30 @@ describe('da-rs demo bootstrap eligibility', () => {
     }));
   });
 
+  it('activates only the exact approved hosted preview without fetching configuration', async () => {
+    const preview = at('https://rspoc--da-live--adobe.aem.page');
+    let fetched = false;
+    const state = await loadDaRsDemoState(preview, () => { fetched = true; });
+    expect(isHostedDaRsDemo(preview)).to.equal(true);
+    expect(fetched).to.equal(false);
+    expect(state.status).to.equal('ready');
+    expect(state.config).to.deep.equal({
+      apiVersion: 1,
+      provider: 'da-rs',
+      org: 'demo',
+      adminEnv: 'rspoc',
+      collabEnv: 'stage',
+      authoringMode: 'single',
+    });
+    [
+      'http://rspoc--da-live--adobe.aem.page',
+      'https://rspoc--da-live--adobe.aem.page:8443',
+      'https://rspoc--da-live--adobe.aem.page.evil.example',
+      'https://other--da-live--adobe.aem.page',
+      'https://da.live',
+    ].forEach((origin) => expect(isHostedDaRsDemo(at(origin)), origin).to.equal(false));
+  });
+
   it('keeps ready and fail-closed semantics for an eligible local demo', async () => {
     const local = at('http://localhost:3000');
     const load = (respond) => loadDaRsDemoState(local, async (url) => {
@@ -70,6 +94,7 @@ describe('da-rs demo bootstrap eligibility', () => {
       expect(daRsDemoState.status).to.equal('failed');
       expect(selected('http://localhost:3001/')).to.equal(true);
       expect(selected('https://da.live/')).to.equal(false);
+      expect(selected('https://rspoc--da-live--adobe.aem.page/')).to.equal(false);
     } finally {
       window.fetch = originalFetch;
     }

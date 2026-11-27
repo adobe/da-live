@@ -3,7 +3,8 @@
 export const DA_RS_DEMO_PATH = '/da-rs-demo.json';
 export const DA_RS_DEMO_TIMEOUT = 5000;
 
-const ENV_KEYS = ['local', 'stage', 'prod'];
+const ADMIN_ENV_KEYS = ['local', 'stage', 'prod', 'rspoc'];
+const COLLAB_ENV_KEYS = ['local', 'stage', 'prod'];
 const CONFIG_KEYS = ['apiVersion', 'provider', 'org', 'adminEnv', 'collabEnv'];
 
 export function validateDaRsDemoConfig(raw) {
@@ -15,7 +16,7 @@ export function validateDaRsDemoConfig(raw) {
   }
   if (raw.apiVersion !== 1 || raw.provider !== 'da-rs'
     || typeof raw.org !== 'string' || !/^[a-z0-9_-]+$/.test(raw.org)
-    || !ENV_KEYS.includes(raw.adminEnv) || !ENV_KEYS.includes(raw.collabEnv)
+    || !ADMIN_ENV_KEYS.includes(raw.adminEnv) || !COLLAB_ENV_KEYS.includes(raw.collabEnv)
     || (raw.authoringMode !== undefined && !['single', 'collaboration'].includes(raw.authoringMode))) {
     throw new Error('Invalid da-rs demo config');
   }
@@ -23,16 +24,30 @@ export function validateDaRsDemoConfig(raw) {
 }
 
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+const HOSTED_DEMO_ORIGIN = 'https://rspoc--da-live--adobe.aem.page';
+const HOSTED_DEMO = Object.freeze({
+  apiVersion: 1,
+  provider: 'da-rs',
+  org: 'demo',
+  adminEnv: 'rspoc',
+  collabEnv: 'stage',
+  authoringMode: 'single',
+});
 
-// Eligible local PoC context: http(s) served from a loopback host. Everything else (hosted
-// da.live, da.page, previews) never fetches the demo config and can never select da-rs by it.
+// Local demos retain their deployment-owned configuration. Hosted activation is a separate,
+// exact-origin exception and never trusts a preview-supplied backend URL.
 export function isDaRsDemoEligible(location = window.location) {
   if (!/^https?:$/.test(location.protocol)) return false;
   const hostname = (location.hostname ?? new URL(location.origin).hostname).toLowerCase();
   return LOOPBACK_HOSTS.includes(hostname);
 }
 
+export const isHostedDaRsDemo = (location = window.location) => (
+  location.origin === HOSTED_DEMO_ORIGIN
+);
+
 export async function loadDaRsDemoState(location = window.location, fetchFn = window.fetch) {
+  if (isHostedDaRsDemo(location)) return Object.freeze({ status: 'ready', config: HOSTED_DEMO });
   if (!isDaRsDemoEligible(location)) return Object.freeze({ status: 'absent', config: null });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DA_RS_DEMO_TIMEOUT);
@@ -59,13 +74,17 @@ export const daRsDemoState = await loadDaRsDemoState();
 
 export const getDaRsDemoState = () => daRsDemoState;
 
-// Explicit ?da-source wins; otherwise a configured (or failed, fail-closed) demo selects da-rs,
-// but only for an eligible loopback href so demo state never leaks onto a hosted href.
+function matchesDemoContext(location) {
+  return (isDaRsDemoEligible(location) && isDaRsDemoEligible())
+    || (isHostedDaRsDemo(location) && isHostedDaRsDemo());
+}
+
+// Explicit ?da-source wins. Implicit demo state is never reused across local and hosted contexts.
 export function isDaRsSelected(href = window.location.href) {
   const url = new URL(href);
   const explicit = url.searchParams.get('da-source');
   if (explicit) return explicit === 'da-rs';
-  return isDaRsDemoEligible(url) && daRsDemoState.status !== 'absent';
+  return matchesDemoContext(url) && daRsDemoState.status !== 'absent';
 }
 
 // Demo default for a URL env key, or undefined when none applies.
@@ -77,9 +96,11 @@ export function daRsDemoEnvDefault(key) {
 }
 
 // A configured demo is in effect (not overridden by an explicit non-da-rs selection).
-export const isDaRsDemoActive = (href = window.location.href) => daRsDemoState.status === 'ready'
-  && isDaRsSelected(href);
+export const isDaRsDemoActive = (href = window.location.href) => {
+  const url = new URL(href);
+  return matchesDemoContext(url) && daRsDemoState.status === 'ready' && isDaRsSelected(href);
+};
 
-// Single-author is the default only for the selected, loopback-hosted demo.
+// Single-author is the default for the selected demo, unless it explicitly enables collaboration.
 export const isSingleAuthorDemo = () => isDaRsDemoActive()
   && daRsDemoState.config?.authoringMode !== 'collaboration';
