@@ -37,7 +37,7 @@ class DaConfirmDialog extends LitElement {
       <nx-dialog title=${this.title ?? ''}>
         ${this.hideCancel ? html`
           <button type="button" class="nx-action-btn-icon da-confirm-close" aria-label="Close" @click=${this._onCancel}>
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${ICON_CLOSE}#icon"></use></svg>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${ICON_CLOSE}#icon"></use></svg>
           </button>` : nothing}
         <slot></slot>
         ${this.message ? html`<span slot="actions" class="da-confirm-message">${this.message}</span>` : nothing}
