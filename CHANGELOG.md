@@ -1,3 +1,10 @@
+## [1.37.3](https://github.com/adobe/da-live/compare/v1.37.2...v1.37.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* **canvas:** use the canvas admin origin for comments ([#1813](https://github.com/adobe/da-live/issues/1813)) ([63a8da6](https://github.com/adobe/da-live/commit/63a8da6536407ffaee39810447bc938c6a57204b))
+
 ## [1.37.2](https://github.com/adobe/da-live/compare/v1.37.1...v1.37.2) (2026-11-27)
 
 
