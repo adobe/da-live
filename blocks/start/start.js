@@ -370,7 +370,7 @@ function initPage(el) {
   }
   const surface = el.closest('.section') ?? el.closest('.block-content');
   surface?.classList.add('start-page');
-  surface?.querySelectorAll(':scope > .block-content > .nx-cards.start').forEach((cards) => {
+  surface?.querySelectorAll(':scope > .block-content > .nx-cards').forEach((cards) => {
     const group = cards.parentElement;
     const intro = group.previousElementSibling;
     if (group.firstElementChild !== cards || !intro?.matches('.default-content')

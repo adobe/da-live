@@ -24,7 +24,7 @@ describe('authored Start page', () => {
       <da-greeting class="greeting">Welcome</da-greeting>
       <div class="add-site">Add a site</div>
       <div class="content">Additional authored content</div>
-      <div class="nx-cards start">
+      <div class="nx-cards bordered">
         <div>One</div><div>Two</div><div>Three</div><div>Four</div>
       </div>
     </div>`;
@@ -60,6 +60,17 @@ describe('authored Start page', () => {
     expect(entry.hidden).to.be.true;
   });
 
+  it('styles authored cards on the Start page without a start variant', () => {
+    surface.style.setProperty('--s2-spacing-300', '16px');
+    surface.style.setProperty('--s2-gray-25', '#fafafa');
+    init(entry);
+
+    const cards = surface.querySelector('.nx-cards');
+    const computed = getComputedStyle(cards);
+    expect(computed.paddingTop).to.equal('16px');
+    expect(computed.backgroundColor).to.equal('rgb(250, 250, 250)');
+  });
+
   it('supports section-level content without a block-content wrapper', () => {
     surface.className = 'section';
     init(entry);
@@ -75,10 +86,10 @@ describe('authored Start page', () => {
       <div class="add-site">Add a site</div>
     </div>
     <div class="default-content"><h4>Need to create a site?</h4></div>
-    <div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+    <div class="block-content"><div class="nx-cards bordered">Cards</div></div>`;
     entry = surface.querySelector('div.start');
     const intro = surface.querySelector('.default-content');
-    const cards = surface.querySelector('.nx-cards.start');
+    const cards = surface.querySelector('.nx-cards');
     init(entry);
 
     expect(surface.classList.contains('start-page')).to.be.true;
@@ -94,9 +105,9 @@ describe('authored Start page', () => {
     surface.className = 'section';
     surface.innerHTML = `<div class="block-content">
       <div class="start"></div><div class="add-site"></div>
-    </div><div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+    </div><div class="block-content"><div class="nx-cards">Cards</div></div>`;
     entry = surface.querySelector('div.start');
-    const cards = surface.querySelector('.nx-cards.start');
+    const cards = surface.querySelector('.nx-cards');
     init(entry);
 
     expect(surface.querySelector('.start-cards-panel')).to.be.null;
@@ -107,7 +118,7 @@ describe('authored Start page', () => {
     surface.className = 'section';
     surface.innerHTML = `<div class="block-content"><div class="start"></div></div>
       <div class="default-content"><h4>Other content</h4><ul><li>Keep here</li></ul></div>
-      <div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+      <div class="block-content"><div class="nx-cards bordered">Cards</div></div>`;
     entry = surface.querySelector('div.start');
     const intro = surface.querySelector('.default-content');
     init(entry);
@@ -130,14 +141,14 @@ describe('authored Start page', () => {
       <div class="add-site" style="height: 80px"></div>
     </div>
     <div class="default-content"><h4>Need to create a site?</h4><p>Choose a starting point.</p></div>
-    <div class="block-content"><div class="nx-cards start" style="display: grid; gap: 16px">
+    <div class="block-content"><div class="nx-cards bordered" style="display: grid; gap: 16px">
       <div>One</div><div>Two</div><div>Three</div><div>Four</div>
     </div></div>`;
     entry = surface.querySelector('div.start');
     init(entry);
 
     const panel = surface.querySelector('.start-cards-panel');
-    const cards = panel.querySelector('.nx-cards.start');
+    const cards = panel.querySelector('.nx-cards');
     const intro = panel.querySelector('.default-content');
     expect(intro.querySelector('p').getBoundingClientRect().top
       - intro.querySelector('h4').getBoundingClientRect().bottom).to.equal(0);
