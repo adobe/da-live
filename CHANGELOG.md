@@ -1,3 +1,94 @@
+## [1.37.1](https://github.com/adobe/da-live/compare/v1.37.0...v1.37.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ew:** block all edits for read-only users in EW ([#1811](https://github.com/adobe/da-live/issues/1811)) ([164e44e](https://github.com/adobe/da-live/commit/164e44ef6f18601164118ce509210a48240b8c59))
+
+# [1.37.0](https://github.com/adobe/da-live/compare/v1.36.9...v1.37.0) (2026-11-26)
+
+
+### Features
+
+* **start:** add existing-site form and cards panel ([#1712](https://github.com/adobe/da-live/issues/1712)) ([8c23555](https://github.com/adobe/da-live/commit/8c235556e149b28d71199f604bc15f929d318620)), closes [#1707](https://github.com/adobe/da-live/issues/1707)
+
+## [1.36.9](https://github.com/adobe/da-live/compare/v1.36.8...v1.36.9) (2026-11-26)
+
+
+### Bug Fixes
+
+* show Helix 6 media images in the focal point dialog ([#1810](https://github.com/adobe/da-live/issues/1810)) ([61009e3](https://github.com/adobe/da-live/commit/61009e34686480910e7284052cb618022f38eb86))
+
+## [1.36.8](https://github.com/adobe/da-live/compare/v1.36.7...v1.36.8) (2026-11-26)
+
+
+### Bug Fixes
+
+* stop collab reconnect loop on 4403 forbidden close ([#1812](https://github.com/adobe/da-live/issues/1812)) ([cc538ec](https://github.com/adobe/da-live/commit/cc538ec35c92c60645cb481974ddcf519cf85772))
+
+## [1.36.7](https://github.com/adobe/da-live/compare/v1.36.6...v1.36.7) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve library discovery and registration ([#1793](https://github.com/adobe/da-live/issues/1793)) ([40e242c](https://github.com/adobe/da-live/commit/40e242c07d7543496e4c65ce503d514b52328342))
+
+## [1.36.6](https://github.com/adobe/da-live/compare/v1.36.5...v1.36.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **permissions:** show full member IDs in pills ([#1801](https://github.com/adobe/da-live/issues/1801)) ([2a4fec7](https://github.com/adobe/da-live/commit/2a4fec7d2f735a7ec0f41885c4c8ef5b61a24305))
+
+## [1.36.5](https://github.com/adobe/da-live/compare/v1.36.4...v1.36.5) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve sheet editor dark-mode styling ([#1767](https://github.com/adobe/da-live/issues/1767)) ([80cdbf9](https://github.com/adobe/da-live/commit/80cdbf9987026aee72b9c40cd793dc111f8c14d8))
+
+## [1.36.4](https://github.com/adobe/da-live/compare/v1.36.3...v1.36.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ew:** detect image changes in version comparisons ([#1758](https://github.com/adobe/da-live/issues/1758)) ([d663f43](https://github.com/adobe/da-live/commit/d663f43b5a309c1a4ffe8f23f92125587782e348))
+
+## [1.36.3](https://github.com/adobe/da-live/compare/v1.36.2...v1.36.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve classic editor dark mode support ([#1759](https://github.com/adobe/da-live/issues/1759)) ([acb9421](https://github.com/adobe/da-live/commit/acb942173eb79e5853ca1603f0a28f7fb4e86cd6))
+
+## [1.36.2](https://github.com/adobe/da-live/compare/v1.36.1...v1.36.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* align select all ([#1784](https://github.com/adobe/da-live/issues/1784)) ([c71a2ce](https://github.com/adobe/da-live/commit/c71a2ced9a34b3e76ea7b831bc22e7c32086ed86))
+
+## [1.36.1](https://github.com/adobe/da-live/compare/v1.36.0...v1.36.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* remove support for browse version config ([#1785](https://github.com/adobe/da-live/issues/1785)) ([58a3397](https://github.com/adobe/da-live/commit/58a3397e2e1f54bd57905c92fe6e3a4818cb968b))
+
+# [1.36.0](https://github.com/adobe/da-live/compare/v1.35.0...v1.36.0) (2026-11-24)
+
+
+### Features
+
+* link the config editor from the settings menu ([#1778](https://github.com/adobe/da-live/issues/1778)) ([6ee13df](https://github.com/adobe/da-live/commit/6ee13df2ad26d3bb77265cbaa4c06635b2fb6f3b))
+
+# [1.35.0](https://github.com/adobe/da-live/compare/v1.34.0...v1.35.0) (2026-11-24)
+
+
+### Features
+
+* add tiles on landing ([#1777](https://github.com/adobe/da-live/issues/1777)) ([d2698e0](https://github.com/adobe/da-live/commit/d2698e010da7763eaa80dec921fba9ce2659682d))
+
 # [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
 
 

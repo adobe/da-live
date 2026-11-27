@@ -202,6 +202,37 @@ describe('prose/index createConnection', () => {
     }
   });
 
+  it('Does not refresh or reconnect on 4403 even when IMS would rotate the token', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let tokenIndex = 0;
+    let refreshCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => {
+        tokenIndex += 1;
+        return { token: `T-${tokenIndex}` };
+      },
+      refreshToken: async () => { refreshCalls += 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      const initialProtocols = [...wsProvider.protocols];
+
+      wsProvider.emit('connection-close', [{ code: 4403, reason: 'forbidden' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(refreshCalls).to.equal(0);
+      expect(wsProvider.protocols).to.deep.equal(initialProtocols);
+
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
   it('Stops reconnecting on 4401 when imslib cannot produce a token, shows banner', async () => {
     window.localStorage.setItem('nx-ims', 'true');
     const savedIMS = window.adobeIMS;

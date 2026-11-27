@@ -296,7 +296,7 @@ describe('imageFocalPoint Plugin', () => {
     });
 
     it('opens the focal point dialog for the selected image', async () => {
-      openSelectedFocalPoint({ state: stateFor('hero'), dispatch: () => {} });
+      openSelectedFocalPoint({ state: stateFor('hero'), dispatch: () => {}, nodeDOM: () => null });
       await new Promise((resolve) => { setTimeout(resolve, 100); });
       const dialog = document.querySelector('da-dialog.focal-point-dialog');
       expect(dialog).to.exist;

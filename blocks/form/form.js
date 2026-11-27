@@ -136,8 +136,7 @@ async function setupChat(toggleGroup, { org, site }) {
  * chat all read the `#/org/site/path` hash, so they stay in sync.
  *
  * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
- * content still declares it as `nx-form`, which the nx2 loader loads from
- * da-nx. Pages that declare a `form` block load this copy instead.
+ * content declares a `form` block, which loads this copy from da-live.
  *
  * @param {HTMLElement} block - The block element to decorate.
  */

@@ -14,16 +14,6 @@ import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
-  if (area.querySelector('.nx-cards.start')) {
-    const { href } = new URL('../styles/start.css', import.meta.url);
-    if (!document.head.querySelector(`link[href="${href}"]`)) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      document.head.append(link);
-    }
-  }
-
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
     const pic = img.parentElement;

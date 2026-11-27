@@ -51,6 +51,7 @@ describe('Block library variant preview navigation', () => {
     canvasBus.branchState.emit(branchState);
     modal = document.createElement('ew-block-library-modal');
     modal.blocks = [{ ...block, loadVariants: Promise.resolve(variants) }];
+    modal.onInsert = () => {};
     document.body.append(modal);
     modal._hashState = { org: 'org', site: 'site' };
     modal._expandedPath = block.path;
@@ -153,6 +154,14 @@ describe('Block library variant preview navigation', () => {
     modal.shadowRoot.querySelectorAll('.modal-tree-add')[2].click();
     expect(inserted).to.equal(variants[2].dom);
     expect(closed).to.be.true;
+  });
+
+  it('Is browse-only without an insert handler (read-only users, #1808)', async () => {
+    modal.onInsert = undefined;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-add')).to.have.length(0);
+    expect(modal.shadowRoot.querySelector('.modal-title').textContent).to.equal('Block library');
+    expect(variantButtons()[0].disabled).to.be.false;
   });
 
   it('Keeps description toggles separate from preview navigation', async () => {

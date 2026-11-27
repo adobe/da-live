@@ -1,12 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
-import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 
-const sheet = await getSheet('/blocks/start/start.css');
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const sheet = await loadStyle(import.meta.url);
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -364,7 +364,32 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
+function initPage(el) {
+  if (!document.adoptedStyleSheets.includes(sheet)) {
+    document.adoptedStyleSheets.push(sheet);
+  }
+  const surface = el.closest('.section') ?? el.closest('.block-content');
+  surface?.classList.add('start-page');
+  surface?.querySelectorAll(':scope > .block-content > .nx-cards.start').forEach((cards) => {
+    const group = cards.parentElement;
+    const intro = group.previousElementSibling;
+    if (group.firstElementChild !== cards || !intro?.matches('.default-content')
+      || !intro.textContent.trim()
+      || ![...intro.children].every((child) => child.matches('h1, h2, h3, h4, h5, h6, p'))) return;
+    const panel = document.createElement('div');
+    panel.className = 'start-cards-panel';
+    cards.before(panel);
+    panel.append(intro, cards);
+  });
+}
+
 export default function init(el) {
+  if (!el.classList.contains('cmp')) {
+    initPage(el);
+    el.hidden = true;
+    return;
+  }
+
   const start = document.createElement('da-start');
   el.append(start);
   const section = el.closest('.section')?.nextElementSibling;
