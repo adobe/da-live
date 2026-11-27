@@ -6,9 +6,8 @@ import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Get Main Page', async ({ page }) => {
   await page.goto(`${ENV}/${getQuery()}`);
-  const html = await page.content();
 
-  expect(html).toContain('Browse - DA');
+  await expect(page).toHaveTitle(/^Browse\b/);
   await expect(page.locator('a.brand-area')).toBeVisible();
 });
 
