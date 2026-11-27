@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { TextSelection } from 'da-y-wrapper';
-import { getTableInfo, isInTableCell } from '../../../../../../blocks/edit/prose/plugins/tableUtils.js';
+import { addRowLike, getTableInfo, isInTableCell } from '../../../../../../blocks/edit/prose/plugins/tableUtils.js';
 import { createTestEditor, destroyEditor } from '../test-helpers.js';
 
 function buildTable(view, rows) {
@@ -100,5 +100,90 @@ describe('tableUtils', () => {
     );
     editor.view.dispatch(tr);
     expect(isInTableCell(editor.view.state, firstCellPos)).to.be.true;
+  });
+});
+
+describe('addRowLike', () => {
+  let editor;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+  });
+
+  afterEach(() => destroyEditor(editor));
+
+  const placeCursorIn = (view, text) => {
+    let found;
+    view.state.doc.descendants((node, pos) => {
+      if (found === undefined && node.isText && node.text === text) found = pos;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, found)));
+  };
+
+  const rowShapes = (view) => {
+    const shapes = [];
+    view.state.doc.firstChild.forEach((row) => {
+      const spans = [];
+      row.forEach((cell) => spans.push(cell.textContent || cell.attrs.colspan));
+      shapes.push(spans);
+    });
+    return shapes;
+  };
+
+  const run = (view, side) => addRowLike(side)(view.state, view.dispatch);
+
+  it('copies a merged row above it', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['a', 'b'], ['merged']]);
+    placeCursorIn(view, 'merged');
+
+    expect(run(view, 'before')).to.be.true;
+    expect(rowShapes(view)).to.deep.equal([['block'], ['a', 'b'], [2], ['merged']]);
+  });
+
+  it('copies a merged row below it', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['merged'], ['a', 'b']]);
+    placeCursorIn(view, 'merged');
+
+    expect(run(view, 'after')).to.be.true;
+    expect(rowShapes(view)).to.deep.equal([['block'], ['merged'], [2], ['a', 'b']]);
+  });
+
+  it('copies a multi-cell row', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['a', 'b']]);
+    placeCursorIn(view, 'a');
+
+    expect(run(view, 'after')).to.be.true;
+    expect(rowShapes(view)).to.deep.equal([['block'], ['a', 'b'], [1, 1]]);
+  });
+
+  it('keeps the cursor in the original cell', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['merged']]);
+    placeCursorIn(view, 'merged');
+
+    run(view, 'before');
+    expect(view.state.selection.$from.parent.textContent).to.equal('merged');
+  });
+
+  it('falls back to a full-width row when the row has a cell spanning rows', () => {
+    const { view } = editor;
+    const { schema } = view.state;
+    const { table, table_row: tableRow, table_cell: tableCell, paragraph } = schema.nodes;
+    const cell = (text, attrs) => tableCell.create(
+      attrs,
+      paragraph.create(null, schema.text(text)),
+    );
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, table.create(null, [
+      tableRow.create(null, [cell('block', { colspan: 2 })]),
+      tableRow.create(null, [cell('tall', { rowspan: 2 }), cell('b')]),
+      tableRow.create(null, [cell('c')]),
+    ])));
+    placeCursorIn(view, 'b');
+
+    expect(run(view, 'before')).to.be.true;
+    expect(rowShapes(view)).to.deep.equal([['block'], [1, 1], ['tall', 'b'], ['c']]);
   });
 });
