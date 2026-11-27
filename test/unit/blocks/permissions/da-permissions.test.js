@@ -845,7 +845,7 @@ describe('da-permissions', () => {
       expect(cards.adding).to.deep.equal({ path: '/s/blog/promotions.html', level: 'read' });
     });
 
-    it('adding a member saves the page rule and its media folder rule', async () => {
+    it('adding a member saves only the page rule', async () => {
       const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
@@ -856,7 +856,6 @@ describe('da-permissions', () => {
       expect(saved.permissions.data).to.deep.equal([
         { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
         { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'read' },
-        { path: '/s/.promotions/ + **', groups: 'legal@x.com', actions: 'read' },
       ]);
 
       resolvePut(200);
@@ -874,7 +873,7 @@ describe('da-permissions', () => {
       expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/redirects.json']);
     });
 
-    it('re-adding a page member who is missing from the media folder rule saves that rule', async () => {
+    it('re-adding a page member saves nothing, without a media folder rule', async () => {
       const body = structuredClone(SITE_S_CONFIG_BODY);
       body.permissions.data.push({ path: '/s/promotions', groups: 'legal@x.com', actions: 'write' });
       const { putCalls } = mockFetch({ configFor: () => body, putFor: () => new Response('', { status: 200 }) });
@@ -882,9 +881,7 @@ describe('da-permissions', () => {
 
       await el._onAdd({ detail: { path: '/s/promotions', level: 'write', value: 'legal@x.com' } });
 
-      expect(putCalls.length).to.equal(1);
-      const saved = JSON.parse(putCalls[0].opts.body.get('config'));
-      expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/promotions', '/s/.promotions/ + **']);
+      expect(putCalls.length).to.equal(0);
     });
 
     it('Add page for a page that has a rule without .html opens that rule', async () => {
@@ -927,50 +924,7 @@ describe('da-permissions', () => {
       expect(cards.adding).to.deep.equal({ path: '/s/about.us.html', level: 'read' });
     });
 
-    it('the remove dialog only names the media folder when the member is on it', async () => {
-      const body = structuredClone(SITE_S_CONFIG_BODY);
-      body.permissions.data.push({ path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' });
-      mockFetch({ configFor: () => body });
-      const el = await mount('myorg', 's');
-
-      el._onRemoveRequest({ detail: { path: '/s/promotions.html', level: 'write', who: 'legal@x.com' } });
-      await el.updateComplete;
-      expect(el.shadowRoot.querySelector('nx-dialog p').textContent.trim())
-        .to.equal('Remove legal@x.com from promotions.html · Write?');
-    });
-
-    it('removing a page member removes the media folder rule too when the site changes mid-save', async () => {
-      const body = structuredClone(SITE_S_CONFIG_BODY);
-      body.permissions.data.push(
-        { path: '/s/foo.html', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/.foo/+**', groups: 'legal@x.com', actions: 'write' },
-      );
-      mockFetch({ configFor: () => body });
-      const el = await mount('myorg', 's');
-      let resolveGet;
-      const puts = [];
-      window.fetch = async (url, opts = {}) => {
-        if (opts.method === 'PUT') {
-          puts.push(opts);
-          return new Response('', { status: 200 });
-        }
-        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
-        return new Promise((resolve) => { resolveGet = resolve; });
-      };
-
-      el._onRemoveRequest({ detail: { path: '/s/foo.html', level: 'write', who: 'legal@x.com' } });
-      const pending = el._confirmRemoveNow();
-      await waitUntil(() => resolveGet);
-      el.site = 't';
-      await el.updateComplete;
-      resolveGet(new Response(JSON.stringify(body), { status: 200 }));
-      await pending;
-
-      const saved = JSON.parse(puts[0].body.get('config'));
-      expect(saved.permissions.data).to.deep.equal(SITE_S_CONFIG_BODY.permissions.data);
-    });
-
-    it('removing the last member of a page deletes the page and media folder rules', async () => {
+    it('removing the last member of a page deletes the page rule and leaves the media folder rule', async () => {
       const body = structuredClone(SITE_S_CONFIG_BODY);
       body.permissions.data.push(
         { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
@@ -982,12 +936,15 @@ describe('da-permissions', () => {
       el._onRemoveRequest({ detail: { path: '/s/promotions.html', level: 'write', who: 'legal@x.com' } });
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('nx-dialog p').textContent.trim())
-        .to.equal('Remove legal@x.com from promotions.html · Write? This also removes them from .promotions/.');
+        .to.equal('Remove legal@x.com from promotions.html · Write?');
       await el._confirmRemoveNow();
 
       expect(putCalls.length).to.equal(1);
       const saved = JSON.parse(putCalls[0].opts.body.get('config'));
-      expect(saved.permissions.data).to.deep.equal([{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }]);
+      expect(saved.permissions.data).to.deep.equal([
+        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
+        { path: '/s/.promotions/+**', groups: 'legal@x.com', actions: 'write' },
+      ]);
     });
   });
 });
