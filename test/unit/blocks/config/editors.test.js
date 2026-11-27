@@ -9,6 +9,8 @@ import {
 import prepare from '../../../../blocks/config/panels/prepare.js';
 import translation from '../../../../blocks/config/panels/translation.js';
 import plugins from '../../../../blocks/config/panels/plugins.js';
+import { icons } from '../../../../blocks/config/panels/library.js';
+import { toPreviewProxyUrl } from '../../../../blocks/shared/preview-proxy.js';
 import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
 import { library } from '../../../../blocks/config/stores.js';
 
@@ -394,5 +396,108 @@ describe('file status', () => {
     expect(parts(renderLibraryStatus(library('Icons'), live, opts))).to.deep.equal(['', '']);
     const lib = { status: 'error', path: '/library/icons.json', httpStatus: 503 };
     expect(parts(renderLibraryStatus(library('Icons'), lib, opts))[1]).to.include('responded with 503');
+  });
+
+  it('shows a standalone notice with a primary registration action for discovered placeholders', () => {
+    let setups = 0;
+    const lib = { status: 'ok', path: '/placeholders.json', registered: null, missing: false };
+    const store = library('Placeholders', ['/placeholders.json']);
+    const el = document.createElement('div');
+    const handlers = { ...opts, onSetup: () => { setups += 1; } };
+    const state = renderLibraryStatus(store, lib, handlers);
+    expect(parts(state)[0]).to.equal('');
+    render(state.block, el);
+    expect(el.querySelector('.config-library-notice-title').textContent)
+      .to.equal('Placeholders found, but not added to the authoring library');
+    expect(el.textContent).to.include('Using /placeholders.json');
+    expect(el.textContent).to.not.include('No placeholders library');
+    const button = el.querySelector('button');
+    expect(button.textContent).to.equal('Add to library');
+    expect(button.classList.contains('nx-form-btn-primary')).to.equal(true);
+    button.click();
+    expect(setups).to.equal(1);
+    render(renderLibraryStatus(store, lib, { ...handlers, locked: true }).block, el);
+    expect(el.querySelector('button').disabled).to.equal(true);
+  });
+});
+
+describe('library icon previews', () => {
+  const handlers = { disabled: true, org: 'o', site: 's' };
+  const show = (el, row) => render(renderRows(icons, { items: [{ row, index: 0 }] }, handlers), el);
+
+  it('renders the actual icon beside its key while keeping its URL visible', async () => {
+    const el = document.createElement('div');
+    const url = new URL('/img/logos/aem.svg', window.location.href).href;
+    show(el, { key: 'add', value: 'Add', icon: url });
+    const img = el.querySelector('tbody th img');
+    expect(img.getAttribute('src')).to.equal(url);
+    expect(img.alt).to.equal('');
+    expect(el.querySelector('tbody th').textContent).to.include('add');
+    expect(el.querySelector('tbody').textContent).to.include('/img/logos/aem.svg');
+    if (!img.complete) {
+      await new Promise((resolve, reject) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', reject, { once: true });
+      });
+    }
+    expect(img.naturalWidth).to.be.greaterThan(0);
+  });
+
+  it('resolves site-relative icons through the existing preview proxy helper', () => {
+    const el = document.createElement('div');
+    show(el, { key: 'adobe', icon: '/icons/adobe.svg' });
+    expect(el.querySelector('img').getAttribute('src'))
+      .to.equal(toPreviewProxyUrl('/icons/adobe.svg', handlers));
+  });
+
+  it('retries a failed proxy image after authentication only once', async () => {
+    const savedFetch = window.fetch;
+    const savedIms = window.adobeIMS;
+    const savedSetting = localStorage.getItem('nx-ims');
+    try {
+      localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+      const calls = [];
+      window.fetch = async (url, opts) => {
+        calls.push({ url, opts });
+        return new Response('', { status: 200 });
+      };
+      const el = document.createElement('div');
+      show(el, { key: 'adobe', icon: '/icons/adobe.svg' });
+      const img = el.querySelector('img');
+      img.dispatchEvent(new Event('error'));
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(calls.length).to.equal(1);
+      expect(calls[0].url).to.equal(new URL('/gimme_cookie', img.src).href);
+      expect(calls[0].opts.credentials).to.equal('include');
+      expect(img.hidden).to.equal(false);
+      img.dispatchEvent(new Event('error'));
+      expect(img.hidden).to.equal(true);
+      expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(false);
+      expect(calls.length).to.equal(1);
+    } finally {
+      window.fetch = savedFetch;
+      window.adobeIMS = savedIms;
+      if (savedSetting === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedSetting);
+    }
+  });
+
+  it('shows image failures and retries when the icon URL changes, without affecting blank icons', () => {
+    const el = document.createElement('div');
+    const url = new URL('/img/logos/aem.svg', window.location.href).href;
+    show(el, { key: 'add', icon: url });
+    const img = el.querySelector('img');
+    img.dispatchEvent(new Event('error'));
+    expect(img.hidden).to.equal(true);
+    expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(false);
+    expect(el.querySelector('.config-icon-unavailable').textContent).to.equal('Preview unavailable');
+    const replacement = new URL('/img/icons/S2_Icon_Home_20_N.svg', window.location.href).href;
+    show(el, { key: 'edit', icon: replacement });
+    expect(el.querySelector('img').hidden).to.equal(false);
+    expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(true);
+    show(el, { key: 'empty' });
+    expect(el.querySelector('img')).to.equal(null);
+    expect(el.querySelector('.config-icon-unavailable')).to.equal(null);
   });
 });

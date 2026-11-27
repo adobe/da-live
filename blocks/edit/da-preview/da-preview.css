@@ -63,7 +63,7 @@
 }
 
 .da-preview-menuitem {
-  --preview-icon: url('/blocks/edit/img/Smock_Close_18_N.svg');
+  --preview-icon: url('/img/icons/s2-icon-close-20-n.svg');
   --preview-icon-size: 20px;
 
   display: flex;

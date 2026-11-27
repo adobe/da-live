@@ -59,6 +59,14 @@
   cursor: pointer;
 }
 
+.toolbar-btn-labeled {
+  gap: 6px;
+  padding: 0 8px;
+  font-family: var(--s2-font-family, adobe-clean, "Source Sans Pro", "Trebuchet MS", sans-serif);
+  font-size: var(--s2-body-size-xs);
+  font-weight: var(--s2-component-s-medium-font-weight, 500);
+}
+
 .toolbar-btn:hover {
   background: var(--s2-gray-200);
 }

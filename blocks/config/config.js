@@ -12,8 +12,7 @@ export async function handleRoute(el, details) {
     cmp = document.createElement('da-config');
     el.append(cmp);
   }
-  cmp.org = details?.org ?? null;
-  cmp.site = details?.site ?? null;
+  cmp.setRoute(details);
   return cmp;
 }
 

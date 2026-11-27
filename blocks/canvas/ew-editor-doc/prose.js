@@ -19,6 +19,8 @@ import {
   gapCursor,
   liftListItem,
   sinkListItem,
+  Plugin,
+  ySyncPluginKey,
 } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import {
@@ -61,6 +63,11 @@ function registerErrorHandler(ydoc) {
       errorMap.clear();
     }
   });
+}
+
+export function readOnly() {
+  const isRemote = (tr) => !!tr.getMeta(ySyncPluginKey)?.isChangeOrigin;
+  return new Plugin({ filterTransaction: (tr) => !tr.docChanged || isRemote(tr) });
 }
 
 function addSyncedListener(wsProvider, canWrite, setEditable) {
@@ -240,6 +247,8 @@ export default async function initProse({
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
     plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
+  } else {
+    plugins.unshift(readOnly());
   }
 
   let state = EditorState.create({ schema, plugins });
