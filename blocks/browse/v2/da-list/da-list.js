@@ -63,9 +63,9 @@ export default class DaList extends DaListBase {
     await import('../../../shared/da-confirm-dialog/da-confirm-dialog.js');
   }
 
-  renderDialog({ title, message, action, onClose }, content) {
+  renderDialog({ title, message, action, onClose, hideCancel }, content) {
     return html`
-      <da-confirm-dialog title=${title} .message=${message} .action=${action} @close=${onClose}>
+      <da-confirm-dialog title=${title} .message=${message} .action=${action} .hideCancel=${hideCancel} @close=${onClose}>
         ${content}
       </da-confirm-dialog>
     `;

@@ -16,6 +16,7 @@ class DaConfirmDialog extends LitElement {
     title: { type: String },
     message: { attribute: false },
     action: { attribute: false },
+    hideCancel: { attribute: false },
   };
 
   connectedCallback() {
@@ -33,7 +34,7 @@ class DaConfirmDialog extends LitElement {
       <nx-dialog title=${this.title ?? ''}>
         <slot></slot>
         ${this.message ? html`<span slot="actions" class="da-confirm-message">${this.message}</span>` : nothing}
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>
+        ${this.hideCancel ? nothing : html`<button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>`}
         ${action ? html`<button type="button" slot="actions"
           class="nx-form-btn-primary ${action.style ?? ''}"
           ?disabled=${action.disabled}
