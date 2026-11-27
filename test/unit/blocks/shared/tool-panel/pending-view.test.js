@@ -32,6 +32,28 @@ describe('da-tool-panel pendingView', () => {
   });
 });
 
+describe('da-tool-panel initial view race', () => {
+  it('keeps a view requested while the initial view is still resolving', async () => {
+    let resolveInitial;
+    const panel = document.createElement('da-tool-panel');
+    panel.host = { resolveInitialView: () => new Promise((r) => { resolveInitial = r; }) };
+    document.body.append(panel);
+    await panel.updateComplete;
+
+    const makeView = (id) => ({ id, label: id, load: async () => document.createElement('div') });
+    panel.views = [makeView('files'), makeView('comments')];
+    await panel.updateComplete;
+
+    await panel.showPanel('comments');
+    resolveInitial('files');
+    await new Promise((r) => { setTimeout(r, 0); });
+    await panel.updateComplete;
+
+    expect(panel.activeId).to.equal('comments');
+    panel.remove();
+  });
+});
+
 describe('da-tool-panel active view broadcast', () => {
   let aside;
   let panel;
