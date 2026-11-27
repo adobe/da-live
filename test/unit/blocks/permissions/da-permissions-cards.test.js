@@ -178,6 +178,19 @@ describe('da-permissions-cards', () => {
     expect(el.shadowRoot.querySelector('button.remove-scope')).to.equal(null);
   });
 
+  it('has no remove button on a card the filter narrows, so it can\'t remove members it doesn\'t show', async () => {
+    const folder = { kind: 'folder', read: ['reader@x.com'], write: ['legal@x.com'] };
+    const slots = filterSlots([
+      baseSlot({ ...folder, path: '/myorg/site1/blog/ + **', label: 'blog/' }),
+      baseSlot({ ...folder, path: '/myorg/site1/legal/ + **', label: 'legal/' }),
+    ], 'legal');
+    const el = await mount({ slots });
+
+    const button = (path) => el.shadowRoot.querySelector(`article.scope-card[data-path="${path}"] button.remove-scope`);
+    expect(button('/myorg/site1/blog/ + **')).to.equal(null);
+    expect(button('/myorg/site1/legal/ + **')).to.not.equal(null);
+  });
+
   it('hides empty sections: only folder slots renders no config or content section', async () => {
     const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
     const el = await mount({ slots: [folderSlot] });

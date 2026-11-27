@@ -1013,8 +1013,16 @@ describe('da-permissions', () => {
       let dialog = el.shadowRoot.querySelector('nx-dialog');
       expect(dialog.getAttribute('title')).to.equal('Remove permissions');
       expect(dialog.querySelector('p').textContent).to.equal('Remove all permissions for blog/?');
+      // Cancel closes the dialog, which puts focus back on the button that opened it.
+      let closed = 0;
+      const { close } = dialog;
+      dialog.close = () => {
+        closed += 1;
+        close.call(dialog);
+      };
       dialog.querySelector('[slot="actions"].nx-form-btn-secondary').click();
       await el.updateComplete;
+      expect(closed).to.equal(1);
       expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
       expect(putCalls.length).to.equal(0);
 
