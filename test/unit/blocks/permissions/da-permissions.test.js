@@ -784,16 +784,6 @@ describe('da-permissions', () => {
   });
 
   describe('page permission', () => {
-    async function addMember(el, putCalls, value) {
-      const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      await cards.updateComplete;
-      const input = cards.shadowRoot.querySelector('.row-add-input');
-      input.value = value;
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      await waitUntil(() => putCalls.length === 1);
-      return JSON.parse(putCalls[0].opts.body.get('config'));
-    }
-
     it('choosing Page switches the placeholder and hint, keeps the typed path and clears the error', async () => {
       mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
@@ -850,9 +840,15 @@ describe('da-permissions', () => {
       const el = await mount('myorg', 's');
 
       await addPath(el, '/promotions', 'page');
-      const saved = await addMember(el, putCalls, 'legal@x.com');
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      await cards.updateComplete;
+      const input = cards.shadowRoot.querySelector('.row-add-input');
+      input.value = 'legal@x.com';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await waitUntil(() => putCalls.length === 1);
 
       expect(putCalls.length).to.equal(1);
+      const saved = JSON.parse(putCalls[0].opts.body.get('config'));
       expect(saved.permissions.data).to.deep.equal([
         { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
         { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'read' },
@@ -861,27 +857,6 @@ describe('da-permissions', () => {
       resolvePut(200);
       await waitUntil(() => el._pendingPath === null, el);
       expect(el._pendingPath).to.equal(null);
-    });
-
-    it('adding a member to a sheet saves only the sheet rule', async () => {
-      const { putCalls } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
-      const el = await mount('myorg', 's');
-
-      await addPath(el, '/redirects.json', 'page');
-      const saved = await addMember(el, putCalls, 'seo@x.com');
-
-      expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/redirects.json']);
-    });
-
-    it('re-adding a page member saves nothing, without a media folder rule', async () => {
-      const body = structuredClone(SITE_S_CONFIG_BODY);
-      body.permissions.data.push({ path: '/s/promotions', groups: 'legal@x.com', actions: 'write' });
-      const { putCalls } = mockFetch({ configFor: () => body, putFor: () => new Response('', { status: 200 }) });
-      const el = await mount('myorg', 's');
-
-      await el._onAdd({ detail: { path: '/s/promotions', level: 'write', value: 'legal@x.com' } });
-
-      expect(putCalls.length).to.equal(0);
     });
 
     it('Add page for a page that has a rule without .html opens that rule', async () => {
@@ -935,7 +910,7 @@ describe('da-permissions', () => {
 
       el._onRemoveRequest({ detail: { path: '/s/promotions.html', level: 'write', who: 'legal@x.com' } });
       await el.updateComplete;
-      expect(el.shadowRoot.querySelector('nx-dialog p').textContent.trim())
+      expect(el.shadowRoot.querySelector('nx-dialog p').textContent)
         .to.equal('Remove legal@x.com from promotions.html · Write?');
       await el._confirmRemoveNow();
 

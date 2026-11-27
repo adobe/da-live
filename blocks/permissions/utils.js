@@ -161,16 +161,10 @@ export function buildSlots(rules, site, pendingPath = null) {
     if (!existed) slot.pending = true;
   }
 
-  // A page (`about.html` or `about`) and its media folder `.about/` share a sort key prefix,
-  // so the folder comes right after the page and nothing sorts between them.
-  const sortKey = (path) => {
-    const [, dir, name] = path.match(/^(.*\/)\.([^/]+)\/ \+ \*\*$/) ?? [];
-    return name ? `${dir}${name}\0\x01${path}` : `${path.replace(/\.html$/, '')}\0\0${path}`;
-  };
   const orderedPaths = defaults.map((path) => normPath(path));
   const rest = [...slotsMap.keys()]
     .filter((path) => !orderedPaths.includes(path))
-    .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
+    .sort();
   return [...orderedPaths, ...rest].map((path) => slotsMap.get(path));
 }
 

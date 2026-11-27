@@ -161,29 +161,6 @@ describe('permissions utils', () => {
       const media = slots.find((s) => s.path === '/s/.promotions/ + **');
       expect(media).to.deep.include({ kind: 'folder', label: '.promotions/' });
     });
-
-    it('sorts a page\'s media folder right after the page', () => {
-      const rules = [
-        { path: '/s/.terms/+**' }, { path: '/s/terms' }, { path: '/s/promotions/+**' },
-        { path: '/s/.promotions/+**' }, { path: '/s/promotions.html' }, { path: '/s/hotels/+**' },
-      ];
-      expect(buildSlots(rules, 's').map((s) => s.label)).to.deep.equal([
-        'Site configurations', 'All site content',
-        'hotels/', 'promotions.html', '.promotions/', 'promotions/', 'terms', '.terms/',
-      ]);
-    });
-
-    it('keeps a page and its media folder together next to similar names', () => {
-      const rules = [
-        { path: '/s/.terms/+**' }, { path: '/s/terms' }, { path: '/s/.terms-of-use/+**' },
-        { path: '/s/terms-of-use.html' }, { path: '/s/.about/+**' }, { path: '/s/about.pdf' },
-        { path: '/s/about.html' }, { path: '/s/.about.v2/+**' }, { path: '/s/about.v2.html' },
-      ];
-      expect(buildSlots(rules, 's').map((s) => s.label).slice(2)).to.deep.equal([
-        'about.html', '.about/', 'about.pdf', 'about.v2.html', '.about.v2/',
-        'terms', '.terms/', 'terms-of-use.html', '.terms-of-use/',
-      ]);
-    });
   });
 
   describe('siteNames', () => {
