@@ -274,6 +274,19 @@ export function removeMember(config, path, level, who) {
   return { config: next, changed: true };
 }
 
+// Drops every rule of a scope, whatever its actions.
+export function removeScope(config, path) {
+  const next = structuredClone(config);
+  const normalizedPath = normPath(path);
+  const sheet = next.permissions;
+  const kept = sheet.data.filter((rule) => normPath(rule.path) !== normalizedPath);
+  if (kept.length === sheet.data.length) return { config: next, changed: false };
+
+  sheet.data = kept;
+  syncSheetCounts(sheet);
+  return { config: next, changed: true };
+}
+
 // A change to a page also goes to its media folder rule.
 export function scopePaths(path, site) {
   const media = scopeKind(path, site) === 'page' && mediaRulePath(path);

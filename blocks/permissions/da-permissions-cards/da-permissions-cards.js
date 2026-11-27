@@ -14,11 +14,12 @@ const [form, buttons, style] = await Promise.all([
 ]);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 
 const SECTION_LABEL = {
   config: (name) => `Configuration Permissions for: ${name}`,
   content: (name) => `Content Permissions for: ${name}`,
-  paths: () => 'Folder and Page Permissions',
+  paths: () => 'Path Permissions',
 };
 
 // The section heading already names config/content scopes; only these need a card title.
@@ -155,12 +156,29 @@ class DaPermissionsCards extends LitElement {
       </div>`;
   }
 
+  _renderRemoveScope(slot) {
+    const label = `Remove all permissions for ${slot.label}`;
+    return html`
+      <button
+        type="button"
+        class="remove-scope nx-action-btn-icon nx-btn-sm"
+        aria-label=${label}
+        title=${label}
+        ?disabled=${this.busy}
+        @click=${() => this._emit('permissions-remove-scope', { path: slot.path })}
+      >
+        <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${DELETE_ICON_SRC}#icon"></use></svg>
+      </button>`;
+  }
+
   _renderCard(slot) {
+    const removable = this.editable && (slot.kind === 'folder' || slot.kind === 'page');
     return html`
       <article class="scope-card" data-path=${slot.path} aria-label=${slot.label}>
         ${TITLED_KINDS.includes(slot.kind) ? html`
           <div class="card-header">
             <h4 class="card-title">${slot.label}</h4>
+            ${removable ? this._renderRemoveScope(slot) : nothing}
           </div>
         ` : nothing}
         <div class="card-body">
