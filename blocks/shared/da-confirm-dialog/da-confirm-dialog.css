@@ -21,7 +21,7 @@ nx-dialog::part(panel) {
 
 .da-confirm-close {
   position: absolute;
-  top: calc(var(--s2-spacing-500) + (var(--s2-component-xl-bold-line-height, 22px) - 32px) / 2);
-  right: var(--s2-spacing-400);
+  top: var(--s2-spacing-100);
+  right: var(--s2-spacing-100);
   border-radius: var(--s2-corner-radius-800);
 }
