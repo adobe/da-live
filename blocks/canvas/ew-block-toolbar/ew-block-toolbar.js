@@ -2,7 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
-import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
+import { replaceBlockRange, setTableBlockVariant, appendBlockRow, getActiveBlockIndex } from '../editor-utils/blocks.js';
+import { blockOperatorHost } from '../editor-utils/block-operators.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -249,6 +250,9 @@ class EwBlockToolbar extends LitElement {
   _onEditBlock() {
     const pos = this.view?.state.selection.from;
     if (pos == null) return;
+    // In the Layout view, a block operator's `edit` hook may take over "Edit block".
+    if (toolbarController.activeSurface === 'wysiwyg'
+      && blockOperatorHost.edit(getActiveBlockIndex(this.view))) return;
     // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
     canvasBus.blockEditRequest.emit({ pos });
   }

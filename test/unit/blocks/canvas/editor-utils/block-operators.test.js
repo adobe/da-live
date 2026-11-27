@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import {
@@ -11,7 +11,7 @@ import {
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { createBlockOperatorHost, blockNodeToHtml } = await import('../../../../../blocks/canvas/editor-utils/block-operators.js');
+const { createBlockOperatorHost, blockNodeToHtml, OPERATOR_CHAT_KEY } = await import('../../../../../blocks/canvas/editor-utils/block-operators.js');
 const { operatorRegistryFromRows, loadOperatorModule, resolveOperatorUrl } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 
 const p = (text) => ({ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] });
@@ -249,6 +249,97 @@ describe('block operator host', () => {
     host.sync();
     expect(instance.destroyed).to.equal(true);
     host.detach();
+  });
+
+  it('passes ctx.setChatContext through as this block\'s chat entry and clears it', async () => {
+    const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+    const events = [];
+    const onChat = (e) => events.push(e.detail);
+    document.addEventListener(CHAT_EVENT.ADD_TO_CHAT, onChat);
+    try {
+      await attach();
+      const { ctx } = created[0];
+      ctx.select('/items/1');
+      const { from } = view.state.selection;
+      const blockStart = view.state.doc.child(0).nodeSize + view.state.doc.child(1).nodeSize;
+      expect(ctx.setChatContext({ label: 'Q2', innerText: 'Item Q2', pinnable: true, extra: 1 }))
+        .to.equal(true);
+      expect(events).to.deep.equal([{
+        key: `${OPERATOR_CHAT_KEY}:1`,
+        id: `${OPERATOR_CHAT_KEY}:1`,
+        label: 'Q2',
+        innerText: 'Item Q2',
+        pinnable: true,
+        type: 'block',
+        blockName: 'accordion',
+        proseIndex: blockStart + 1,
+        selectionType: 'text',
+        selFrom: from,
+        selTo: from,
+      }]);
+      expect(ctx.setChatContext(null)).to.equal(true);
+      expect(events.at(-1)).to.deep.equal({ key: `${OPERATOR_CHAT_KEY}:1` });
+      expect(ctx.setChatContext('nope')).to.equal(false);
+    } finally {
+      document.removeEventListener(CHAT_EVENT.ADD_TO_CHAT, onChat);
+    }
+  });
+
+  it('clears an operator\'s chat entry when it is destroyed or the host detaches', async () => {
+    const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+    const events = [];
+    const onChat = (e) => events.push(e.detail);
+    document.addEventListener(CHAT_EVENT.ADD_TO_CHAT, onChat);
+    try {
+      await attach();
+      created[0].ctx.setChatContext({ label: 'A', innerText: 'a' });
+      host.detach();
+      expect(events.at(-1)).to.deep.equal({ key: `${OPERATOR_CHAT_KEY}:1` });
+
+      await attach();
+      const [, instance] = created;
+      instance.ctx.setChatContext({ label: 'B', innerText: 'b' });
+      instance.update = () => { throw new Error('boom'); };
+      view.dispatch(view.state.tr.insertText('!', textPos(view, 'A1')));
+      host.sync();
+      expect(events.at(-1)).to.deep.equal({ key: `${OPERATOR_CHAT_KEY}:1` });
+      expect(instance.ctx.setChatContext({ label: 'C' })).to.equal(false);
+      expect(events).to.have.length(4);
+    } finally {
+      document.removeEventListener(CHAT_EVENT.ADD_TO_CHAT, onChat);
+    }
+  });
+
+  it('runs the edit hook and reports whether it handled the click', async () => {
+    await attach();
+    const [instance] = created;
+    expect(host.edit(1)).to.equal(false);
+    instance.edit = () => true;
+    expect(host.edit(1)).to.equal(true);
+    expect(host.edit(0)).to.equal(false);
+    instance.edit = () => { throw new Error('boom'); };
+    expect(host.edit(1)).to.equal(false);
+    expect(host.getInstance(1)).to.equal(null);
+  });
+
+  it('opens a tool panel by extension title or id from ctx.openPanel', async () => {
+    const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+    const opened = [];
+    const onOpen = (e) => opened.push(e.detail);
+    document.addEventListener(PANEL_EVENT.OPEN, onOpen);
+    try {
+      await attach();
+      const { ctx } = created[0];
+      expect(ctx.openPanel(' Block Inspector ')).to.equal(true);
+      expect(ctx.openPanel('outline')).to.equal(true);
+      expect(ctx.openPanel('')).to.equal(false);
+      expect(opened).to.deep.equal([
+        { section: 'tools', id: 'block-inspector' },
+        { section: 'tools', id: 'outline' },
+      ]);
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
+    }
   });
 
   it('serializes a block node as EDS markup with its variant', () => {

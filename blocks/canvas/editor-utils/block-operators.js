@@ -1,6 +1,8 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
+import { getNx } from '../../../scripts/utils.js';
+import { TOOL_PANEL_SECTION } from '../../shared/tool-panel/tool-panel-section.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from './extensions-bridge.js';
@@ -25,7 +27,33 @@ import {
  * `mountOutline`.
  */
 
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+
 const SYNC_DELAY_MS = 100;
+
+/** Chat context key prefix for an operator's entry (`ctx.setChatContext`). */
+export const OPERATOR_CHAT_KEY = 'block-operator-item';
+
+const chatKeyFor = (blockIndex) => `${OPERATOR_CHAT_KEY}:${blockIndex}`;
+
+function clearChatContext(blockIndex) {
+  const detail = { key: chatKeyFor(blockIndex) };
+  document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail }));
+}
+
+/** Tool panel view ids are extension titles, lowercased with spaces as dashes. */
+export function toPanelId(nameOrId) {
+  return String(nameOrId ?? '').trim().toLowerCase().replaceAll(' ', '-');
+}
+
+function openToolPanel(nameOrId) {
+  const id = toPanelId(nameOrId);
+  if (!id) return false;
+  const detail = { section: TOOL_PANEL_SECTION, id };
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
+  return true;
+}
 
 /** A block table node as EDS block markup: `<div class="name variant"><div><div>…`. */
 export function blockNodeToHtml(node, schema) {
@@ -82,6 +110,45 @@ export function createBlockOperatorHost({
 
   const notifyInstance = (blockIndex) => canvasBus.blockOperatorInstanceState.emit({ blockIndex });
 
+  function dropChatContext(record, blockIndex) {
+    if (!record.hasChat) return;
+    record.hasChat = false;
+    clearChatContext(blockIndex);
+  }
+
+  // ctx.setChatContext: the operator's own chat entry for this block. da-live adds only
+  // what the operator can't know (block identity, position and the current selection).
+  function setChatContext(record, blockIndex, item) {
+    if (records.get(blockIndex) !== record || record.status !== 'ready') return false;
+    if (item == null) {
+      dropChatContext(record, blockIndex);
+      return true;
+    }
+    const view = getView();
+    const start = view && getBlockPositions(view)[blockIndex];
+    if (typeof item !== 'object' || start == null) return false;
+    const { from, to } = view.state.selection;
+    const inBlock = from > start && to < start + view.state.doc.nodeAt(start).nodeSize;
+    const entryKey = chatKeyFor(blockIndex);
+    record.hasChat = true;
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, {
+      detail: {
+        key: entryKey,
+        id: entryKey,
+        label: item.label,
+        innerText: item.innerText,
+        pinnable: item.pinnable,
+        type: 'block',
+        blockName: record.ctx.name,
+        proseIndex: start + 1,
+        selectionType: inBlock ? 'text' : 'block',
+        selFrom: inBlock ? from : start,
+        selTo: inBlock ? to : start + view.state.doc.nodeAt(start).nodeSize,
+      },
+    }));
+    return true;
+  }
+
   function unmountAll(record) {
     record.mounts.forEach((handle) => {
       try { handle?.unmount?.(); } catch { /* the instance is going away anyway */ }
@@ -94,6 +161,7 @@ export function createBlockOperatorHost({
     if (!record) return;
     records.delete(blockIndex);
     unmountAll(record);
+    dropChatContext(record, blockIndex);
     try { record.instance?.destroy?.(); } catch { /* ignore */ }
     record.instance = null;
     if (record.status === 'ready') notifyInstance(blockIndex);
@@ -105,6 +173,7 @@ export function createBlockOperatorHost({
     if (records.get(blockIndex) !== record) return;
     const wasReady = record.status === 'ready';
     unmountAll(record);
+    dropChatContext(record, blockIndex);
     try { record.instance?.destroy?.(); } catch { /* ignore */ }
     record.instance = null;
     record.status = 'failed';
@@ -163,6 +232,8 @@ export function createBlockOperatorHost({
       editable,
       commit: (next) => commit(blockIndex, next, { expected: ctx.html, name: ctx.name }),
       select: (itemId) => selectItem(blockIndex, itemId),
+      openPanel: openToolPanel,
+      setChatContext: (item) => setChatContext(record, blockIndex, item),
       onEditorSelect: (cb) => {
         if (typeof cb !== 'function') return () => {};
         record.listeners.add(cb);
@@ -313,6 +384,16 @@ export function createBlockOperatorHost({
     return record?.status === 'ready' ? record.instance : null;
   }
 
+  /**
+   * The `edit` hook, for the Layout toolbar's "Edit block": true when the operator handled
+   * it; false (run the default) when there is no operator or hook, or it throws.
+   */
+  function edit(blockIndex) {
+    const record = records.get(blockIndex);
+    if (record?.status !== 'ready' || typeof record.instance.edit !== 'function') return false;
+    return guard(record, blockIndex, () => record.instance.edit() === true, false);
+  }
+
   /** Mount the block's `outline` contract in `container`; returns `{ unmount }` or null. */
   function mountOutline(blockIndex, container) {
     const record = records.get(blockIndex);
@@ -333,6 +414,7 @@ export function createBlockOperatorHost({
     detach,
     sync,
     getInstance,
+    edit,
     mountOutline,
   };
 }

@@ -12,6 +12,8 @@ const { resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew
 const { default: EwBlockToolbar, collectLibraryVariants, nextVariants } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
+const { blockOperatorHost } = await import('../../../../../blocks/canvas/editor-utils/block-operators.js');
+const { toolbarController: controller } = await import('../../../../../blocks/canvas/editor-utils/toolbar-controller.js');
 
 describe('collectLibraryVariants', () => {
   const items = [
@@ -390,6 +392,37 @@ describe('ew-block-toolbar', () => {
       editBtn().click();
       expect(calls).to.deep.equal([{ pos: 7 }]);
     } finally {
+      unsubscribe();
+    }
+  });
+
+  it('lets a block operator\'s edit hook take over Edit block in the Layout view only', async () => {
+    const calls = [];
+    const unsubscribe = canvasBus.blockEditRequest.subscribe((detail) => calls.push(detail));
+    const edit = sinon.stub(blockOperatorHost, 'edit').returns(true);
+    let surface = 'wysiwyg';
+    const surfaceStub = sinon.stub(controller, 'activeSurface').get(() => surface);
+    try {
+      toolbar.view = { state: { selection: { from: 7 } } };
+      toolbar.show('form');
+      await toolbar.updateComplete;
+      editBtn().click();
+      expect(edit.calledOnce).to.be.true;
+      expect(calls).to.deep.equal([]);
+
+      edit.returns(false);
+      editBtn().click();
+      expect(calls).to.deep.equal([{ pos: 7 }]);
+
+      surface = 'doc';
+      edit.resetHistory();
+      edit.returns(true);
+      editBtn().click();
+      expect(edit.called).to.be.false;
+      expect(calls).to.deep.equal([{ pos: 7 }, { pos: 7 }]);
+    } finally {
+      edit.restore();
+      surfaceStub.restore();
       unsubscribe();
     }
   });
