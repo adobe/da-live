@@ -280,9 +280,12 @@ export default class DaList extends DaListBase {
         @ondelete=${this.handleDelete}
         @onpreview=${this.handlePreview}
         @onpublish=${this.handlePublish}
+        @onpreflight=${this.handleOpenPreflight}
         @onshare=${this.handleShare}
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         .hidePublishConfs=${this.hidePublishConfs}
+        .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${this.preflightEnabled ?? false}
         currentPath="${this.fullpath}"
         .isHlx6=${this._isHlx6 ?? false}
         role="row"
@@ -290,6 +293,7 @@ export default class DaList extends DaListBase {
       ${this._status ? this.renderStatus() : nothing}
       ${this._aemActionState?.results ? this.renderAemResults() : nothing}
       ${this.renderConfirmDialog()}
+      ${this._preflight ? this.renderPreflight() : nothing}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;

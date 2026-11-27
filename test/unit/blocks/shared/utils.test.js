@@ -150,13 +150,21 @@ describe('getEditorConfigs', () => {
         '/org/site=/org-editor#',
       ],
       hidePublishConfs: ['/org/site/site-hidden', '/org/site/org-hidden'],
+      enforcePreflight: false,
     });
     expect(configs).to.deep.equal([orgConfig, null, siteConfig]);
   });
 
   it('returns no editor settings when configs or first sheets are missing', () => {
     expect(getEditorConfigs([null, {}, { ':type': 'multi-sheet', ':names': [] }]))
-      .to.deep.equal({ editorConfs: [], hidePublishConfs: [] });
+      .to.deep.equal({ editorConfs: [], hidePublishConfs: [], enforcePreflight: false });
+  });
+
+  it('enables enforcePreflight when any config sets it to true, case-insensitively', () => {
+    const on = { data: [{ key: 'editor.enforcePreflight', value: 'TRUE' }] };
+    const off = { data: [{ key: 'editor.enforcePreflight', value: 'false' }] };
+    expect(getEditorConfigs([on, off]).enforcePreflight).to.equal(true);
+    expect(getEditorConfigs([off]).enforcePreflight).to.equal(false);
   });
 });
 

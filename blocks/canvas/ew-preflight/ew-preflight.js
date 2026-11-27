@@ -213,7 +213,7 @@ class EwPreflight extends LitElement {
       if (this._runId !== runId) return null;
       const response = await evaluatePage(pageUrl);
       if (this._runId !== runId) return null;
-      this._data = adaptEvaluation(response);
+      this._data = adaptEvaluation(response, { evaluatedUrl: pageUrl });
       return this._verdictFor({ data: this._data });
     } catch (e) {
       if (this._runId !== runId) return null;

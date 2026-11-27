@@ -5,4 +5,5 @@ export const CHAT_EVENT = {
   TURN_COMPLETED: 'nx-chat-turn-completed',
   HIGHLIGHT_SELECTION: 'nx-highlight-selection',
   ADD_TO_CHAT: 'nx-add-to-chat',
+  SET_PROMPT: 'nx-set-prompt',
 };

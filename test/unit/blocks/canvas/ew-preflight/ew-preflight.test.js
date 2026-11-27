@@ -201,6 +201,32 @@ describe('ew-preflight preflight gate', () => {
     }
   });
 
+  it('passes the evaluated url to the renderer as part of its results', async () => {
+    const url = 'https://main--site--org.preview.da.live/a';
+    const savedFetch = window.fetch;
+    const savedNxIms = localStorage.getItem('nx-ims');
+    const savedAdobeIMS = window.adobeIMS;
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 200 }));
+    const el = createGateElement();
+    el._resolvePageUrl = async () => url;
+    try {
+      await el._evaluateCurrentPage();
+      // Skip the first-open run so it doesn't replace the results under test.
+      el._started = true;
+      document.body.appendChild(el);
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('nx-page-eval').data.evaluatedUrl).to.equal(url);
+    } finally {
+      el.remove();
+      window.fetch = savedFetch;
+      window.adobeIMS = savedAdobeIMS;
+      if (savedNxIms === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedNxIms);
+    }
+  });
+
   it('reports error with the cause when the evaluation errors', async () => {
     const el = stubEvaluate(createGateElement(), { error: 'boom' });
     const cap = captureStatus();

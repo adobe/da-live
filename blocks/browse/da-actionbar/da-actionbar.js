@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Styles
@@ -16,6 +16,7 @@ const ICON_NAMES = {
   share: 's2-icon-share-20-n',
   publish: 's2-icon-publish-20-n',
   preview: 's2-icon-preview-20-n',
+  preflight: 's2-icon-badgeverified-20-n',
   coworker: 's2-icon-coworker-20-n',
 };
 
@@ -31,6 +32,8 @@ export default class DaActionBar extends LitElement {
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
     hidePublishConfs: { attribute: false },
+    enforcePreflight: { attribute: false },
+    preflightEnabled: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -137,6 +140,12 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreflight() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreflight', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../shared/list.js');
     items2Clipboard(this.items);
@@ -171,6 +180,22 @@ export default class DaActionBar extends LitElement {
     return this._canAemAction && !this._hidePublish;
   }
 
+  get _canPreflight() {
+    // Browse preflight is canvas-only. Read-only check, so no write permission needed.
+    // Pages only, for now.
+    if (!this.preflightEnabled) return false;
+    return this.items.some((item) => item.ext === 'html') && !this._isCopying;
+  }
+
+  get _requirePreflight() {
+    return !!(this.preflightEnabled && this.enforcePreflight);
+  }
+
+  // Publish is only gated when the selection includes a page.
+  get _publishNeedsPreflight() {
+    return this._requirePreflight && this.items.some((item) => item.ext === 'html');
+  }
+
   get _canRename() {
     if (!this._canWrite) return false;
     const isFolder = !this.items[0]?.ext;
@@ -201,6 +226,7 @@ export default class DaActionBar extends LitElement {
   }
 
   render() {
+    const publishLabel = this._publishNeedsPreflight ? 'Publish (preflight required)' : 'Publish';
     return html`
       <div class="da-action-bar" role="gridcell" aria-label="Action Bar">
         <div class="da-action-bar-left-rail" role="presentation">
@@ -288,13 +314,22 @@ export default class DaActionBar extends LitElement {
             <span>Preview</span>
           </button>
           <button
+            @click=${this.handlePreflight}
+            aria-label="Preflight"
+            title="Preflight"
+            class="preflight-button ${this._canPreflight ? '' : 'hide'}">
+            ${icon('preflight')}
+            <span>Preflight</span>
+          </button>
+          <button
             @click=${this.handlePublish}
-            aria-label="Publish"
-            title="Publish"
+            aria-label=${publishLabel}
+            title=${publishLabel}
             ?disabled=${!!this.loading}
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
+            ${this._publishNeedsPreflight ? html`<span class="da-preflight-dot is-required" aria-hidden="true"></span>` : nothing}
           </button>
           <button
             @click=${this.handleShare}

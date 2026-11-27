@@ -1,0 +1,158 @@
+/* nx-dialog keeps its title (and Publish, when shown) in view and scrolls only the rows.
+   Fixed height so opening and closing rows doesn't resize the dialog; nx-dialog still
+   clamps it to the viewport. */
+.da-preflight-dialog {
+  --nx-dialog-min-width: 784px;
+  --nx-dialog-max-width: 784px;
+}
+
+.da-preflight-dialog::part(panel) {
+  position: relative;
+  height: 85vh;
+}
+
+/* nx-dialog has no close button. Pinned to the panel (not the scrolling body), centered
+   on the title line and over the rows' right-most icons. */
+.da-preflight-close {
+  position: absolute;
+  top: calc(var(--s2-spacing-500) + 11px - 16px);
+  right: calc(var(--s2-spacing-500) + 22px - 16px);
+}
+
+.da-preflight-rows {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--s2-font-family);
+}
+
+/* Spectrum Accordion: stacked items share single dividers; only the last closes the group. */
+.da-preflight-row {
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.da-preflight-row:last-child {
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.da-preflight-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 0.13s ease-in-out;
+}
+
+.da-preflight-summary:hover {
+  background-color: var(--s2-gray-100);
+}
+
+.da-preflight-summary:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+  border-radius: var(--s2-corner-radius-200);
+}
+
+.da-preflight-summary::-webkit-details-marker {
+  display: none;
+}
+
+.da-preflight-chevron {
+  display: inline-flex;
+  color: var(--s2-gray-600);
+  transition: transform 0.125s ease-out;
+}
+
+.da-preflight-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.da-preflight-row[open] .da-preflight-chevron {
+  transform: rotate(90deg);
+}
+
+.da-preflight-type {
+  display: inline-flex;
+  color: var(--s2-gray-800);
+}
+
+.da-preflight-type svg {
+  width: 20px;
+  height: 20px;
+}
+
+.da-preflight-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--s2-gray-800);
+}
+
+.da-preflight-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Occupies the same slot as the pass/fail icon so the row doesn't shift when it resolves. */
+.da-preflight-row-actions .nx-loading-spinner {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+}
+
+.da-preflight-body {
+  padding: 0 var(--s2-spacing-300) var(--s2-spacing-300);
+}
+
+.da-preflight-error {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--s2-orange-900);
+  font-size: 14px;
+}
+
+/* Pass/fail check icons — replicated from da-nx's page-evaluation.css because that
+   copy lives inside <nx-page-eval>'s shadow DOM and can't reach this component. */
+.ui-artifact-pe-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: currentcolor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.ui-artifact-pe-icon.ui-artifact-pe-tone-positive {
+  color: var(--s2-green-900);
+  mask-image: url("/img/icons/s2-icon-checkmarkcircle-20-n.svg");
+}
+
+.ui-artifact-pe-icon.ui-artifact-pe-tone-negative {
+  color: var(--s2-orange-900);
+  mask-image: url("/img/icons/s2-icon-closecircle-20-n.svg");
+}
+
+.ui-artifact-pe-icon.ui-artifact-pe-tone-neutral {
+  color: var(--s2-gray-800);
+  mask-image: url("/img/icons/s2-icon-removecircle-20-n.svg");
+}
+
+.da-preflight-note {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--s2-gray-700);
+  font-size: 14px;
+}
+
+/* Line up with <nx-page-eval>'s content, which is inset by its tile padding. */
+.da-preflight-body .da-preflight-note,
+.da-preflight-body .da-preflight-error {
+  padding-inline: var(--s2-spacing-300);
+}

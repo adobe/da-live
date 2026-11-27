@@ -2,7 +2,8 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { daFetch } from '../../shared/utils.js';
+import { getPreviewOrigin, fetchWysiwygBranch } from '../../shared/preview-url.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
   diffTopLevel,
@@ -12,7 +13,6 @@ import {
 } from './rerender-scope.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
-import { normalizeBranch } from '../utils/branch.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -598,48 +598,7 @@ export function updateCursors(ctx) {
 
 // --- preview.js ---
 
-export function getPreviewOrigin(org, repo, branch = 'main') {
-  const hostname = window?.location?.hostname ?? '';
-  const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
-    ? 'stage-preview.da.live'
-    : 'preview.da.live';
-  return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
-}
-
-export async function fetchWysiwygBranch({ org, site, path }) {
-  if (!org || !site) return 'main';
-  const branchParam = new URLSearchParams(window.location.search).get('ref');
-  if (branchParam && branchParam !== 'local') return normalizeBranch(branchParam);
-
-  const configs = await Promise.all(fetchDaConfigs({ org, site }));
-  const rows = configs.filter((c) => {
-    if (c?.error) {
-      // eslint-disable-next-line no-console
-      console.warn(c.error, c.status);
-      return false;
-    }
-    return Boolean(c);
-  }).reverse().flatMap((c) => getFirstSheet(c) || []);
-  const branchRows = rows.filter((r) => r?.key === 'ew.wysiwygBranch'
-    && typeof r.value === 'string');
-  if (!branchRows.length) return 'main';
-
-  const fullPath = path ? `/${path}` : `/${org}/${site}`;
-  const matched = branchRows
-    .map((row) => {
-      const eqIdx = row.value.indexOf('=');
-      if (eqIdx === -1) return null;
-      return {
-        prefix: row.value.slice(0, eqIdx).replace(/\/+$/, ''),
-        branch: row.value.slice(eqIdx + 1).trim(),
-      };
-    })
-    .filter((entry) => entry?.branch
-      && (fullPath === entry.prefix || fullPath.startsWith(`${entry.prefix}/`)))
-    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
-
-  return normalizeBranch(matched?.branch || 'main');
-}
+export { getPreviewOrigin, fetchWysiwygBranch };
 
 export async function fetchWysiwygCookie({ org, repo, token, branch = 'main' }) {
   if (!org || !repo || !token) {
