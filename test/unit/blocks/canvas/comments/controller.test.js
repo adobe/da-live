@@ -299,7 +299,7 @@ describe('comments helpers/controller', () => {
         from: tablePos,
         to: tablePos + table.nodeSize,
         anchorType: 'table',
-        anchorText: 'block: columns',
+        anchorText: '',
       },
       state: view.state,
     });
