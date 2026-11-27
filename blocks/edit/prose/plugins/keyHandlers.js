@@ -144,9 +144,8 @@ const forceMenuUpdate = () => {
 };
 
 const runWithMenuUpdate = (cmd, state) => {
-  const result = cmd(state);
-  if (result) forceMenuUpdate();
-  return result;
+  if (cmd(state)) forceMenuUpdate();
+  return true;
 };
 
 export const handleUndo = (state) => runWithMenuUpdate(yUndo, state);

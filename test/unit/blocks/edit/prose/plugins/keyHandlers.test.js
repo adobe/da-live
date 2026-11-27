@@ -6,6 +6,8 @@ import {
   getEnterInputRulesPlugin,
   getURLInputRulesPlugin,
   getListInputRulesPlugin,
+  handleUndo,
+  handleRedo,
 } from '../../../../../../blocks/edit/prose/plugins/keyHandlers.js';
 import { createTestEditor, destroyEditor } from '../test-helpers.js';
 
@@ -151,5 +153,20 @@ describe('keyHandlers dashes input rule', () => {
       if (node.type.name === 'horizontal_rule') hasHr = true;
     });
     expect(hasHr).to.be.true;
+  });
+});
+
+describe('keyHandlers undo/redo', () => {
+  let editor;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+  });
+
+  afterEach(() => destroyEditor(editor));
+
+  it('Consumes undo and redo when there is nothing to undo or redo', () => {
+    expect(handleUndo(editor.view.state)).to.equal(true);
+    expect(handleRedo(editor.view.state)).to.equal(true);
   });
 });

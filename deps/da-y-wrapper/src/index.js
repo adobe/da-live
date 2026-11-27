@@ -32,6 +32,8 @@ import {
 // yjs
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+// patches/y-prosemirror+1.3.7.patch backports https://github.com/yjs/y-prosemirror/pull/285 and fixes
+// equalYTextPText treating a missing mark as equal; drop it once released.
 import {
   ySyncPlugin,
   yCursorPlugin,
