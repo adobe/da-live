@@ -71,18 +71,18 @@ Editor code built on ProseMirror and Yjs can be tested without a server. See the
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 
-describe('DaListItem', () => {
-  let DaListItem;
+describe('DaFileItem', () => {
+  let DaFileItem;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    ({ default: DaListItem } = await import('../../../../../blocks/browse/da-list-item/da-list-item.js'));
+    ({ default: DaFileItem } = await import('../../../../../blocks/shared/da-file-item/da-file-item.js'));
   });
 
   it('sanitizes the name', () => {
     const target = { value: 'Foo Bar' };
 
-    new DaListItem().handleRename({ target });
+    new DaFileItem().handleRename({ target });
 
     expect(target.value).to.equal('foo-bar');
   });

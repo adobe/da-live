@@ -37,7 +37,7 @@ describe('Browse Content opt-in', () => {
   });
 
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
-    await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
+    await import('../../../../blocks/browse/da-browse/da-browse.js');
     const { href } = window.location;
     const ordinary = document.createElement('div');
     const browse = document.createElement('da-browse');

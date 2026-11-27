@@ -351,10 +351,10 @@ describe('da-file-item render', () => {
   });
 
   it('uses a supplied destination without resolving a link file', async () => {
-    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
+    await fixture({ view: 'card', ext: 'link', href: '/#/org/repo' });
     const links = [...el.shadowRoot.querySelectorAll('a')];
     expect(links).to.have.length(2);
-    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
+    expect(links.every((link) => link.getAttribute('href') === '/#/org/repo')).to.equal(true);
     el.href = '/edit#/org/repo/next';
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
