@@ -51,7 +51,7 @@ test.describe('da-media — image', () => {
   });
 
   test('sets the document title to include the filename', async ({ page }) => {
-    await expect(page).toHaveTitle('View image.jpg - Experience Workspace');
+    await expect(page).toHaveTitle('View image.jpg | Experience Workspace');
   });
 
   test('da-title component is visible alongside da-media', async ({ page }) => {
@@ -88,6 +88,6 @@ test.describe('da-media — video (mp4)', () => {
   });
 
   test('sets the document title to include the mp4 filename', async ({ page }) => {
-    await expect(page).toHaveTitle('View big-buck-bunny.mp4 - Experience Workspace');
+    await expect(page).toHaveTitle('View big-buck-bunny.mp4 | Experience Workspace');
   });
 });

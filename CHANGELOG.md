@@ -1,3 +1,59 @@
+## [1.37.4](https://github.com/adobe/da-live/compare/v1.37.3...v1.37.4) (2026-11-27)
+
+
+### Bug Fixes
+
+* **canvas:** notify send status after unpublish ([#1800](https://github.com/adobe/da-live/issues/1800)) ([a5155dd](https://github.com/adobe/da-live/commit/a5155dd9750c1f437fac716db7b7ead185bac202))
+
+## [1.37.3](https://github.com/adobe/da-live/compare/v1.37.2...v1.37.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* **canvas:** use the canvas admin origin for comments ([#1813](https://github.com/adobe/da-live/issues/1813)) ([63a8da6](https://github.com/adobe/da-live/commit/63a8da6536407ffaee39810447bc938c6a57204b))
+
+## [1.37.2](https://github.com/adobe/da-live/compare/v1.37.1...v1.37.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ui:** replace da branding with ew in user-facing copy ([#1750](https://github.com/adobe/da-live/issues/1750)) ([e52adf9](https://github.com/adobe/da-live/commit/e52adf9a83534ba5af481252f4db1dc02bc79eb2))
+
+## [1.37.1](https://github.com/adobe/da-live/compare/v1.37.0...v1.37.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ew:** block all edits for read-only users in EW ([#1811](https://github.com/adobe/da-live/issues/1811)) ([164e44e](https://github.com/adobe/da-live/commit/164e44ef6f18601164118ce509210a48240b8c59))
+
+# [1.37.0](https://github.com/adobe/da-live/compare/v1.36.9...v1.37.0) (2026-11-26)
+
+
+### Features
+
+* **start:** add existing-site form and cards panel ([#1712](https://github.com/adobe/da-live/issues/1712)) ([8c23555](https://github.com/adobe/da-live/commit/8c235556e149b28d71199f604bc15f929d318620)), closes [#1707](https://github.com/adobe/da-live/issues/1707)
+
+## [1.36.9](https://github.com/adobe/da-live/compare/v1.36.8...v1.36.9) (2026-11-26)
+
+
+### Bug Fixes
+
+* show Helix 6 media images in the focal point dialog ([#1810](https://github.com/adobe/da-live/issues/1810)) ([61009e3](https://github.com/adobe/da-live/commit/61009e34686480910e7284052cb618022f38eb86))
+
+## [1.36.8](https://github.com/adobe/da-live/compare/v1.36.7...v1.36.8) (2026-11-26)
+
+
+### Bug Fixes
+
+* stop collab reconnect loop on 4403 forbidden close ([#1812](https://github.com/adobe/da-live/issues/1812)) ([cc538ec](https://github.com/adobe/da-live/commit/cc538ec35c92c60645cb481974ddcf519cf85772))
+
+## [1.36.7](https://github.com/adobe/da-live/compare/v1.36.6...v1.36.7) (2026-11-25)
+
+
+### Bug Fixes
+
+* improve library discovery and registration ([#1793](https://github.com/adobe/da-live/issues/1793)) ([40e242c](https://github.com/adobe/da-live/commit/40e242c07d7543496e4c65ce503d514b52328342))
+
 ## [1.36.6](https://github.com/adobe/da-live/compare/v1.36.5...v1.36.6) (2026-11-25)
 
 

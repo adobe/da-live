@@ -2,16 +2,7 @@
 
 JSON Schema-driven structured content editor. A thin Lit element wires [da-sc-sdk](https://github.com/adobe-rnd/da-sc-sdk) (the headless engine for state, mutation, validation, and HTML serialization) to a set of Lit components that render the model and dispatch user input back into the SDK.
 
-The block runs inside the Experience Workspace (EW) and has two entry files.
-
-- `form.js` decorates the block. It sets up the EW workspace (app-frame grid, canvas header, tools panel, docked chat) and mounts the editor.
-- `editor.js` defines the `ew-form-editor` Lit element, which owns the SDK and the editing UI.
-
-The block's elements use the `ew-form-` prefix, the way canvas uses `ew-canvas-`.
-
-The code was moved from da-nx's `nx/blocks/form` to da-live's `blocks/form`.
-
-The `/form` page content declares the block as `nx-form`. The nx2 loader loads `nx-` blocks listed in `NX_BLOCKS` ([`nx2/scripts/nx.js`](https://github.com/adobe/da-nx/blob/main/nx2/scripts/nx.js)) from da-nx. Pages that declare a `form` block load `blocks/form/form.js` from da-live's codeBase instead.
+The `/form` page loads da-live's `blocks/form/form.js` as a `form` block in Experience Workspace (EW). The block sets up the app-frame grid, canvas header, tools panel and docked chat, then mounts the `ew-form-editor` Lit element defined in `editor.js`, which owns the SDK and editing UI. The block's elements use the `ew-form-` prefix, like canvas's `ew-canvas-`. The block was moved from da-nx's `nx/blocks/form`.
 
 The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
 

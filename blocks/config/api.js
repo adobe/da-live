@@ -93,24 +93,27 @@ export async function saveSource(org, site, path, mutate) {
   );
 }
 
-// The first of `paths` that has a file: { path }, { path: null } when none does, or { failed }.
-async function findExisting(org, site, paths) {
+// The first of `paths` that has a file: { path, json }, { path: null } when none does,
+// or { path, failed }. Discovery and setup use the same precedence.
+export async function findExisting(org, site, paths) {
   for (const path of paths) {
     // Sequential on purpose: stop at the first file that exists.
     // eslint-disable-next-line no-await-in-loop
     const found = await readSource(org, site, path);
-    if (isFailed(found)) return { failed: found };
-    if (!isMissing(found)) return { path };
+    if (isFailed(found)) return { path, failed: found };
+    if (!isMissing(found)) return { path, json: found.data };
   }
   return { path: null };
 }
 
 // Registers a built-in library type in the site config: the first of `paths` that already exists
 // (kept as is, like an EDS placeholders sheet), else a new empty sheet at the first path.
+// `existingPath` pins registration to a discovered file and never creates a missing one.
 // Resolves to the write result plus the registered `path`.
-export async function setupLibrary(org, site, { title, paths }) {
-  const existing = await findExisting(org, site, paths);
+export async function setupLibrary(org, site, { title, paths, existingPath = null }) {
+  const existing = await findExisting(org, site, existingPath ? [existingPath] : paths);
   if (existing.failed) return { ok: false, status: existing.failed.status };
+  if (existingPath && !existing.path) return { ok: false, status: 404 };
   const path = existing.path ?? paths[0];
   if (!existing.path) {
     const create = () => ({ config: emptySheet(SHEETS.data), changed: true });

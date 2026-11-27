@@ -242,7 +242,7 @@ class DaStart extends LitElement {
       const { status: orgSaveStatus } = await saveConfig(this.org, email);
       if (orgSaveStatus !== 201) {
         if (orgSaveStatus === 401 || orgSaveStatus === 403) {
-          this._errorText = 'You are not authorized to create this DA organization. Check your permissions.';
+          this._errorText = 'You are not authorized to create this Experience Workspace organization. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
         }
@@ -255,7 +255,7 @@ class DaStart extends LitElement {
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
-        this._errorText = 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.';
+        this._errorText = 'You are not authorized to create this site in the corresponding Experience Workspace organization. Check with the organization administrator.';
       } else {
         this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
       }
@@ -364,11 +364,23 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-export function initPage(el) {
+function initPage(el) {
   if (!document.adoptedStyleSheets.includes(sheet)) {
     document.adoptedStyleSheets.push(sheet);
   }
-  el.closest('.block-content, .section')?.classList.add('start-page');
+  const surface = el.closest('.section') ?? el.closest('.block-content');
+  surface?.classList.add('start-page');
+  surface?.querySelectorAll(':scope > .block-content > .nx-cards.start').forEach((cards) => {
+    const group = cards.parentElement;
+    const intro = group.previousElementSibling;
+    if (group.firstElementChild !== cards || !intro?.matches('.default-content')
+      || !intro.textContent.trim()
+      || ![...intro.children].every((child) => child.matches('h1, h2, h3, h4, h5, h6, p'))) return;
+    const panel = document.createElement('div');
+    panel.className = 'start-cards-panel';
+    cards.before(panel);
+    panel.append(intro, cards);
+  });
 }
 
 export default function init(el) {

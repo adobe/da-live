@@ -50,12 +50,17 @@ class EwPanelLibrary extends LitElement {
     _hashState: { state: true },
     _search: { state: true },
     _actionError: { state: true },
+    _canWrite: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._canWrite = !!getExtensionsBridge().view?.editable;
+    this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
+      this._canWrite = !!getExtensionsBridge().view?.editable;
+    });
     this._unsubBranch = canvasBus.branchState.subscribe((state) => {
       if (!state?.path) {
         this._previewRequest = null;
@@ -68,6 +73,7 @@ class EwPanelLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubHtml?.();
     this._dragListeners?.abort();
     this._dragSession?.cancel();
     this._previewRequest = null;
@@ -154,7 +160,7 @@ class EwPanelLibrary extends LitElement {
     await openBlockLibraryModal({
       blocks,
       initialBlockPath: block.path,
-      onInsert: (dom) => this._insertBlock({ dom }),
+      onInsert: this._canWrite ? (dom) => this._insertBlock({ dom }) : undefined,
     });
   }
 
@@ -286,7 +292,7 @@ class EwPanelLibrary extends LitElement {
         ${variants.filter((v) => this._matchesBlock(block, v)).map((v) => html`
           <li class="ext-variant-item">
             <div class="ext-variant-header">
-              <button class="ext-variant-title"
+              <button class="ext-variant-title" ?disabled=${!this._canWrite}
                 @pointerdown=${(event) => this._onBlockPointerDown(event, v)}>
                 <span class="ext-variant-name">${v.name}${v.variants
     ? html` <span class="ext-variant-subtitle">${v.variants}</span>` : nothing}</span>
@@ -298,11 +304,12 @@ class EwPanelLibrary extends LitElement {
                     @click=${() => this._toggleTooltip(v)}>
                     <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-infocircle-20-n.svg#icon"></use></svg>
                   </button>` : nothing}
+                ${this._canWrite ? html`
                 <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add ${v.name} to page"
                   @pointerdown=${(event) => this._onBlockPointerDown(event, v)}
                   @click=${() => this._insertBlock(v)}>
                   <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></use></svg>
-                </button>
+                </button>` : nothing}
               </div>
             </div>
             ${v.description && this._tooltipOpen === v
@@ -360,14 +367,14 @@ class EwPanelLibrary extends LitElement {
       <ul class="ext-list">
         ${this._items.map((item) => html`
           <li class="ext-item">
-            <button class="ext-item-title" @click=${() => this._insertTemplate(item)}>
+            <button class="ext-item-title" ?disabled=${!this._canWrite} @click=${() => this._insertTemplate(item)}>
               <span class="ext-item-name">${item.name ?? item.key ?? item.title ?? item.value}</span>
             </button>
             <div class="ext-item-actions">
               <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(item)}>${iconPreview()}</button>
-              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
-                @click=${() => this._insertTemplate(item)}>${iconAdd()}</button>
+              ${this._canWrite ? html`<button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                @click=${() => this._insertTemplate(item)}>${iconAdd()}</button>` : nothing}
             </div>
           </li>
         `)}
@@ -407,7 +414,7 @@ class EwPanelLibrary extends LitElement {
               const iconSrc = isIcons ? item.icon : null;
               return html`
                 <li class="ext-item">
-                  <button class="ext-item-title" @click=${() => this._insertText(item)}>
+                  <button class="ext-item-title" ?disabled=${!this._canWrite} @click=${() => this._insertText(item)}>
                     ${iconSrc ? html`
                       <img class="ext-item-icon" src=${iconSrc} alt=""
                         @error=${(e) => { e.target.style.display = 'none'; }} />` : nothing}
@@ -416,8 +423,8 @@ class EwPanelLibrary extends LitElement {
                       ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
                   </button>
                   <div class="ext-item-actions">
-                    <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
-                      @click=${() => this._insertText(item)}>${iconAdd()}</button>
+                    ${this._canWrite ? html`<button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                      @click=${() => this._insertText(item)}>${iconAdd()}</button>` : nothing}
                   </div>
                 </li>
               `;

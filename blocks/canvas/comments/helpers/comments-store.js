@@ -1,5 +1,8 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
+import { getNx2 } from '../../../../scripts/utils.js';
 import { daFetch } from '../../../shared/utils.js';
+
+// Same admin env as nx2's API, which Canvas uses for the document itself.
+const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
 
 function commentFingerprint(c) {
   return `${c.body}|${c.resolved}|${c.resolvedAt ?? ''}|${c.anchorFrom}|${c.anchorTo}`;
@@ -9,8 +12,8 @@ export function createCommentsStore({ docId, owner, repo }) {
   const map = new Map();
   const observers = new Set();
   let loaded = false;
-  const base = `${DA_ORIGIN}/source/${owner}/${repo}/.da/comments/${docId}`;
-  const listUrl = `${DA_ORIGIN}/list/${owner}/${repo}/.da/comments/${docId}/`;
+  const base = `${DA_ADMIN}/source/${owner}/${repo}/.da/comments/${docId}`;
+  const listUrl = `${DA_ADMIN}/list/${owner}/${repo}/.da/comments/${docId}/`;
 
   const fire = () => observers.forEach((fn) => fn());
 

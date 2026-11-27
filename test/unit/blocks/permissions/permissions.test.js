@@ -1,9 +1,11 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 
-const { setNx } = await import('../../../../scripts/utils.js');
+const { getNx, setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { handleRoute } = await import('../../../../blocks/permissions/permissions.js');
+const { default: init, handleRoute } = await import('../../../../blocks/permissions/permissions.js');
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 const HLX6_KEY = 'hlx6-upgrade';
 
@@ -37,6 +39,24 @@ describe('permissions handleRoute', () => {
   afterEach(() => {
     window.fetch = savedFetch;
     localStorage.removeItem(HLX6_KEY);
+  });
+
+  it('preserves the content-authored title during init and route changes', async () => {
+    const { title } = document;
+    const subscribe = sinon.stub(hashChange, 'subscribe');
+    stubPing(plain);
+    document.title = 'Content-authored permissions title';
+    try {
+      init(el);
+      expect(document.title).to.equal('Content-authored permissions title');
+      const onRoute = subscribe.firstCall.args[0];
+      await onRoute({ org: 'o', site: null });
+      await onRoute({ org: 'o2', site: null });
+      expect(document.title).to.equal('Content-authored permissions title');
+    } finally {
+      subscribe.restore();
+      document.title = title;
+    }
   });
 
   it('returns the Helix 6 user-admin URL with encoded org and site, and does not mount', async () => {
