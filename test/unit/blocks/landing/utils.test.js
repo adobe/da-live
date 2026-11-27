@@ -29,7 +29,7 @@ describe('Content data and destinations on main', () => {
   it('opens folders in Browse', () => {
     const folder = getFileHref({ item: { path: '/org/site/folder' }, href: HREF });
     expect(new URL(folder).hash).to.equal('#/org/site/folder');
-    expect(new URL(folder).searchParams.get('browse')).to.equal('2');
+    expect(new URL(folder).searchParams.has('browse')).to.equal(false);
     expect(new URL(getBrowseHref({ href: HREF })).hash).to.equal('');
   });
 

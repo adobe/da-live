@@ -5,9 +5,10 @@
 //   file(path, sheets)   a fixed content file of the site; `sheets` maps each part to its tab.
 //   library(title, paths) a list the site's `library` config row registers by `title`; Set up
 //                        registers the first of `paths` that exists, else creates the first.
+//                        Existing default files can be edited before registration.
 //                        The editor reads the list from the file's first sheet.
 
-import { readSource, saveConfig, saveSource } from './api.js';
+import { findExisting, readSource, saveConfig, saveSource } from './api.js';
 import { firstSheetName } from './sheets.js';
 import { libraryRegistration, librarySourcePath, listPaths } from './library-paths.js';
 
@@ -43,6 +44,14 @@ export function locate(store, { org, site, siteConfig }) {
 // when the file doesn't exist yet) or 'error' (plus `httpStatus`).
 export async function readFile(store, ctx) {
   const location = locate(store, ctx);
+  if (location.status === 'unregistered') {
+    const existing = await findExisting(ctx.org, ctx.site, store.paths);
+    if (existing.failed) {
+      return { status: 'error', path: existing.path, httpStatus: existing.failed.status };
+    }
+    if (!existing.path) return location;
+    return { status: 'ok', path: existing.path, registered: null, json: existing.json, missing: false };
+  }
   if (location.status !== 'ready') return location;
   const result = await readSource(ctx.org, ctx.site, location.path);
   if (result.ok || result.status === 404) {

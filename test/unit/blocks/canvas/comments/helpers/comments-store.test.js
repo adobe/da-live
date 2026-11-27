@@ -1,5 +1,13 @@
 import { expect } from '@esm-bundle/chai';
-import { createCommentsStore } from '../../../../../../blocks/canvas/comments/helpers/comments-store.js';
+import { setNx } from '../../../../../../scripts/utils.js';
+
+let createCommentsStore;
+
+before(async () => {
+  // On a stage host nx2 resolves stage-admin while da-live's DA_ORIGIN stays on prod.
+  setNx('/test/fixtures/stage/nx', { hostname: 'example.com' });
+  ({ createCommentsStore } = await import('../../../../../../blocks/canvas/comments/helpers/comments-store.js'));
+});
 
 let originalFetch;
 
@@ -111,6 +119,25 @@ describe('comments-store: store basics', () => {
     expect(seen[0].id).to.equal('a');
     expect(seen[0].isMap).to.be.true;
     expect(seen[1].id).to.equal('b');
+  });
+});
+
+describe('comments-store: admin origin', () => {
+  afterEach(() => restoreFetch());
+
+  it('sends comment requests to the same DA admin origin as the rest of Canvas', async () => {
+    const calls = [];
+    makeServerMock({ onCall: ({ url, method }) => calls.push(`${method} ${url}`) });
+    const store = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+
+    await store.set('a', { id: 'a', body: 'hi' });
+    await store.load();
+
+    expect(calls).to.deep.equal([
+      'POST https://stage-admin.da.live/source/o/r/.da/comments/doc-1/a.json',
+      'GET https://stage-admin.da.live/list/o/r/.da/comments/doc-1/',
+      'GET https://stage-admin.da.live/source/o/r/.da/comments/doc-1/a.json',
+    ]);
   });
 });
 

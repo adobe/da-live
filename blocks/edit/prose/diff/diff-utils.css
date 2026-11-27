@@ -426,7 +426,8 @@ da-loc-added,
   padding: 12px 20px;
   box-sizing: border-box;
   width: 100%;
-  background: #fff;
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-900);
   box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 }
 

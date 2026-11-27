@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { addRecentFile } from '../shared/recent-files.js';
-import { getNx, getNx2 } from '../../scripts/utils.js';
+import { getNx, getNx2, setPageTitle } from '../../scripts/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
@@ -112,11 +112,19 @@ class DaSheetPanes extends LitElement {
     return html`
       <div class="da-sheet-pane-tabs is-visible">
         <div class="da-editor-tabs-full">
-          <button class="da-editor-tab show-preview" @click=${this.handlePreviewToggle}>Preview</button>
+          <button class="da-editor-tab show-preview" aria-label="Preview" @click=${this.handlePreviewToggle}>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="/img/icons/s2-icon-preview-20-n.svg#icon"></use>
+            </svg>
+          </button>
         </div>
         ${showHistory ? html`
         <div class="da-editor-tabs-quiet">
-          <button class="da-editor-tab quiet show-versions" @click=${this.handleHistoryToggle}>View history</button>
+          <button class="da-editor-tab quiet show-versions" aria-label="View history" @click=${this.handleHistoryToggle}>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="/img/icons/s2-icon-calendar-20-n.svg#icon"></use>
+            </svg>
+          </button>
         </div>
         ` : nothing}
       </div>
@@ -197,7 +205,7 @@ export default async function init(el) {
   }
   addRecentFile(details.fullpath);
 
-  document.title = `Edit sheet ${details.name} - DA`;
+  setPageTitle(`Edit sheet ${details.name}`);
 
   // Base Elements
   const daTitle = document.createElement('da-title');

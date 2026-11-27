@@ -567,16 +567,15 @@ export default class DaList extends DaListBase {
         `;
     })}
         </div>
-        <div class="da-list-types-row da-list-types-select-all">
-          <label class="nx-checkbox">
-            <input
-              type="checkbox"
-              .checked=${allVisible}
-              ?disabled=${this._bulkLoading}
-              @click=${() => this.toggleAllTypesVisibility()}>
-            <span>Select all</span>
-          </label>
-        </div>
+        <hr class="menu-divider">
+        <label class="nx-checkbox da-list-types-row da-list-types-select-all">
+          <input
+            type="checkbox"
+            .checked=${allVisible}
+            ?disabled=${this._bulkLoading}
+            @click=${() => this.toggleAllTypesVisibility()}>
+          <span>Select all</span>
+        </label>
       </nx-popover>`;
   }
 }

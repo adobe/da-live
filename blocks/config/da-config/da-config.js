@@ -72,6 +72,8 @@ class DaConfig extends LitElement {
     super();
     this.org = null;
     this.site = null;
+    this._routeIndex = null;
+    this._routePending = false;
     this._status = null;
     this._httpStatus = null;
     this._configs = { org: null, site: null };
@@ -83,6 +85,10 @@ class DaConfig extends LitElement {
     this._onBeforeUnload = (e) => {
       if (this._edit?.dirty) e.preventDefault();
     };
+    // Traversing entries with different ?tab= values may not emit hashchange.
+    this._onPopState = ({ state }) => {
+      if (state?.configRoute) this.setRoute(state.configRoute);
+    };
     // The setup app opens in another tab; re-check when the user comes back.
     this._onFocus = () => {
       if (this._status === 'ok' && this._needsSetup) this._load();
@@ -93,12 +99,14 @@ class DaConfig extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [form, buttons, spinner, style];
     window.addEventListener('beforeunload', this._onBeforeUnload);
+    window.addEventListener('popstate', this._onPopState);
     window.addEventListener('focus', this._onFocus);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('beforeunload', this._onBeforeUnload);
+    window.removeEventListener('popstate', this._onPopState);
     window.removeEventListener('focus', this._onFocus);
   }
 
@@ -106,7 +114,7 @@ class DaConfig extends LitElement {
     const orgChanged = changed.has('org') && this.org !== changed.get('org');
     const siteChanged = changed.has('site') && this.site !== changed.get('site');
     if (orgChanged) this._loadSites();
-    // Edits belong to one scope; the scope picker already confirmed before navigating.
+    // Edits belong to one scope; setRoute and the scope picker guard navigation first.
     if (orgChanged || siteChanged) {
       this._resetScope();
       this._load();
@@ -131,11 +139,35 @@ class DaConfig extends LitElement {
     });
     // Keep `?tab=` and the remembered section in sync with the section shown.
     const { tab, section } = this._selection;
-    if (this._status !== 'ok' || !section) return;
+    if (this._routePending || this._status !== 'ok' || !section) return;
     if (tabFromUrl(window.location.href) !== section.id) {
-      window.history.replaceState(null, '', urlWithTab(window.location.href, section.id));
+      window.history.replaceState(window.history.state, '', urlWithTab(window.location.href, section.id));
     }
     rememberSection(this.org, this.site, tab.id, section.id);
+  }
+
+  setRoute(details) {
+    const org = details?.org ?? null;
+    const site = details?.site ?? null;
+    const index = window.history.state?.configRoute?.index ?? (this._routeIndex ?? -1) + 1;
+    // Keep each entry's position so cancelling Back/Forward restores it without replacing it.
+    if (!window.history.state?.configRoute) {
+      window.history.replaceState({ ...window.history.state, configRoute: { index, org, site } }, '', window.location.href);
+    }
+    const apply = () => {
+      this._routeIndex = index;
+      this._routePending = false;
+      this.org = org;
+      this.site = site;
+    };
+    if (this.org === org && this.site === site) {
+      if (this._routePending) this._confirm = null;
+      apply();
+      this.requestUpdate();
+      return;
+    }
+    this._routePending = true;
+    this._guard(apply, () => { window.history.go(this._routeIndex - index); });
   }
 
   async _load() {
@@ -382,7 +414,8 @@ class DaConfig extends LitElement {
 
   async _onSetupLibrary() {
     const { store } = this._ctx;
-    const setup = (org, site) => setupLibrary(org, site, store);
+    const existingPath = this._file?.status === 'ok' ? this._file.path : null;
+    const setup = (org, site) => setupLibrary(org, site, { ...store, existingPath });
     const done = await this._write(setup, SHELL.setupLibraryFailed);
     if (done) this._load();
   }
@@ -414,7 +447,7 @@ class DaConfig extends LitElement {
     const opts = {
       org: this.org,
       site: this.site,
-      locked: this._locked,
+      locked: this._locked || !!this._edit?.dirty,
       onSetup: () => this._onSetupLibrary(),
     };
     return store.type === 'library'
@@ -459,6 +492,8 @@ class DaConfig extends LitElement {
   _renderRows({ panel }, { list }) {
     const onImport = () => this._onImportOpen();
     const handlers = {
+      org: this.org,
+      site: this.site,
       disabled: this._locked,
       actions: panel.importable ? renderImportButton(list.dirty, onImport) : nothing,
       onAdd: () => this._onRowAdd(),

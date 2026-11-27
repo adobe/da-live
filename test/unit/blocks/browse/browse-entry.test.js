@@ -14,7 +14,10 @@ describe('Browse Content opt-in', () => {
   let subscribe;
   let initialize;
   let loadSite;
+  let title;
   beforeEach(() => {
+    title = document.title;
+    document.title = 'Content-authored home title';
     subscribe = sinon.spy(hashChange, 'subscribe');
     initialize = sinon.spy(DaLanding.prototype, 'initialize');
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
@@ -30,6 +33,7 @@ describe('Browse Content opt-in', () => {
     getSiteOptions.returns([]);
     localStorage.removeItem('da-sites');
     hashChange._set(undefined);
+    document.title = title;
   });
 
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
@@ -45,7 +49,10 @@ describe('Browse Content opt-in', () => {
       ok: true,
       items: [{ name: 'page', path: `${fullpath}/page.html`, ext: 'html' }],
     }));
-    const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
+    const configs = sinon.stub(config, 'get').resolves({
+      ok: true,
+      json: async () => ({ data: [], flags: { data: [{ key: 'browseV1', value: 'true' }] } }),
+    });
     const fetch = sinon.stub(window, 'fetch').resolves(new Response('{}'));
     const observers = [];
     const whenMounted = (selector, root = ordinary) => new Promise((resolve) => {
@@ -64,10 +71,12 @@ describe('Browse Content opt-in', () => {
     try {
       const url = new URL(href);
       url.searchParams.set('landing', 'true');
+      url.searchParams.set('browse', '1');
       url.hash = '/org/site';
       window.history.replaceState(null, '', url);
       hashChange._set(details);
       await init(ordinary);
+      expect(document.title).to.equal('Content-authored home title');
       expect(ordinary.firstElementChild).to.equal(browse);
       expect(browse.details.site).to.equal('site');
       expect(ordinary.querySelector('da-landing')).to.equal(null);
@@ -76,6 +85,7 @@ describe('Browse Content opt-in', () => {
       const mounted = whenMounted('da-landing');
       hashChange._set(undefined);
       const landing = await mounted;
+      expect(document.title).to.equal('Content-authored home title');
       await initialize.lastCall.returnValue;
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);
@@ -101,6 +111,7 @@ describe('Browse Content opt-in', () => {
       const returned = await returning;
       await returned.updateComplete;
       expect(returned.details).to.deep.equal(nextDetails);
+      expect(document.title).to.equal('Content-authored home title');
       await whenMounted('.da-browse-content', returned.shadowRoot);
       const returnedList = returned.shadowRoot.querySelector('da-list');
       const item = await whenMounted('da-file-item', returnedList.shadowRoot);
