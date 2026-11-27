@@ -172,7 +172,9 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderCard(slot) {
-    const removable = this.editable && (slot.kind === 'folder' || slot.kind === 'page');
+    // A card the filter narrows hides members that removing all would remove too.
+    const removable = this.editable && !slot.hidden
+      && (slot.kind === 'folder' || slot.kind === 'page');
     return html`
       <article class="scope-card" data-path=${slot.path} aria-label=${slot.label}>
         ${TITLED_KINDS.includes(slot.kind) ? html`

@@ -463,7 +463,7 @@ class DaPermissions extends LitElement {
     return html`
       <nx-dialog title=${who ? 'Remove member' : 'Remove permissions'} @close=${() => this._cancelRemove()}>
         <p>${text}</p>
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this.shadowRoot.querySelector('nx-dialog').close()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;
   }
