@@ -16,7 +16,7 @@ class DaConfirmDialog extends LitElement {
     title: { type: String },
     message: { attribute: false },
     action: { attribute: false },
-    hideCancel: { attribute: false },
+    hideCancel: { type: Boolean, attribute: 'hide-cancel' },
   };
 
   connectedCallback() {
