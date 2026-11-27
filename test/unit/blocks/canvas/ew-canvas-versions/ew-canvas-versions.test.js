@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
+import { baseSchema, DOMParser as PMDOMParser, EditorState, EditorView } from 'da-y-wrapper';
 import { setNx, getNx, getNx2Api } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -290,7 +291,7 @@ describe('version comparison labels', () => {
       const compare = await comparison();
       const label = `Published (Jan 1, ${time})`;
       expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
-        .to.deep.equal(['Current', label]);
+        .to.deep.equal([label, 'Current']);
       expect(compare.shadowRoot.querySelector('nx-popover').getAttribute('aria-label'))
         .to.equal(`Compare with ${label}`);
     }
@@ -305,14 +306,74 @@ describe('version comparison labels', () => {
     await inst.handleToggleCompareSplit();
     compare = await comparison();
     expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
-      .to.deep.equal(['Current', 'Sprint 42 (Jan 1, 10:00)']);
+      .to.deep.equal(['Sprint 42 (Jan 1, 10:00)', 'Current']);
   });
 
   it('uses the date and time without an empty title for unnamed versions', async () => {
     await inst.handleCompare(new Event('click'), ver({ label: '' }));
     const compare = await comparison();
     expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
-      .to.deep.equal(['Current', 'Jan 1, 10:00']);
+      .to.deep.equal(['Jan 1, 10:00', 'Current']);
+  });
+});
+
+describe('version comparison direction', () => {
+  let inst;
+  let view;
+  let savedView;
+  let versions;
+  let savedGet;
+
+  beforeEach(async () => {
+    savedView = getExtensionsBridge().view;
+    const currentDom = new DOMParser().parseFromString('<p>Introduction</p><h2>Added chapter</h2>', 'text/html').body;
+    view = new EditorView(document.body, {
+      state: EditorState.create({
+        schema: baseSchema,
+        doc: PMDOMParser.fromSchema(baseSchema).parse(currentDom),
+      }),
+    });
+    getExtensionsBridge().view = view;
+    ({ versions } = await getNx2Api());
+    savedGet = versions.get;
+    versions.get = async () => new Response('<body><main><div><p>Introduction</p><h2>Removed chapter</h2></div></main></body>');
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+  });
+
+  afterEach(() => {
+    inst?.handleCloseCompare();
+    inst?.remove();
+    view?.destroy();
+    getExtensionsBridge().view = savedView;
+    versions.get = savedGet;
+  });
+
+  it('compares earlier content on the left against current additions on the right without edits', async () => {
+    const label = 'Last previewed';
+    const originalDoc = view.state.doc;
+    await inst.handleCompare(new Event('click'), ver({ label }));
+    await inst.updateComplete;
+    const compare = inst.shadowRoot.querySelector('ew-canvas-compare');
+    await compare.updateComplete;
+    const { previewDom } = inst._compareCtx;
+    const originalVersion = previewDom.innerHTML;
+
+    const panes = [...compare.shadowRoot.querySelectorAll('.ew-cc-pane')];
+    const earlier = panes.filter((_, i) => i % 2 === 0);
+    const current = panes.filter((_, i) => i % 2 === 1);
+    expect(earlier.map((pane) => pane.textContent).join(' '))
+      .to.include('Removed chapter').and.not.include('Added');
+    expect(current.map((pane) => pane.textContent).join(' '))
+      .to.include('Added chapter').and.not.include('Removed');
+    expect(earlier.some((pane) => pane.querySelector('del'))).to.be.true;
+    expect(current.some((pane) => pane.querySelector('ins'))).to.be.true;
+
+    expect(view.state.doc === originalDoc).to.be.true;
+    compare.shadowRoot.querySelector('.ew-cc-close-btn').click();
+    await inst.updateComplete;
+    expect(inst._compareCtx).to.be.null;
+    expect(view.state.doc === originalDoc).to.be.true;
+    expect(previewDom.innerHTML).to.equal(originalVersion);
   });
 });
 

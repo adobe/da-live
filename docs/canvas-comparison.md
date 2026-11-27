@@ -18,7 +18,8 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 
 ## Display and lifecycle
 
-- **Side by side** separates Live and the candidate into two columns. Turning it off shows removals and additions together in one unified diff. Red indicates removed live content; green indicates added candidate content.
+- **Side by side** puts Live on the left and the candidate on the right. Turning it off shows removals and additions together in one unified diff. Red indicates removed live content; green indicates added candidate content.
+- Version-history comparisons follow the same baseline-to-current direction: the selected earlier version (including the last-previewed version) is labeled on the left, and Current is on the right. Removed content is red on the left; additions to the current document are green on the right. Opening or closing a version-history comparison does not change either version; Restore remains an explicit action.
 - Close restores the editor's previous inert state and returns focus when focus was in the comparison.
 - Close, page changes and replacement comparisons invalidate outstanding work. After awaiting save, the comparison re-checks its generation and current page context before serializing or loading content.
 - Document changes mark a document comparison stale. Refresh rebuilds it.
