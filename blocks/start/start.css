@@ -329,10 +329,6 @@
   box-shadow: var(--s2-drop-shadow-emphasized);
 }
 
-.start-page .nx-cards {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-}
-
 .start-page .start-cards-panel > .default-content {
   margin-block-end: var(--s2-spacing-300);
   font-family: var(--s2-font-family);
