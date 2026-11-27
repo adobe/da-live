@@ -1,5 +1,7 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName, parseSubdomain } from '../../../scripts/utils.js';
+import {
+  setNx, sanitizePath, sanitizePathParts, sanitizeName, setPageTitle, parseSubdomain,
+} from '../../../scripts/utils.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
@@ -209,5 +211,23 @@ describe('Libs', () => {
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['my_folder', 'my-file']);
     });
+  });
+});
+
+describe('setPageTitle', () => {
+  let title;
+  beforeEach(() => { title = document.title; });
+  afterEach(() => { document.title = title; });
+
+  it('appends the product name to the page name', () => {
+    setPageTitle('Edit page');
+    expect(document.title).to.equal('Edit page | Experience Workspace');
+  });
+
+  it('uses only the product name without a page name', () => {
+    setPageTitle();
+    expect(document.title).to.equal('Experience Workspace');
+    setPageTitle('');
+    expect(document.title).to.equal('Experience Workspace');
   });
 });
