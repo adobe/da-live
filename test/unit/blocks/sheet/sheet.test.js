@@ -11,6 +11,7 @@ const { source } = await getNx2Api();
 describe('sheet entry point', () => {
   it('records the opened sheet in Recent with its .json path', async () => {
     const { href } = window.location;
+    const { title } = document;
     const el = document.createElement('div');
     const savedJspreadsheet = window.jspreadsheet;
     window.jspreadsheet = {
@@ -33,6 +34,7 @@ describe('sheet entry point', () => {
       await init(el);
       await loaded;
       expect(writes[0]['/org/site'][0].path).to.equal('/org/site/data/products.json');
+      expect(document.title).to.equal('Edit sheet products | Experience Workspace');
     } finally {
       listeners.forEach((spy) => spy.getCalls()
         .forEach(({ thisValue, args }) => thisValue.removeEventListener(...args)));
@@ -40,6 +42,7 @@ describe('sheet entry point', () => {
       window.jspreadsheet = savedJspreadsheet;
       document.querySelectorAll('da-sheet-tabs').forEach((tabs) => tabs.remove());
       window.history.replaceState(null, '', href);
+      document.title = title;
     }
   });
 });

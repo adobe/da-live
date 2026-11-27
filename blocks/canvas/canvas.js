@@ -1,5 +1,5 @@
 import { render } from 'da-lit';
-import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, setPageTitle } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
@@ -179,7 +179,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
   const name = state?.path?.split('/').pop();
-  document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
+  setPageTitle(name && `Edit ${name}`);
   if (!fullPath) {
     resolveCanvasBranch();
     removeCanvasEditors(mountRoot);

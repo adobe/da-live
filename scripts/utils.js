@@ -30,6 +30,12 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
     .replace(/-$/g, '');
 }
 
+export const PRODUCT_NAME = 'Experience Workspace';
+
+export function setPageTitle(name) {
+  document.title = name ? `${name} | ${PRODUCT_NAME}` : PRODUCT_NAME;
+}
+
 export function parseSubdomain(siteUrl) {
   try {
     const url = new URL(siteUrl);
