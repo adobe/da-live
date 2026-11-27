@@ -10,6 +10,7 @@ import {
   hasPermissionsSheet,
   addMembers,
   removeMember,
+  removeScope,
   parseFolderPath,
   mediaRulePath,
   parsePagePath,
@@ -413,6 +414,36 @@ describe('permissions utils', () => {
 
     it('is a no-op when the member is absent', () => {
       const { changed } = removeMember(makeMultiConfig(), '/s/+**', 'write', 'nobody@x.com');
+      expect(changed).to.be.false;
+    });
+  });
+
+  describe('removeScope', () => {
+    function makeConfig(data = []) {
+      return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
+    }
+
+    it('removes every rule of the scope, however its path is spelled and whatever its actions', () => {
+      const cfg = makeConfig([
+        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
+        { path: '/s/blog/+**', groups: 'b@x.com, c@x.com', actions: 'write' },
+        { path: '/s/blog/ + **', groups: 'd@x.com', actions: 'read' },
+        { path: '/s/blog/+**', groups: 'e@x.com', actions: '' },
+        { path: '/s/blog/drafts/+**', groups: 'f@x.com', actions: 'write' },
+      ]);
+      const { config, changed } = removeScope(cfg, '/s/blog/ + **');
+      expect(changed).to.be.true;
+      expect(config.permissions.data).to.deep.equal([
+        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
+        { path: '/s/blog/drafts/+**', groups: 'f@x.com', actions: 'write' },
+      ]);
+      expect(config.permissions.total).to.equal(2);
+      expect(config.permissions.limit).to.equal(2);
+      expect(cfg.permissions.data.length).to.equal(5);
+    });
+
+    it('is unchanged when the scope has no rules', () => {
+      const { changed } = removeScope(makeConfig([{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }]), '/s/blog/ + **');
       expect(changed).to.be.false;
     });
   });
