@@ -1,0 +1,112 @@
+name: Lint and Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  id-token: write # AWS OIDC login to fetch the iPaaS change management secrets
+  contents: write # semantic-release-dry verifies the write permissions
+  issues: read # needed by semantic-release
+  pull-requests: write # needed by semantic-release
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint the code
+        run: npm run lint
+      - name: Run the tests
+        run: npm test
+      - name: Run the CI script tests
+        run: node --test '.github/scripts/*.test.mjs'
+
+  release-dry-run:
+    name: Semantic Release (Dry Run)
+    runs-on: ubuntu-latest
+    # Fork PRs: the head branch doesn't exist here and the token can't push, so the dry run can't work.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: test
+    env:
+      CI_BRANCH: ${{ github.head_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::118435662149:role/helix-gh-deploy-config-service
+      - name: Fetch AWS Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          # leading comma = secret keys exported without a prefix (IPAAS_* for change management)
+          secret-ids: |
+            ,/helix/github-action-secrets
+      - name: Semantic Release (Dry Run)
+        run: npm run semantic-release-dry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN }}
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::118435662149:role/helix-gh-deploy-config-service
+      - name: Fetch AWS Secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v3
+        with:
+          parse-json-secrets: true
+          # leading comma = secret keys exported without a prefix (IPAAS_* for change management)
+          secret-ids: |
+            ,/helix/github-action-secrets
+      - name: Resolve change request coordinator and approvers
+        run: node .github/scripts/chg-people.mjs
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DA_CHG_LDAP_MAP: ${{ secrets.DA_CHG_LDAP_MAP }}
+      - name: Semantic Release
+        run: npm run semantic-release
+        env:
+          HUSKY: 0
+          GITHUB_TOKEN: ${{ secrets.ADOBE_BOT_GITHUB_TOKEN }}

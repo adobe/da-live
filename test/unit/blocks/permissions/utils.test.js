@@ -49,7 +49,7 @@ describe('permissions utils', () => {
 
   describe('scopeLabel', () => {
     it('labels org scopes', () => {
-      expect(scopeLabel('CONFIG', null)).to.equal('DA configurations');
+      expect(scopeLabel('CONFIG', null)).to.equal('Org configurations');
       expect(scopeLabel('/ + **', null)).to.equal('All sites');
     });
 

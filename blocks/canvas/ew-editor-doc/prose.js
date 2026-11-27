@@ -19,6 +19,8 @@ import {
   gapCursor,
   liftListItem,
   sinkListItem,
+  Plugin,
+  ySyncPluginKey,
 } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import {
@@ -61,6 +63,11 @@ function registerErrorHandler(ydoc) {
       errorMap.clear();
     }
   });
+}
+
+export function readOnly() {
+  const isRemote = (tr) => !!tr.getMeta(ySyncPluginKey)?.isChangeOrigin;
+  return new Plugin({ filterTransaction: (tr) => !tr.docChanged || isRemote(tr) });
 }
 
 function addSyncedListener(wsProvider, canWrite, setEditable) {
@@ -211,6 +218,7 @@ export default async function initProse({
       'Mod-Shift-z': (state) => yRedo(state) || false,
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
+        if (view.state.selection.node && view.state.selection.node.type.name === 'image' && view.state.selection.node.attrs.editAs) return false;
         openLinkDialog(view);
         return true;
       },
@@ -218,6 +226,8 @@ export default async function initProse({
         canvasBus.newVersionRequest.emit();
         return true;
       },
+      // WAI-ARIA convention for reaching an editor's toolbar from the keyboard.
+      'Alt-F10': () => toolbarController.focusToolbar(),
       ...getHeadingKeymap(schema),
     }),
     keymap({
@@ -237,6 +247,8 @@ export default async function initProse({
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
     plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
+  } else {
+    plugins.unshift(readOnly());
   }
 
   let state = EditorState.create({ schema, plugins });

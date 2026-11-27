@@ -1,0 +1,503 @@
+import { expect } from '@esm-bundle/chai';
+import { html, render } from 'da-lit';
+import { fieldStates, pendingChanges, pendingBySheet } from '../../../../blocks/config/editors/settings.js';
+import { renderField } from '../../../../blocks/config/editors/fields.js';
+import {
+  rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns, matches,
+  mergeRows,
+} from '../../../../blocks/config/editors/rows.js';
+import prepare from '../../../../blocks/config/panels/prepare.js';
+import translation from '../../../../blocks/config/panels/translation.js';
+import plugins from '../../../../blocks/config/panels/plugins.js';
+import { icons } from '../../../../blocks/config/panels/library.js';
+import { toPreviewProxyUrl } from '../../../../blocks/shared/preview-proxy.js';
+import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
+import { library } from '../../../../blocks/config/stores.js';
+
+const sheet = (rows) => ({ data: rows, ':type': 'sheet' });
+const multi = (name, rows) => ({ [name]: { data: rows }, ':names': [name], ':type': 'multi-sheet' });
+
+describe('settings field states', () => {
+  const fields = [
+    { key: 'id', label: 'ID', required: true, validate: (v) => (v === 'bad' ? 'nope' : null) },
+    { key: 'opt', label: 'Opt' },
+  ];
+  const byKey = (states) => Object.fromEntries(states.map((s) => [s.field.key, s]));
+
+  it('ignores whitespace and non-string values in the saved sheet', () => {
+    const own = sheet([{ key: 'id', value: ' x ' }, { key: 'opt', value: 3 }]);
+    const inherited = sheet([{ key: 'opt', value: ' org ' }]);
+    const states = byKey(fieldStates(fields, { own, inherited, edits: {}, sheet: 'data' }));
+    const { id, opt } = states;
+    expect([id.value, id.dirty, opt.value, opt.dirty, opt.orgValue])
+      .to.deep.equal(['x', false, '3', false, 'org']);
+    const spaced = byKey(fieldStates(fields, { own, inherited: null, edits: { id: 'x  ' }, sheet: 'data' }));
+    expect(spaced.id.dirty).to.equal(false);
+    expect(pendingChanges(Object.values(spaced))).to.deep.equal({});
+  });
+
+  it('shows saved values at org scope without inheritance', () => {
+    const { id } = byKey(fieldStates(fields, { sheet: 'data', own: sheet([{ key: 'id', value: 'x' }]), inherited: null, edits: {} }));
+    expect([id.value, id.dirty, id.overridden, id.inherits]).to.deep.equal(['x', false, false, false]);
+  });
+
+  it('marks site values that override the org and empty ones that inherit', () => {
+    const states = byKey(fieldStates(fields, {
+      sheet: 'data',
+      own: sheet([{ key: 'id', value: 'site' }]),
+      inherited: sheet([{ key: 'id', value: 'org' }, { key: 'opt', value: 'org-opt' }]),
+      edits: {},
+    }));
+    expect([states.id.overridden, states.id.orgValue]).to.deep.equal([true, 'org']);
+    expect([states.opt.inherits, states.opt.value]).to.deep.equal([true, '']);
+  });
+
+  it('trims edits, flags dirty fields, and keeps the raw text for the input', () => {
+    const states = fieldStates(fields, { sheet: 'data', own: null, inherited: null, edits: { opt: ' v ' } });
+    expect(byKey(states).opt).to.include({ raw: ' v ', value: 'v', dirty: true });
+    expect(pendingChanges(states)).to.deep.equal({ opt: 'v' });
+  });
+
+  it('reads from the given sheet', () => {
+    const own = multi('flags', [{ key: 'opt', value: 'f' }]);
+    const [, opt] = fieldStates(fields, { own, inherited: null, edits: {}, sheet: 'flags' });
+    expect(opt.value).to.equal('f');
+  });
+
+  it('validates non-empty values and requires a cleared required field with no org value', () => {
+    const invalid = byKey(fieldStates(fields, { sheet: 'data', own: null, inherited: null, edits: { id: 'bad' } }));
+    expect(invalid.id.error).to.equal('nope');
+    const cleared = byKey(fieldStates(fields, { sheet: 'data', own: sheet([{ key: 'id', value: 'x' }]), inherited: null, edits: { id: '' } }));
+    expect(cleared.id.error).to.equal('ID is required.');
+    const inherited = byKey(fieldStates(fields, {
+      sheet: 'data',
+      own: sheet([{ key: 'id', value: 'x' }]),
+      inherited: sheet([{ key: 'id', value: 'org' }]),
+      edits: { id: '' },
+    }));
+    expect(inherited.id.error).to.equal(null);
+  });
+});
+
+describe('rows', () => {
+  const A = { title: 'A', path: 'https://x.com/a.html' };
+  const B = { title: 'B', path: 'https://x.com/b.html' };
+  const A2 = { title: 'A', path: 'https://x.com/a2.html' };
+  const C = { title: 'C', path: 'https://x.com/c.html' };
+
+  it('lists org rows, replaced by site rows with the same title, then site-only rows', () => {
+    const scoped = { own: multi('prepare', [C, A2]), inherited: multi('prepare', [A, B]), pending: null };
+    const { items, rows } = rowStates(prepare, { ...scoped, sheet: 'prepare' });
+    expect(rows).to.deep.equal([C, A2]);
+    expect(items).to.deep.equal([
+      { row: A2, index: 1, overrides: true },
+      { row: B, inherited: true },
+      { row: C, index: 0 },
+    ]);
+  });
+
+  it('marks pending rows dirty only when they differ from the saved rows', () => {
+    const own = multi('prepare', [A]);
+    expect(rowStates(prepare, { own, inherited: null, pending: [A], sheet: 'prepare' }).dirty).to.equal(false);
+    expect(rowStates(prepare, { own, inherited: null, pending: [A, B], sheet: 'prepare' }).dirty).to.equal(true);
+  });
+
+  describe('table', () => {
+    const panel = {
+      noun: 'plugin',
+      idKey: 'title',
+      columns: [
+        { key: 'title', label: 'Title' },
+        { key: 'path', label: 'Path' },
+        { key: 'experience', label: 'Opens in', options: [{ value: 'window', label: 'New window' }] },
+        { key: 'secret', label: 'Secret', list: false },
+      ],
+    };
+    const T = { title: 'Tool', path: '/tools/t.html', experience: 'window', secret: 'x' };
+    const O = { title: 'Org tool', path: '/o.html', experience: 'unknown' };
+    const table = (items, handlers = {}) => {
+      const el = document.createElement('div');
+      const noop = () => {};
+      const all = { onAdd: noop, onEdit: noop, onRemove: noop, onOverride: noop, ...handlers };
+      render(renderRows(panel, { items }, all), el);
+      const cells = (tr) => [...tr.querySelectorAll('th, td:not(.config-table-actions)')]
+        .map((c) => c.textContent.replace(/\s+/g, ' ').trim());
+      return {
+        headers: [...el.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
+        rows: [...el.querySelectorAll('tbody tr')].map(cells),
+        buttons: [...el.querySelectorAll('tbody button')].map((b) => b.getAttribute('aria-label') ?? b.textContent.trim()),
+        el,
+      };
+    };
+
+    it('labels columns, shows option labels and hides list: false columns', () => {
+      expect(listColumns(panel).map((c) => c.key)).to.deep.equal(['title', 'path', 'experience']);
+      expect([cellText(panel.columns[2], T), cellText(panel.columns[2], O)]).to.deep.equal(['New window', 'unknown']);
+      const { headers, rows } = table([{ row: T, index: 0 }]);
+      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in', 'Row actions']);
+      expect(rows).to.deep.equal([['Tool', '/tools/t.html', 'New window']]);
+    });
+
+    it('marks inherited and overriding rows and offers the matching actions', () => {
+      const { rows, buttons, el } = table([
+        { row: O, inherited: true },
+        { row: T, index: 0, overrides: true },
+      ]);
+      const pills = [...el.querySelectorAll('tbody tr')]
+        .map((tr) => [...tr.querySelectorAll('nx-pills')].map((p) => p.items[0].label));
+      expect(rows.map((r) => r[0])).to.deep.equal(['Org tool', 'Tool']);
+      expect(pills).to.deep.equal([['Inherited from org'], ['Overrides org']]);
+      expect(buttons).to.deep.equal(['Override', 'Edit Tool', 'Delete Tool']);
+      expect(el.querySelector('tbody tr').classList.contains('is-inherited')).to.equal(true);
+    });
+
+    it('shows full URLs without their scheme, breakable after each slash', () => {
+      const path = { key: 'path', label: 'Path' };
+      expect(cellText(path, { path: 'https://content.da.live/o/s/docs/library/blocks/cards' }))
+        .to.equal('content.da.live/o/s/docs/library/blocks/cards');
+      expect(cellText(path, { path: 'https://a.com/x/y.html, http://b.com/q.html' })).to.equal('a.com/x/y.html, b.com/q.html');
+      expect(cellText(path, { path: '/tools/plugins/tags/tags.html' })).to.equal('/tools/plugins/tags/tags.html');
+      const url = 'https://da.live/nx/public/plugins/media-library/media-library.html';
+      const { rows, el } = table([{ row: { ...T, path: url }, index: 0 }]);
+      expect(rows[0][1]).to.equal('da.live/nx/public/plugins/media-library/media-library.html');
+      expect(el.querySelectorAll('tbody td:nth-of-type(1) wbr').length).to.equal(6);
+    });
+
+    it('shows an empty state with how to start, and only the title without edit access', () => {
+      const empty = (handlers) => {
+        const { el } = table([], handlers);
+        return [...el.querySelectorAll('.config-empty p')].map((p) => p.textContent.trim());
+      };
+      expect(empty({})).to.deep.equal(['No plugins yet', 'Add a plugin to get started.']);
+      expect(empty({ disabled: true })).to.deep.equal(['No plugins yet']);
+    });
+
+    it('filters rows by any listed column as shown, ignoring case', () => {
+      expect([matches(panel, T, ''), matches(panel, T, ' TOOL '), matches(panel, T, 'new win')])
+        .to.deep.equal([true, true, true]);
+      expect([matches(panel, T, 'secret'), matches(panel, T, 'x')]).to.deep.equal([false, false]);
+      const items = [{ row: T, index: 0 }, { row: O, index: 1 }];
+      expect(table(items, { query: 'org' }).rows.map((r) => r[0])).to.deep.equal(['Org tool']);
+      const { el } = table(items, { query: 'zzz' });
+      expect([el.querySelector('.config-empty-title').textContent, !!el.querySelector('nx-search')])
+        .to.deep.equal(['No matches for "zzz"', true]);
+      expect(!!table([], {}).el.querySelector('nx-search')).to.equal(false);
+    });
+
+    it('puts the list actions above the table, with Add last', () => {
+      const { el } = table([{ row: T, index: 0 }], { actions: html`<button type="button">Import</button>` });
+      const order = [...el.children].map((child) => child.className);
+      expect(order).to.deep.equal(['config-row-buttons', 'config-table-wrap']);
+      const toolbar = [...el.querySelector('.config-row-buttons').children].map((c) => c.tagName.toLowerCase());
+      expect(toolbar).to.deep.equal(['nx-search', 'button', 'button']);
+      const labels = [...el.querySelectorAll('.config-row-buttons button')].map((b) => b.textContent.trim());
+      expect(labels).to.deep.equal(['Import', 'Add plugin']);
+    });
+
+    it('drops the actions column when editing is off', () => {
+      const { headers, buttons, el } = table([{ row: T, index: 0 }], { disabled: true });
+      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in']);
+      // Search stays for reading long lists; add and import need edit access.
+      const toolbar = [...el.querySelector('.config-row-buttons').children].map((c) => c.tagName.toLowerCase());
+      expect([buttons, toolbar]).to.deep.equal([[], ['nx-search']]);
+    });
+  });
+
+  it('lays fields out like Spectrum: label with *, control, then help text an error replaces', () => {
+    const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
+    const field = (draft, errors = {}) => {
+      const el = document.createElement('div');
+      render(renderRowDialog(prepare, draft, errors, handlers), el);
+      const label = el.querySelector('.nx-form-field');
+      return {
+        order: [...label.children].map((c) => c.className || c.tagName.toLowerCase()),
+        label: label.querySelector('.config-field-label').textContent.replace(/\s+/g, ''),
+        required: label.querySelector('input').required,
+        help: label.querySelector('.config-field-help')?.textContent.trim() ?? null,
+        error: label.querySelector('.nx-input-error-msg')?.textContent.trim() ?? null,
+      };
+    };
+    const clean = field({ index: null, row: {} });
+    expect([clean.order, clean.label, clean.required]).to.deep.equal([['config-field-label', 'nx-input', 'config-field-help'], 'Title*', true]);
+    expect([clean.help !== null, clean.error]).to.deep.equal([true, null]);
+    const invalid = field({ index: null, row: {}, submitted: true }, { title: 'Enter a title.' });
+    expect([invalid.help, invalid.error]).to.deep.equal([null, 'Enter a title.']);
+  });
+
+  it('focuses the first field when the dialog opens', () => {
+    const el = document.createElement('div');
+    const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
+    render(renderRowDialog(prepare, { index: null, row: {} }, {}, handlers), el);
+    const inputs = [...el.querySelectorAll('input, textarea, nx-picker')];
+    const focused = inputs.map((input) => input.hasAttribute('autofocus'));
+    expect(focused).to.deep.equal(inputs.map((_, i) => i === 0));
+  });
+
+  it('shows and edits rows holding non-string values from hand-written sheets', () => {
+    const row = { title: 42, path: true };
+    expect([cellText(prepare.columns[0], row), cellText(prepare.columns[1], row)]).to.deep.equal(['42', 'true']);
+    expect(matches(prepare, row, '42')).to.equal(true);
+    const draft = { index: 0, row, submitted: true };
+    const errors = rowErrors(prepare, [row], draft);
+    const el = document.createElement('div');
+    const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
+    render(renderRowDialog(prepare, draft, errors, handlers), el);
+    expect(el.querySelector('#config-title').value).to.equal('42');
+  });
+
+  it('reads rows from the given sheet only', () => {
+    const own = multi('prepare', [A]);
+    expect(rowStates(prepare, { own, inherited: null, pending: null, sheet: 'apps' }).rows).to.deep.equal([]);
+  });
+
+  it('trims values and drops empty columns', () => {
+    expect(cleanRow({ title: ' A ', path: '', ref: '  ' })).to.deep.equal({ title: 'A' });
+  });
+
+  it('flags a title already used by another editable row', () => {
+    expect(rowErrors(prepare, [A, B], { index: 1, row: { ...B, title: 'A' } })).to.have.keys('title');
+    expect(rowErrors(prepare, [A, B], { index: 0, row: A })).to.deep.equal({});
+  });
+});
+
+// Three-way merge on save: `base` is the list as loaded, `mine` the editor's list, `theirs` the
+// list re-read right before the write (someone else may have saved in between).
+describe('settings stored in another sheet', () => {
+  const fields = [{ key: 'a', label: 'A' }, { key: 'f', label: 'F', sheet: 'flags' }];
+  const multiSheet = { data: { data: [{ key: 'a', value: '1' }] }, flags: { data: [{ key: 'f', value: 'x' }] }, ':names': ['data', 'flags'], ':type': 'multi-sheet' };
+
+  it('reads each field from its own sheet and groups changes by sheet', () => {
+    const states = fieldStates(fields, { own: multiSheet, inherited: null, edits: { a: '2', f: 'y' }, sheet: 'data' });
+    expect(states.map((s) => [s.field.key, s.value, s.dirty])).to.deep.equal([['a', '2', true], ['f', 'y', true]]);
+    expect(pendingBySheet(states, 'data')).to.deep.equal({ data: { a: '2' }, flags: { f: 'y' } });
+    const untouched = fieldStates(fields, { own: multiSheet, inherited: null, edits: {}, sheet: 'data' });
+    expect([untouched[1].value, pendingBySheet(untouched, 'data')]).to.deep.equal(['x', {}]);
+  });
+});
+
+describe('option fields', () => {
+  const field = { key: 'svc', label: 'Service', options: [{ value: 'A', label: 'Alpha' }] };
+  const items = (value) => {
+    const el = document.createElement('div');
+    render(renderField({ field, raw: value, value }, { onChange: () => {} }), el);
+    return el.querySelector('nx-picker').items.map((i) => i.value);
+  };
+
+  it('lists a saved value it does not offer, once, after the offered ones', () => {
+    expect(items('B')).to.deep.equal(['', 'A', 'B']);
+    expect(items('A')).to.deep.equal(['', 'A']);
+    expect(items('')).to.deep.equal(['', 'A']);
+  });
+});
+
+describe('mergeRows', () => {
+  const A = { title: 'A', path: '/a' };
+  const B = { title: 'B', path: '/b' };
+  const C = { title: 'C', path: '/c' };
+  const D = { title: 'D', path: '/d' };
+  const edited = (row, path) => ({ ...row, path });
+  const merge = (base, mine, theirs, panel = prepare) => mergeRows(panel, { base, mine, theirs });
+
+  it('writes the editor list as is when nobody else saved', () => {
+    expect(merge([A, B], [B, C], [A, B])).to.deep.equal({ rows: [B, C] });
+    expect(merge([], [A], [])).to.deep.equal({ rows: [A] });
+    // Same rows with keys in another order still count as unchanged.
+    expect(merge([A], [], [{ path: '/a', title: 'A' }])).to.deep.equal({ rows: [] });
+  });
+
+  it('keeps rows someone else added, and appends the ones added here', () => {
+    expect(merge([A], [A, C], [A, B])).to.deep.equal({ rows: [A, B, C] });
+    expect(merge([], [C, D], [B])).to.deep.equal({ rows: [B, C, D] });
+  });
+
+  it('accepts the same row added on both sides, but not two different rows with one id', () => {
+    expect(merge([A], [A, B], [A, B])).to.deep.equal({ rows: [A, B] });
+    expect(merge([A], [A, B], [A, edited(B, '/other')])).to.deep.equal({ conflict: true });
+  });
+
+  it('applies deletes, unless the other side changed the deleted row', () => {
+    expect(merge([A, B], [A], [A, B, C])).to.deep.equal({ rows: [A, C] });
+    expect(merge([A, B], [A], [A])).to.deep.equal({ rows: [A] });
+    expect(merge([A, B], [A], [A, edited(B, '/b2')])).to.deep.equal({ conflict: true });
+  });
+
+  it('applies edits in place, unless the other side changed or removed that row', () => {
+    const A2 = edited(A, '/a2');
+    expect(merge([A, B], [A2, B], [A, B, C])).to.deep.equal({ rows: [A2, B, C] });
+    expect(merge([A, B], [A2, B], [A, edited(B, '/b2')])).to.deep.equal({ rows: [A2, edited(B, '/b2')] });
+    expect(merge([A, B], [A2, B], [A2, B, C])).to.deep.equal({ rows: [A2, B, C] });
+    expect(merge([A, B], [A2, B], [edited(A, '/a3'), B])).to.deep.equal({ conflict: true });
+    expect(merge([A, B], [A2, B], [B])).to.deep.equal({ conflict: true });
+  });
+
+  it('keeps rows only the other side changed, and leaves rows nobody touched in their order', () => {
+    expect(merge([A, B, C], [A, B, C, D], [C, edited(B, '/b2'), A]))
+      .to.deep.equal({ rows: [C, edited(B, '/b2'), A, D] });
+    expect(merge([A, B], [A, B, C], [A])).to.deep.equal({ rows: [A, C] });
+  });
+
+  it('treats a rename as removing the old row and adding the new one', () => {
+    const renamed = { title: 'A2', path: '/a' };
+    expect(merge([A, B], [renamed, B], [A, B, C])).to.deep.equal({ rows: [B, C, renamed] });
+    expect(merge([A, B], [renamed, B], [edited(A, '/x'), B])).to.deep.equal({ conflict: true });
+  });
+
+  it('reports a conflict, without guessing, when rows share an id and the list changed', () => {
+    expect(merge([A, A], [A, A, B], [A, A, C])).to.deep.equal({ conflict: true });
+    expect(merge([A], [A, B], [A, C, C])).to.deep.equal({ conflict: true });
+    // Nothing changed meanwhile: the duplicate is left to the user, as before.
+    expect(merge([A, A], [A, A, B], [A, A])).to.deep.equal({ rows: [A, A, B] });
+  });
+
+  it('matches rows by the panel id, like all columns of a rule and case-insensitive plugin titles', () => {
+    const rules = translation.parts.find((p) => p.id === 'custom-doc-rules');
+    const meta = { block: 'metadata', rule: 'dnt' };
+    const cols = { block: 'columns', rule: 'dnt col 1' };
+    const hero = { block: 'hero', rule: 'dnt' };
+    expect(merge([meta], [meta, cols], [meta, hero], rules))
+      .to.deep.equal({ rows: [meta, hero, cols] });
+    expect(merge([meta, cols], [meta], [meta, { ...cols, note: 'x' }], rules))
+      .to.deep.equal({ conflict: true });
+    const tags = { title: 'Tags', path: '/t' };
+    expect(merge([], [tags], [{ title: 'tags', path: '/other' }], plugins)).to.deep.equal({ conflict: true });
+  });
+});
+
+describe('file status', () => {
+  const text = (template) => {
+    const el = document.createElement('div');
+    render(template, el);
+    return el.textContent.replace(/\s+/g, ' ').trim();
+  };
+  // A status renders as [note, block]: info-box text, or a standalone error/setup box.
+  const parts = ({ note, block }) => [text(note), text(block)];
+  const opts = { org: 'o', site: 's', locked: false, onSetup: () => {} };
+
+  it('describes a fixed file in the info box, and a failure on its own', () => {
+    const path = '/.da/translate.json';
+    expect(parts(renderFileStatus(null, opts))).to.deep.equal(['Loading…', '']);
+    expect(parts(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts)))
+      .to.deep.equal(['', `Could not load ${path} The server responded with 500.`]);
+    expect(parts(renderFileStatus({ status: 'ok', path, missing: true }, opts))[0]).to.include('doesn\'t exist yet');
+    expect(parts(renderFileStatus({ status: 'ok', path, missing: false }, opts))).to.deep.equal(['', '']);
+  });
+
+  it('explains how Set up picks a library file, as its own block', () => {
+    const [note, one] = parts(renderLibraryStatus(library('Placeholders', ['/placeholders.json']), { status: 'unregistered' }, opts));
+    expect([note, one.includes('creates it if it doesn\'t exist')]).to.deep.equal(['', true]);
+    const [, two] = parts(renderLibraryStatus(library('Icons'), { status: 'unregistered' }, opts));
+    expect(two).to.include('When neither exists');
+  });
+
+  it('notes when a library list needs publishing, and reports one that cannot be read', () => {
+    const ok = { status: 'ok', path: '/docs/library/icons.json', registered: '/docs/library/icons.json' };
+    expect(parts(renderLibraryStatus(library('Icons'), ok, opts))[0]).to.include('previewed and published');
+    const live = { ...ok, registered: 'https://content.da.live/o/s/docs/library/icons.json' };
+    expect(parts(renderLibraryStatus(library('Icons'), live, opts))).to.deep.equal(['', '']);
+    const lib = { status: 'error', path: '/library/icons.json', httpStatus: 503 };
+    expect(parts(renderLibraryStatus(library('Icons'), lib, opts))[1]).to.include('responded with 503');
+  });
+
+  it('shows a standalone notice with a primary registration action for discovered placeholders', () => {
+    let setups = 0;
+    const lib = { status: 'ok', path: '/placeholders.json', registered: null, missing: false };
+    const store = library('Placeholders', ['/placeholders.json']);
+    const el = document.createElement('div');
+    const handlers = { ...opts, onSetup: () => { setups += 1; } };
+    const state = renderLibraryStatus(store, lib, handlers);
+    expect(parts(state)[0]).to.equal('');
+    render(state.block, el);
+    expect(el.querySelector('.config-library-notice-title').textContent)
+      .to.equal('Placeholders found, but not added to the authoring library');
+    expect(el.textContent).to.include('Using /placeholders.json');
+    expect(el.textContent).to.not.include('No placeholders library');
+    const button = el.querySelector('button');
+    expect(button.textContent).to.equal('Add to library');
+    expect(button.classList.contains('nx-form-btn-primary')).to.equal(true);
+    button.click();
+    expect(setups).to.equal(1);
+    render(renderLibraryStatus(store, lib, { ...handlers, locked: true }).block, el);
+    expect(el.querySelector('button').disabled).to.equal(true);
+  });
+});
+
+describe('library icon previews', () => {
+  const handlers = { disabled: true, org: 'o', site: 's' };
+  const show = (el, row) => render(renderRows(icons, { items: [{ row, index: 0 }] }, handlers), el);
+
+  it('renders the actual icon beside its key while keeping its URL visible', async () => {
+    const el = document.createElement('div');
+    const url = new URL('/img/logos/aem.svg', window.location.href).href;
+    show(el, { key: 'add', value: 'Add', icon: url });
+    const img = el.querySelector('tbody th img');
+    expect(img.getAttribute('src')).to.equal(url);
+    expect(img.alt).to.equal('');
+    expect(el.querySelector('tbody th').textContent).to.include('add');
+    expect(el.querySelector('tbody').textContent).to.include('/img/logos/aem.svg');
+    if (!img.complete) {
+      await new Promise((resolve, reject) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', reject, { once: true });
+      });
+    }
+    expect(img.naturalWidth).to.be.greaterThan(0);
+  });
+
+  it('resolves site-relative icons through the existing preview proxy helper', () => {
+    const el = document.createElement('div');
+    show(el, { key: 'adobe', icon: '/icons/adobe.svg' });
+    expect(el.querySelector('img').getAttribute('src'))
+      .to.equal(toPreviewProxyUrl('/icons/adobe.svg', handlers));
+  });
+
+  it('retries a failed proxy image after authentication only once', async () => {
+    const savedFetch = window.fetch;
+    const savedIms = window.adobeIMS;
+    const savedSetting = localStorage.getItem('nx-ims');
+    try {
+      localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+      const calls = [];
+      window.fetch = async (url, opts) => {
+        calls.push({ url, opts });
+        return new Response('', { status: 200 });
+      };
+      const el = document.createElement('div');
+      show(el, { key: 'adobe', icon: '/icons/adobe.svg' });
+      const img = el.querySelector('img');
+      img.dispatchEvent(new Event('error'));
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(calls.length).to.equal(1);
+      expect(calls[0].url).to.equal(new URL('/gimme_cookie', img.src).href);
+      expect(calls[0].opts.credentials).to.equal('include');
+      expect(img.hidden).to.equal(false);
+      img.dispatchEvent(new Event('error'));
+      expect(img.hidden).to.equal(true);
+      expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(false);
+      expect(calls.length).to.equal(1);
+    } finally {
+      window.fetch = savedFetch;
+      window.adobeIMS = savedIms;
+      if (savedSetting === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedSetting);
+    }
+  });
+
+  it('shows image failures and retries when the icon URL changes, without affecting blank icons', () => {
+    const el = document.createElement('div');
+    const url = new URL('/img/logos/aem.svg', window.location.href).href;
+    show(el, { key: 'add', icon: url });
+    const img = el.querySelector('img');
+    img.dispatchEvent(new Event('error'));
+    expect(img.hidden).to.equal(true);
+    expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(false);
+    expect(el.querySelector('.config-icon-unavailable').textContent).to.equal('Preview unavailable');
+    const replacement = new URL('/img/icons/S2_Icon_Home_20_N.svg', window.location.href).href;
+    show(el, { key: 'edit', icon: replacement });
+    expect(el.querySelector('img').hidden).to.equal(false);
+    expect(el.querySelector('.config-icon-unavailable').hidden).to.equal(true);
+    show(el, { key: 'empty' });
+    expect(el.querySelector('img')).to.equal(null);
+    expect(el.querySelector('.config-icon-unavailable')).to.equal(null);
+  });
+});

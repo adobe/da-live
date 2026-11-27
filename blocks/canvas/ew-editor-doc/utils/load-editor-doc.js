@@ -1,5 +1,6 @@
 import { buildSourceUrl, checkDoc } from './source.js';
 import { initIms } from '../../../shared/utils.js';
+import { NOT_PERMITTED } from '../../../shared/empty-list.js';
 
 export function sessionErrorFromResponse(resp) {
   const status = resp?.status;
@@ -8,7 +9,7 @@ export function sessionErrorFromResponse(resp) {
   // A missing document is not an error: the caller prompts the author to create it.
   if (status === 404) return { ok: false, notFound: true };
   if (status === 401) return { ok: false, error: 'Sign in required' };
-  if (status === 403) return { ok: false, error: 'Not permitted' };
+  if (status === 403) return { ok: false, error: NOT_PERMITTED };
   const detail = resp.headers?.get?.('x-error');
   const reason = detail ? `: ${detail}` : '';
   return { ok: false, error: `Could not load the document (${status})${reason}` };

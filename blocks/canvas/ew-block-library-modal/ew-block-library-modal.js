@@ -53,6 +53,7 @@ class EwBlockLibraryModal extends LitElement {
     blocks: { attribute: false },
     onInsert: { attribute: false },
     heading: { attribute: false },
+    initialBlockPath: { attribute: false },
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
@@ -92,6 +93,14 @@ class EwBlockLibraryModal extends LitElement {
   willUpdate(changed) {
     if (changed.has('blocks')) {
       this._populateBlocks(this.blocks);
+    }
+    if (changed.has('blocks') || changed.has('initialBlockPath')) {
+      const block = this._blocks?.find((item) => item.path === this.initialBlockPath);
+      if (block) {
+        this._selectedPath = block.path;
+        this._expandedPath = block.path;
+        this._loadPreview(block);
+      }
     }
   }
 
@@ -276,6 +285,7 @@ class EwBlockLibraryModal extends LitElement {
                 <use href="${INFO_ICON_SRC}#icon"></use>
               </svg>
             </button>` : nothing}
+          ${this.onInsert ? html`
           <button type="button"
                   class="nx-action-btn-icon nx-btn-sm modal-tree-add"
                   aria-label="Add ${v.name} to page"
@@ -283,7 +293,7 @@ class EwBlockLibraryModal extends LitElement {
             <svg aria-hidden="true" viewBox="0 0 20 20">
               <use href="${ADD_ICON_SRC}#icon"></use>
             </svg>
-          </button>
+          </button>` : nothing}
         </div>
         ${description && isOpen ? html`
           <div class="modal-tree-description">${description}</div>` : nothing}
@@ -366,7 +376,7 @@ class EwBlockLibraryModal extends LitElement {
       <nx-dialog class="modal" @close=${this._onDialogClose}>
         <div class="modal-content">
           <header class="modal-header">
-            <span class="modal-title">${this.heading ?? 'Insert block'}</span>
+            <span class="modal-title">${this.heading ?? (this.onInsert ? 'Insert block' : 'Block library')}</span>
             <button type="button" class="nx-action-btn-icon nx-btn-sm"
                     aria-label="Close" @click=${() => this._close()}>✕</button>
           </header>
@@ -387,7 +397,7 @@ class EwBlockLibraryModal extends LitElement {
 
 customElements.define('ew-block-library-modal', EwBlockLibraryModal);
 
-export async function openBlockLibraryModal({ onInsert, heading } = {}) {
+export async function openBlockLibraryModal({ onInsert, heading, blocks, initialBlockPath } = {}) {
   if (document.body.querySelector('ew-block-library-modal')) return;
 
   let hashState;
@@ -395,14 +405,19 @@ export async function openBlockLibraryModal({ onInsert, heading } = {}) {
   unsub();
   const { org, site } = hashState || {};
 
-  // Reuses the slash-menu prefetch cache, so this is instant once warmed.
-  const { ext, blocks } = await loadBlockLibrary(org, site);
-  if (!ext) return;
+  let libraryBlocks = blocks;
+  if (libraryBlocks === undefined) {
+    // Reuses the slash-menu prefetch cache, so this is instant once warmed.
+    const library = await loadBlockLibrary(org, site);
+    if (!library.ext) return;
+    libraryBlocks = library.blocks;
+  }
 
   const modal = document.createElement('ew-block-library-modal');
-  modal.blocks = blocks;
+  modal.blocks = libraryBlocks;
   modal.onInsert = onInsert;
   modal.heading = heading;
+  modal.initialBlockPath = initialBlockPath;
   modal.addEventListener('close', () => modal.remove(), { once: true });
   document.body.append(modal);
 }

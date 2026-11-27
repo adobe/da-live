@@ -40,27 +40,7 @@ function branchRequests(urls, pathname) {
   return urls.filter((url) => url.origin === ENV_ORIGIN && url.pathname === pathname);
 }
 
-// TODO: Remove once the /form page content declares a `form` block.
-
-// The /form page declares an `nx-form` block, which loads da-nx's copy.
-// Serving it as a `form` block makes the page load da-live's copy instead.
-async function useRoutedFormBlock(page) {
-  await page.route(
-    (url) => url.origin === ENV_ORIGIN && url.pathname === '/form',
-    async (route) => {
-      const response = await route.fetch();
-      const body = (await response.text()).replace('class="nx-form"', 'class="form"');
-      await route.fulfill({ response, body });
-    },
-  );
-}
-
 const test = base.extend({
-  page: async ({ page }, use) => {
-    await useRoutedFormBlock(page);
-    await use(page);
-  },
-
   // The block loads the same way whether or not the document exists, so this
   // opens a name that is never created.
   formPageRequests: async ({ page }, use, testInfo) => {
@@ -68,7 +48,7 @@ const test = base.extend({
     page.on('request', (request) => requestedUrls.push(new URL(request.url())));
 
     await page.goto(getFormURL(getTestResourceName('formroute', testInfo)));
-    await expect(page.locator('div.form nx-form')).toBeAttached();
+    await expect(page.locator('div.form ew-form-editor')).toBeAttached();
     // The block keeps importing modules (chat) after the editor mounts. Wait
     // until loading settles so absence checks see every request.
     await page.waitForLoadState('networkidle');
@@ -134,7 +114,7 @@ test('Form loads the nx2 runtime once', async ({ formPageRequests }) => {
 });
 
 test('Form keeps a saved value after reload', async ({ page, schemaName, documentName }, testInfo) => {
-  const form = page.locator('nx-form');
+  const form = page.locator('ew-form-editor');
   const titleField = form.getByRole('textbox', { name: 'Title', exact: true });
   const enteredTitle = `[${testInfo.project.name}] Saved by test ${Date.now()}`;
 

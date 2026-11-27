@@ -396,6 +396,45 @@ describe('DaBrowse Component', () => {
     }
   });
 
+  it('drops inherited legacy editor settings when navigating to hlx6 in the same org', async () => {
+    const savedFetch = window.fetch;
+    const org = 'browse-mixed-backends';
+    const legacyRequests = [];
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/ping/')) {
+        return new Response('', { headers: href.endsWith('/upgraded') ? { 'x-api-upgrade-available': 'true' } : {} });
+      }
+      if (href.startsWith('https://admin.da.live/config/')) {
+        legacyRequests.push(href);
+        return new Response(JSON.stringify({ data: [{ key: 'editor.path', value: `/${org}=/form#` }] }), { headers: { 'X-da-actions': '/x=read,write' } });
+      }
+      if (href.includes('/config/editor/da.json')) {
+        return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+      }
+      return new Response('[]');
+    };
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    try {
+      daBrowseComp.details = { org, site: 'legacy', fullpath: `/${org}/legacy`, depth: 2 };
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/form#');
+      const requestsBeforeNavigation = legacyRequests.length;
+
+      daBrowseComp.details = { org, site: 'upgraded', fullpath: `/${org}/upgraded`, depth: 2 };
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/edit#');
+      expect(daBrowseComp.editorConfs).to.deep.equal([]);
+      expect(daBrowseComp._canEditOrgConfig).to.be.false;
+      expect(legacyRequests).to.have.lengthOf(requestsBeforeNavigation);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
+  });
+
   describe('getEditor', () => {
     function mockConfig(rows) {
       // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
@@ -690,23 +729,23 @@ describe('DaBrowse Component', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = true;
       const menu = renderMenu();
-      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions']);
+      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions', undefined, 'Config Sheet']);
       const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
       expect(trigger.getAttribute('aria-label')).to.equal('Settings');
       expect(trigger.textContent.trim()).to.equal('');
       expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
     });
 
-    it('hides site permissions when the user cannot edit the org config', () => {
+    it('only shows the site config sheet when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
+      expect(labels(renderMenu())).to.deep.equal(['Config Sheet']);
     });
 
-    it('hides org permissions when the user cannot edit the org config', () => {
+    it('only shows the org config sheet when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
+      expect(labels(renderMenu())).to.deep.equal(['Config Sheet']);
     });
   });
 });

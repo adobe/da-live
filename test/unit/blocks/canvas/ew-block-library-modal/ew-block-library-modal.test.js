@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { spy } from 'sinon';
 import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
@@ -50,6 +51,7 @@ describe('Block library variant preview navigation', () => {
     canvasBus.branchState.emit(branchState);
     modal = document.createElement('ew-block-library-modal');
     modal.blocks = [{ ...block, loadVariants: Promise.resolve(variants) }];
+    modal.onInsert = () => {};
     document.body.append(modal);
     modal._hashState = { org: 'org', site: 'site' };
     modal._expandedPath = block.path;
@@ -73,6 +75,34 @@ describe('Block library variant preview navigation', () => {
   function variantButtons() {
     return modal.shadowRoot.querySelectorAll('.modal-tree-row-variant');
   }
+
+  it('expands and previews the initially selected block without a second click', async () => {
+    const load = spy(modal, '_loadPreview');
+    modal._selectedPath = null;
+    modal._expandedPath = null;
+    modal._previewInfo = null;
+    modal.initialBlockPath = block.path;
+    await modal.updateComplete;
+    await load.firstCall.returnValue;
+    await modal.updateComplete;
+    expect(modal._selectedPath).to.equal(block.path);
+    expect(modal._expandedPath).to.equal(block.path);
+    expect(variantButtons()).to.have.lengthOf(3);
+    expect(modal.shadowRoot.querySelector('.modal-preview-frame').getAttribute('src'))
+      .to.equal(previewUrl);
+  });
+
+  it('leaves the library unselected if the initial block is not available', async () => {
+    const load = spy(modal, '_loadPreview');
+    modal._selectedPath = null;
+    modal._expandedPath = null;
+    modal._previewInfo = null;
+    modal.initialBlockPath = '/missing';
+    await modal.updateComplete;
+    expect(load.called).to.be.false;
+    expect(modal.shadowRoot.querySelector('.is-selected')).to.equal(null);
+    expect(modal.shadowRoot.querySelector('.modal-preview-placeholder')).to.exist;
+  });
 
   it('Navigates the existing iframe to each variant without inserting or closing', async () => {
     let inserted = false;
@@ -124,6 +154,14 @@ describe('Block library variant preview navigation', () => {
     modal.shadowRoot.querySelectorAll('.modal-tree-add')[2].click();
     expect(inserted).to.equal(variants[2].dom);
     expect(closed).to.be.true;
+  });
+
+  it('Is browse-only without an insert handler (read-only users, #1808)', async () => {
+    modal.onInsert = undefined;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-add')).to.have.length(0);
+    expect(modal.shadowRoot.querySelector('.modal-title').textContent).to.equal('Block library');
+    expect(variantButtons()[0].disabled).to.be.false;
   });
 
   it('Keeps description toggles separate from preview navigation', async () => {

@@ -48,7 +48,7 @@ describe('da-browse-header', () => {
   it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config Sheet']);
     const trigger = settingsMenu().querySelector('button[slot="trigger"]');
     expect(trigger.textContent.trim()).to.equal('Org Settings');
     expect(trigger.title).to.equal('Org Settings');
@@ -65,17 +65,17 @@ describe('da-browse-header', () => {
     expect(siteTrigger.title).to.equal('Site Settings');
   });
 
-  it('offers permissions only when the user can edit the org config', async () => {
+  it('offers the config editor and permissions only when the user can edit the org config', async () => {
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
     await header._orgConfigCheck;
     header._canEditOrgConfig = true;
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions']);
+    expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions', undefined, 'Config Sheet']);
 
     header._canEditOrgConfig = false;
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config Sheet']);
   });
 
   it('checks org config write access when the org changes', async () => {
@@ -88,10 +88,65 @@ describe('da-browse-header', () => {
     };
     header.details = { org: 'hdr-write', site: 'site', path: '' };
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config Sheet']);
     await header._orgConfigCheck;
     await header.updateComplete;
     expect(settingsLabels()).to.include('Permissions');
+  });
+
+  it('rechecks site-config access when switching between hlx6 sites in the same org', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': String(url).includes('/sites/writable/') ? '/x=read,write' : '/x=read' } });
+    };
+    header.details = { org: 'hdr-hlx6-sites', site: 'writable', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Permissions');
+
+    header.details = { org: 'hdr-hlx6-sites', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
+    expect(calls.filter((url) => url.startsWith('https://admin.da.live/config/'))).to.have.lengthOf(0);
+  });
+
+  it('ignores a previous site permission check that finishes after navigation', async () => {
+    let resolveWrite;
+    let notifyRequested;
+    const requested = new Promise((resolve) => { notifyRequested = resolve; });
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      if (String(url).includes('/sites/writable/')) {
+        return new Promise((resolve) => {
+          resolveWrite = resolve;
+          notifyRequested();
+        });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+    };
+
+    header.details = { org: 'hdr-hlx6-race', site: 'writable', path: '' };
+    await header.updateComplete;
+    await requested;
+    const firstCheck = header._orgConfigCheck;
+    header.details = { org: 'hdr-hlx6-race', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+
+    resolveWrite(new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read,write' } }));
+    await firstCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
   });
 
   it('requests sorting without changing the supplied sort state', () => {

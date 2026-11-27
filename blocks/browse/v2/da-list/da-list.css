@@ -14,6 +14,8 @@
   --da-list-min-height: 56px;
   --da-card-width: 226px;
   --da-card-height: 300px;
+
+  --da-list-columns: var(--da-list-select-width) minmax(0, 5fr) minmax(var(--da-list-type-width), 2fr) minmax(var(--da-list-date-width), 3fr) var(--da-list-action-width);
 }
 
 :host([size="s"]) {
@@ -42,12 +44,11 @@
 .da-list-group-header {
   display: flex;
   align-items: center;
-  padding: var(--s2-spacing-100) 0;
   font-family: var(--s2-font-family);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
   box-sizing: border-box;
-  min-height: var(--da-list-min-height);
+  min-height: 46px;
   background: var(--s2-gray-50);
 
   .nx-checkbox {
@@ -141,14 +142,24 @@
   height: 18px;
 }
 
+.da-list-types-row span {
+  text-box: trim-both cap alphabetic;
+}
+
 .da-list-types-select-all {
   min-height: 32px;
 }
 
-.da-list-types-select-all .nx-checkbox {
-  flex-direction: row-reverse;
-  justify-content: space-between;
-  width: 100%;
+.da-list-types-select-all span {
+  margin-left: 2px;
+}
+
+.menu-divider {
+  margin: calc(var(--s2-spacing-100) - 2px) var(--s2-spacing-200)
+    var(--s2-spacing-100);
+  border: none;
+  border-top: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-75);
 }
 
 /* List Item */
@@ -180,16 +191,6 @@ da-file-item.is-expanded::after {
   display: none;
 }
 
-/* Empty list */
-.empty-list {
-  border: 1px solid var(--s2-gray-100);
-  border-radius: 6px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 75px;
-}
-
 .da-browse-panel-header {
   margin: 0;
   border-bottom: 1px solid var(--s2-gray-200);
@@ -201,7 +202,7 @@ da-file-item.is-expanded::after {
   z-index: 2;
   background: light-dark(#fff, #000);
   display: grid;
-  grid-template-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
+  grid-template-columns: var(--da-list-columns);
   align-items: center;
   min-height: 46px;
 }

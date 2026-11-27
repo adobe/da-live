@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { stub } from 'sinon';
+import { spy, stub } from 'sinon';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
@@ -91,11 +91,10 @@ describe('Ew panel library block insertion', () => {
       hashChange._set({ org: 'org', site: 'site' });
       setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] } }]);
       resetBlockLibraryCache();
-      const proxy = 'https://main--site--org.stage-preview.da.live';
+      const admin = 'https://admin.da.live/source/org/site';
       const responses = new Map([
-        [`${proxy}/gimme_cookie`, ''],
-        [`${proxy}/blocks.json`, JSON.stringify([{ name: 'New', path: 'https://main--site--org.aem.live/blocks/new' }])],
-        [`${proxy}/blocks/new.plain.html`, '<body><div><div class="New"><div><div><p>Replacement</p></div></div></div></div></body>'],
+        [`${admin}/blocks.json`, JSON.stringify([{ name: 'New', path: 'https://main--site--org.aem.live/blocks/new' }])],
+        [`${admin}/blocks/new.html`, '<body><div><div class="New"><div><div><p>Replacement</p></div></div></div></div></body>'],
       ]);
       const calls = [];
       window.fetch = async (url, options) => {
@@ -128,7 +127,7 @@ describe('Ew panel library block insertion', () => {
           ['paragraph', 'Outro'], ['table', 'OtherKeep'],
         ]);
         expect(calls.map(({ url }) => url)).to.deep.equal([...responses.keys()]);
-        expect(calls.every(({ options }) => options.credentials === 'include')).to.equal(true);
+        expect(calls.every(({ options }) => options.credentials === undefined)).to.equal(true);
         expect(calls[0].options.headers.Authorization).to.equal('Bearer test-token');
       } finally {
         document.querySelector('ew-block-library-modal')?.remove();
@@ -234,7 +233,7 @@ describe('Ew panel library _insertTemplate', () => {
     expect(el._actionError).to.equal('Unable to load template (404).');
   });
 
-  it('inserts a same-org template through the proxy without persisting proxy image URLs', async () => {
+  it('inserts a same-org template from Admin without persisting Admin image URLs', async () => {
     const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
     getExtensionsBridge().view = view;
     const calls = [];
@@ -245,8 +244,8 @@ describe('Ew panel library _insertTemplate', () => {
     const el = document.createElement('ew-panel-library');
     el._hashState = { org: 'org', site: 'site' };
     await el._insertTemplate({ path: 'https://main--site--org.aem.live/templates/home' });
-    expect(calls[0].url).to.equal('https://main--site--org.stage-preview.da.live/templates/home');
-    expect(calls[0].opts.credentials).to.equal('include');
+    expect(calls[0].url).to.equal('https://admin.da.live/source/org/site/templates/home.html');
+    expect(calls[0].opts.credentials).to.equal(undefined);
     expect(view.state.doc.textContent).to.include('Template text');
     const images = [];
     view.state.doc.descendants((node) => {
@@ -256,7 +255,7 @@ describe('Ew panel library _insertTemplate', () => {
     expect(el._actionError).to.equal(undefined);
   });
 
-  it('keeps a cross-org template direct and inserts its content', async () => {
+  it('loads a cross-org template from Admin and inserts its content', async () => {
     const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
     getExtensionsBridge().view = view;
     const calls = [];
@@ -268,43 +267,102 @@ describe('Ew panel library _insertTemplate', () => {
     el._hashState = { org: 'org', site: 'site' };
     await el._insertTemplate({ path: 'https://main--shared--other.aem.live/templates/home' });
     expect(calls).to.have.lengthOf(1);
-    expect(calls[0].url).to.equal('https://main--shared--other.aem.live/templates/home');
+    expect(calls[0].url).to.equal('https://admin.da.live/source/other/shared/templates/home.html');
     expect(calls[0].opts.credentials).to.equal(undefined);
     expect(view.state.doc.textContent).to.include('Shared template');
+  });
+
+  it('preserves section metadata and section boundaries from raw template source', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(url);
+      return new Response(`<body><main>
+        <div><p>First section</p>
+          <div class="section-metadata"><div><div>Style</div><div>dark</div></div></div>
+        </div>
+        <div><p>Second section</p>
+          <div class="section-metadata"><div><div>Style</div><div>light</div></div></div>
+          <div class="template-metadata"><div><div>Title</div><div>Template title</div></div></div>
+        </div>
+      </main></body>`);
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://main--site--org.aem.live/templates/home' });
+    expect(el._actionError).to.equal(undefined);
+    expect(calls).to.deep.equal(['https://admin.da.live/source/org/site/templates/home.html']);
+    const tables = [];
+    let sections = 0;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'table') tables.push(node.textContent);
+      if (node.type.name === 'horizontal_rule') sections += 1;
+    });
+    expect(tables).to.deep.equal([
+      'section-metadataStyledark', 'section-metadataStylelight', 'metadataTitleTemplate title',
+    ]);
+    expect(sections).to.equal(1);
+  });
+
+  it('inserts an AEM-only fallback template using public AEM image URLs', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      if (url.startsWith('https://admin.da.live/')) return new Response('', { status: 404 });
+      return new Response('<body><main><div><p>External template</p><p><img src="./media_hero.png"></p></div></main></body>');
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://feat--site--org.aem.live/templates/home' });
+    expect(el._actionError).to.equal(undefined);
+    expect(calls.map(({ url }) => url)).to.deep.equal([
+      'https://admin.da.live/source/org/site/templates/home.html',
+      'https://feat--site--org.aem.live/templates/home',
+    ]);
+    expect(calls.every(({ opts }) => opts.credentials === undefined)).to.be.true;
+    const images = [];
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') images.push(node.attrs.src);
+    });
+    expect(images).to.deep.equal(['https://feat--site--org.aem.live/media_hero.png']);
   });
 
   [
     {
       name: 'same-org AEM templates',
       source: 'https://feat--site--org.aem.live/templates/home',
-      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'cross-org AEM templates',
       source: 'https://feat--shared--other.aem.page/templates/home',
-      publicDocument: 'https://feat--shared--other.aem.page/templates/home',
-      rootMedia: true,
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
+      publicDocument: 'https://content.da.live/other/shared/templates/home',
+      contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'proxied DA-content templates',
       source: 'https://content.da.live/org/site/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'cross-org DA-content templates',
       source: 'https://content.da.live/other/shared/templates/home',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home',
       contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'DA-content templates without editor org context',
       source: 'https://content.da.live/org/site/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
       context: {},
@@ -312,17 +370,16 @@ describe('Ew panel library _insertTemplate', () => {
     {
       name: 'relative same-org template sources',
       source: '/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'already-proxied templates',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'unrecognized public template hosts',
@@ -332,43 +389,43 @@ describe('Ew panel library _insertTemplate', () => {
     {
       name: 'cross-org already-proxied templates',
       source: 'https://feat--shared--other.preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home',
       contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'already-proxied templates without editor org context',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
       context: {},
     },
     {
-      name: 'AEM HTML resources forwarded by the proxy',
+      name: 'explicit AEM HTML resources',
       source: 'https://feat--site--org.aem.page/templates/home.html',
-      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home.html',
-      publicDocument: 'https://feat--site--org.aem.page/templates/home.html',
-      rootMedia: true,
-      credentials: 'include',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
+      publicDocument: 'https://content.da.live/org/site/templates/home.html',
+      contentRoot: 'https://content.da.live/org/site',
     },
     {
       name: 'stage DA-content templates',
       source: 'https://stage-content.da.live/org/site/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://stage-content.da.live/org/site/templates/home',
       contentRoot: 'https://stage-content.da.live/org/site',
-      credentials: 'include',
     },
     ...['content.da.live', 'stage-content.da.live'].flatMap((host) => ['.html', '.plain.html'].map((suffix) => ({
-      name: `proxied ${host} ${suffix} resources`,
+      name: `${host} ${suffix} resources`,
       source: `https://${host}/org/site/templates/home${suffix}`,
-      fetched: `https://main--site--org.stage-preview.da.live/templates/home${suffix}`,
-      publicDocument: `https://main--site--org.aem.page/templates/home${suffix}`,
-      rootMedia: true,
-      credentials: 'include',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
+      publicDocument: `https://${host}/org/site/templates/home.html`,
+      contentRoot: `https://${host}/org/site`,
     }))),
     {
       name: 'unproxied cross-org DA-content HTML',
       source: 'https://content.da.live/other/shared/templates/home.html',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home.html',
       contentRoot: 'https://content.da.live/other/shared',
     },
@@ -509,6 +566,159 @@ describe('Ew panel library icons: preview + search', () => {
   });
 });
 
+describe('Ew panel library blocks sidebar', () => {
+  let el;
+  let savedView;
+
+  beforeEach(async () => {
+    savedView = getExtensionsBridge().view;
+    getExtensionsBridge().view = { editable: true };
+    el = document.createElement('ew-panel-library');
+    el.extension = { name: 'blocks', ootb: true, sources: [] };
+    document.body.append(el);
+    await el.updateComplete;
+    await el._loadItems();
+    const dom = document.createElement('table');
+    dom.innerHTML = '<tr><td>Hero</td></tr>';
+    const variants = new Map([
+      ['/hero', [{ name: 'Hero', variants: 'dark', description: 'Full bleed', dom }]],
+      ['/cards', [{ name: 'Cards', variants: 'grid', dom }]],
+    ]);
+    el._blockVariants = variants;
+    el._items = [{ name: 'Hero', path: '/hero' }, { name: 'Cards', path: '/cards' }]
+      .map((block) => ({ ...block, loadVariants: Promise.resolve(variants.get(block.path)) }));
+    await el.updateComplete;
+  });
+
+  afterEach(() => {
+    getExtensionsBridge().view = savedView;
+    el.remove();
+    document.querySelector('ew-block-library-modal')?.remove();
+  });
+
+  it('offers browsing only to read-only users (#1808)', async () => {
+    getExtensionsBridge().view = { editable: false };
+    canvasBus.editorHtmlState.emit('<body></body>');
+    el._expandedBlock = '/hero';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.ext-variant-title').disabled).to.be.true;
+
+    await el._openBlockLibrary(el._items[0]);
+    const modal = document.querySelector('ew-block-library-modal');
+    await modal.updateComplete;
+    expect(modal.onInsert).to.equal(undefined);
+  });
+
+  it('restores add controls when a writable editor replaces a read-only one', async () => {
+    el._expandedBlock = '/hero';
+    getExtensionsBridge().view = { editable: false };
+    canvasBus.editorHtmlState.emit('');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.equal(null);
+
+    getExtensionsBridge().view = { editable: true };
+    canvasBus.editorHtmlState.emit('<body></body>');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[aria-label="Add Hero to page"]')).to.exist;
+    expect(el.shadowRoot.querySelector('.ext-variant-title').disabled).to.be.false;
+  });
+
+  it('expands groups and filters automatically expanded variants by metadata', async () => {
+    el.shadowRoot.querySelector('.ext-group-title').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-variant-item')).to.have.lengthOf(1);
+    const input = el.shadowRoot.querySelector('input');
+    input.value = 'full dark';
+    input.dispatchEvent(new Event('input'));
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(1);
+    expect(el.shadowRoot.querySelector('.ext-variant-subtitle').textContent).to.equal('dark');
+    expect(el.shadowRoot.querySelector('.ext-group-title').getAttribute('aria-expanded')).to.equal('true');
+    el.shadowRoot.querySelector('.ext-search-clear').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(2);
+  });
+
+  it('shows feedback when no blocks or variants match', async () => {
+    el._search = 'missing';
+    await el.updateComplete;
+    expect(el.shadowRoot.textContent).to.include('No matching blocks.');
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(0);
+  });
+
+  it('keeps the selected block highlighted when collapsing its variants', async () => {
+    const button = el.shadowRoot.querySelector('.ext-group-title');
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(el.shadowRoot.querySelector('.ext-expand-icon').classList.contains('is-expanded')).to.be.true;
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(button.getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelector('.ext-variant-list')).to.equal(null);
+  });
+
+  it('opens the full library at the chosen block without filtering out other blocks', async () => {
+    el._search = 'cards';
+    await el.updateComplete;
+    const insert = stub(el, '_insertBlock');
+    const open = spy(el, '_openBlockLibrary');
+    const button = el.shadowRoot.querySelector('.ext-block-preview');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-experiencepreview-20-n.svg#icon');
+    button.click();
+    await open.firstCall.returnValue;
+    const modal = document.querySelector('ew-block-library-modal');
+    expect(modal).to.exist;
+    await modal.updateComplete;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')).to.have.lengthOf(2);
+    expect(modal.shadowRoot.querySelector('.is-selected').textContent.trim()).to.equal('Cards');
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')[1].getAttribute('aria-expanded'))
+      .to.equal('true');
+    expect(el.shadowRoot.querySelector('.ext-preview-dialog')).to.equal(null);
+    modal.shadowRoot.querySelector('.modal-tree-add').click();
+    expect(insert.calledOnceWithExactly({ dom: el._blockVariants.get('/cards')[0].dom })).to.be.true;
+  });
+
+  it('inserts a variant only from the add button, not the variant title', async () => {
+    const insert = stub(el, '_insertBlock');
+    el._expandedBlock = '/hero';
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.ext-variant-title').click();
+    expect(insert.called).to.be.false;
+
+    el.shadowRoot.querySelector('[aria-label="Add Hero to page"]').click();
+    expect(insert.calledOnceWithExactly(el._blockVariants.get('/hero')[0])).to.be.true;
+  });
+
+  it('starts a host drop session only after moving beyond the drag threshold', async () => {
+    const previous = getExtensionsBridge().view;
+    const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    try {
+      el._expandedBlock = '/hero';
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('.ext-variant-title');
+      button.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 10, clientY: 10 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 12, clientY: 10 }));
+      expect(el._dragSession).to.equal(undefined);
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 25, clientY: 10 }));
+      expect(el._dragSession).to.exist;
+      el.remove();
+      expect(document.querySelector('[style*="2147483646"]')).to.equal(null);
+    } finally {
+      getExtensionsBridge().view = previous;
+      const mount = view.dom.parentElement;
+      view.destroy();
+      mount.remove();
+    }
+  });
+});
+
 describe('Ew panel library access errors', () => {
   let el;
 
@@ -528,7 +738,7 @@ describe('Ew panel library access errors', () => {
     el._items = items;
     await el.updateComplete;
     const state = el.shadowRoot.querySelector('.ext-state').textContent;
-    expect(state).to.include('signed in to DA');
+    expect(state).to.include('signed in to Experience Workspace');
     expect(state).to.include('sign in with AEM Sidekick');
   });
 

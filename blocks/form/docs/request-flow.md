@@ -12,10 +12,10 @@ From `decorate(block)` to a rendered editor (or a status screen).
 decorate(block)                                  ← form.js (EW workspace wrapper)
   ├─ ensureAppFrame() / ensureNavPath()          sync
   ├─ decorateEditor(block)                        sync
-  │    ├─ create <nx-form>                         sync
-  │    └─ nxForm.startRouting()                    ← subscribe ctx to hashChange
+  │    ├─ create <ew-form-editor>                  sync
+  │    └─ formEditor.startRouting()                ← subscribe ctx to hashChange
   ├─ setupChat(block)                             ← header + docked chat when ew.enabled
-  └─ <nx-form> upgrades                            ← editor.js element
+  └─ <ew-form-editor> upgrades                     ← editor.js element
        ├─ connectedCallback → adoptedStyleSheets sync
        ├─ hashChange emits → set `ctx`            sync
        ├─ updated(changed) sees `ctx`             sync
@@ -37,7 +37,7 @@ decorate(block)                                  ← form.js (EW workspace wrapp
                  │     [SDK lifecycle.md §1](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/lifecycle.md#1-createengine-lifecycle)
                  │     for the full call flow.)
                  └─ attachPersistence(engine, { path })             ← single-flight save layer
-       → render editor + sidebar + preview
+       → render editor + preview, publish state on formEvents
 ```
 
 **Context routing.** [`loadFormContext`](../utils/context.js) consults the loaded HTML in this order:
@@ -75,7 +75,7 @@ DOM <input> @input
                                 ↓
                           shell._onChange()
                             ├─ this._state = engine.getState()
-                            │    → Lit re-renders <nx-form> + children
+                            │    → Lit re-renders <ew-form-editor> + children
                             └─ persistence.notify()
                                  → single-flight save (see §4)
 ```
@@ -178,9 +178,9 @@ After a reorder, the model is rebuilt positionally — items have no separate st
 
 ```txt
 context.status === 'select-schema'
-  └─ render <form-picker> + Create button
+  └─ render <ew-form-picker> + Create button
        └─ user picks a schema, clicks Create
-            └─ nx-form._applySelectedSchema()
+            └─ ew-form-editor._applySelectedSchema()
                  ├─ build empty json: { metadata: { schemaName }, data: {} }
                  ├─ context = { ...context, status: 'ready', schema, json }
                  └─ _start({ schema, json })   ← same entry as §1's _start
@@ -199,7 +199,7 @@ window hash changes
             └─ updated() sees `ctx` → _loadContext() → see §1
 ```
 
-The `nx-form` element subscribes to `hashChange` once (in `startRouting`); a new hash sets `ctx`, which re-runs `_loadContext`. No element teardown/re-mount — `_loadContext` resets state and detaches the previous persistence in place.
+The `ew-form-editor` element subscribes to `hashChange` once (in `startRouting`); a new hash sets `ctx`, which re-runs `_loadContext`. No element teardown/re-mount — `_loadContext` resets state and detaches the previous persistence in place.
 
 ---
 

@@ -1,28 +1,10 @@
 /* stylelint-disable property-no-vendor-prefix */
 
-/* TODO: remove once dark-mode styling is complete. */
-.light-scheme, .dark-scheme {
-  color-scheme: light;
-}
-
-body {
-  background: rgb(250 250 250);
-}
-
 .da-sheet-wrapper {
   position: relative;
   z-index: 10;
   flex: 1 1 auto;
   width: 200px;
-}
-
-.da-sheet-not-permitted {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  color: light-dark(#555, #aaa);
-  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
 }
 
 .da-version-wrapper {
@@ -51,7 +33,7 @@ da-versions.is-visible,
   border-radius: 2px;
   border: none;
   cursor: pointer;
-  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') center center / 20px no-repeat;
+  background: url('/img/icons/s2-icon-calendar-20-n.svg') center center / 20px no-repeat;
 }
 
 button.new-sheet {
@@ -68,16 +50,14 @@ button.new-sheet {
 .jcontextmenu {
   position:fixed;
   z-index:10000;
-  background:#fff;
-  color: #555;
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-900);
   font-size: 11px;
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
-  -webkit-box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
-  -moz-box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
-  box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
-  border: 1px solid #C6C6C6;
+  box-shadow: var(--s2-drop-shadow-elevated);
+  border: 1px solid var(--s2-gray-300);
   padding: 0;
   padding-top:4px;
   padding-bottom:4px;
@@ -89,17 +69,25 @@ button.new-sheet {
 /* jspreadsheets overwrites */
 /* stylelint-disable-next-line selector-class-pattern */
 .da-sheet-wrapper .jexcel_content {
-  background: #fff;
-  border: 1px solid #ccc;
+  background: var(--s2-gray-25);
+  border: 1px solid var(--s2-gray-300);
   border-radius: 12px;
   display: block;
   padding-right: 0;
   padding-bottom: 0;
   overflow: scroll;
-  box-shadow: rgb(181 181 181) 0 10px 20px 0;
+  box-shadow: var(--s2-drop-shadow-elevated);
+  scrollbar-color: var(--s2-gray-600) var(--s2-gray-75);
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_content::-webkit-scrollbar-corner {
+  background: var(--s2-gray-75);
 }
 
 .da-sheet-wrapper .jexcel {
+  color: var(--s2-gray-900);
+  background-color: var(--s2-gray-25);
   border-top: 0;
   border-left: 0;
   border-right: 0;
@@ -107,8 +95,14 @@ button.new-sheet {
   min-width: 100%;
 }
 
+.da-sheet-wrapper .jexcel > :is(thead, tbody) > tr > td {
+  border-top-color: var(--s2-gray-300);
+  border-left-color: var(--s2-gray-300);
+}
+
 .da-sheet-wrapper .jexcel > thead > tr > td {
   border-top: 0;
+  background-color: var(--s2-gray-75);
 }
 
 .da-sheet-wrapper .jexcel > thead > tr > td:first-child {
@@ -117,11 +111,87 @@ button.new-sheet {
 
 .da-sheet-wrapper .jexcel > tbody > tr > td:first-child {
   border-left: none;
+  background-color: var(--s2-gray-75);
+}
+
+.da-sheet-wrapper .jexcel > tbody > tr > td.readonly {
+  background-color: var(--s2-gray-50);
+}
+
+.da-sheet-wrapper .jexcel > thead > tr > td.dragging,
+.da-sheet-wrapper .jexcel > tbody > tr.dragging > td {
+  background-color: var(--s2-gray-100);
+}
+
+/* The selection border marks the focused cell, so only outline it when nothing is selected */
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus {
+  outline: none;
+}
+
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus-visible:not(.highlight) {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
+.da-sheet-wrapper .jexcel > thead > tr > td.selected,
+.da-sheet-wrapper .jexcel > tbody > tr.selected > td:first-child {
+  background-color: var(--s2-gray-200);
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel .onDrag {
+  background-color: light-dark(rgb(0 0 0 / 60%), rgb(255 255 255 / 20%));
+}
+
+.da-sheet-wrapper .jexcel .highlight,
+.da-sheet-wrapper .jexcel .selection {
+  background-color: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 8%));
+}
+
+.da-sheet-wrapper .jexcel .highlight-selected {
+  background-color: transparent;
+}
+
+.da-sheet-wrapper .jexcel :is(.highlight-top, .selection-top, .copying-top) {
+  border-top-color: var(--s2-gray-900);
+}
+
+.da-sheet-wrapper .jexcel :is(.highlight-left, .selection-left, .copying-left) {
+  border-left-color: var(--s2-gray-900);
+}
+
+.da-sheet-wrapper .jexcel :is(.highlight-right, .selection-right, .copying-right) {
+  border-right-color: var(--s2-gray-900);
+}
+
+.da-sheet-wrapper .jexcel :is(.highlight-bottom, .selection-bottom, .copying-bottom) {
+  border-bottom-color: var(--s2-gray-900);
+}
+
+.da-sheet-wrapper .jexcel .highlight-top {
+  box-shadow: 0 -1px var(--s2-gray-300);
+}
+
+.da-sheet-wrapper .jexcel .highlight-left {
+  box-shadow: -1px 0 var(--s2-gray-300);
+}
+
+.da-sheet-wrapper .jexcel .highlight-top.highlight-left {
+  box-shadow: -1px -1px var(--s2-gray-300);
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_corner {
+  background-color: var(--s2-gray-900);
+  border-color: var(--s2-gray-25);
+}
+
+.da-sheet-wrapper .jexcel :is(input, textarea, select) {
+  color: inherit;
 }
 
 .da-sheet-wrapper .jcontextmenu {
   border-radius: 6px;
-  box-shadow: rgb(181 181 181) 0 0 20px 0;
 }
 
 .jcontextmenu > div {
@@ -195,7 +265,7 @@ button.new-sheet {
 }
 
 .jcontextmenu > div a {
-  color: #555;
+  color: inherit;
   text-decoration: none;
   flex: 1;
   cursor: pointer;
@@ -206,20 +276,16 @@ button.new-sheet {
   font-size: 0.9em;
 }
 
-.jcontextmenu .jcontextmenu-disabled a {
-  color: #ccc;
-}
-
-.jcontextmenu .jcontextmenu-disabled::before {
-  color: #ccc;
+.jcontextmenu .jcontextmenu-disabled {
+  color: var(--s2-gray-600);
 }
 
 .jcontextmenu > div:hover {
-  background: #ebebeb;
+  background: var(--s2-gray-100);
 }
 
 .jcontextmenu hr {
-  border: 1px solid #e9e9e9;
+  border: 1px solid var(--s2-gray-300);
   border-bottom: 0;
   margin-top:5px;
   margin-bottom:5px;
@@ -259,12 +325,12 @@ button.new-sheet {
   .jcontextmenu div {
       width: 100%;
       text-align: center;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid var(--s2-gray-300);
       padding: 15px;
   }
 
   .jcontextmenu > div.header {
-      background-color: lightgray;
+      background-color: var(--s2-gray-200);
       padding: 5px;
       top: 0;
       position: sticky;

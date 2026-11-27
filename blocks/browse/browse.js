@@ -1,19 +1,31 @@
-import { getNx, getNx2 } from '../../scripts/utils.js';
-import { getBrowseComponent, resolveBrowsePath } from './utils.js';
+import { getNx } from '../../scripts/utils.js';
+import initGreeting from '../greeting/greeting.js';
+import initTiles from './tiles/tile-group.js';
+import { getBrowseComponent } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-async function getBrowsePath({ org, site }) {
-  const { search } = window.location;
-  try {
-    const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
-    return await resolveBrowsePath({ search, org, site, fetchConfigs: fetchDaConfigs });
-  } catch {
-    return resolveBrowsePath({ search, org, site, fetchConfigs: () => [] });
-  }
+const V2_NAV_PATH = '/nx/fragments/browse2-nav';
+
+function takeGreeting(el) {
+  const section = el.closest('.section')?.nextElementSibling;
+  const greeting = section?.querySelector('div.greeting');
+  if (!greeting) return undefined;
+  section.remove();
+  return initGreeting(greeting);
 }
 
-const V2_NAV_PATH = '/nx/fragments/browse2-nav';
+function takeBrowseBlocks(el) {
+  const content = document.createElement('div');
+  content.append(...el.querySelectorAll(':scope > div'));
+  let tiles = initTiles(content);
+  const landing = el.closest('.section')?.nextElementSibling?.querySelector('div.landing');
+  if (landing) {
+    landing.remove();
+    if (!tiles.entries.length) tiles = initTiles(landing);
+  }
+  return { greeting: takeGreeting(el), tiles: tiles.entries.length ? tiles : undefined };
+}
 
 // to be removed when the v2 nav is fully integrated
 function useV2Nav() {
@@ -26,15 +38,34 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadComponent(el, cmpName, pathDetails) {
+async function loadLandingStyles() {
+  const background = await loadStyle(new URL('../landing/landing.css', import.meta.url).href);
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
+}
+
+async function loadLandingSurface(el) {
+  await loadLandingStyles();
+  const surface = document.createElement('div');
+  surface.className = 'landing';
+  el.replaceChildren(surface);
+}
+
+async function loadBrowseStyles(cmpName) {
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+  if (cmpName === 'da-sites') await loadLandingStyles();
+}
+
+async function loadComponent(el, cmpName, pathDetails, surface, { greeting, tiles } = {}) {
+  await surface;
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;
   }
 
-  const styles = await loadStyle(import.meta.url);
-  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
@@ -42,11 +73,17 @@ async function loadComponent(el, cmpName, pathDetails) {
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse, .landing')?.remove();
-  const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
-  if (componentPath === './v2') useV2Nav();
-  await import(`${componentPath}/${cmpName}/${cmpName}.js`);
+  if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
+  else {
+    useV2Nav();
+    await import('./v2/da-browse/da-browse.js');
+  }
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
+  if (cmpName === 'da-sites') {
+    cmp.greeting = greeting;
+    cmp.tiles = tiles;
+  }
   el.append(cmp);
 }
 
@@ -63,9 +100,13 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  el.querySelectorAll('picture').forEach((picture) => picture.remove());
+  const blocks = getBrowseComponent({ search: window.location.search }) === 'da-sites'
+    ? takeBrowseBlocks(el) : undefined;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    loadComponent(el, cmpName, pathDetails);
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
+    loadComponent(el, cmpName, pathDetails, surface, blocks);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

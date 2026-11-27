@@ -106,7 +106,7 @@ function scopeKind(path, site) {
 
 export function scopeLabel(path, site) {
   const kind = scopeKind(path, site);
-  if (kind === 'config') return site ? 'Site configurations' : 'DA configurations';
+  if (kind === 'config') return site ? 'Site configurations' : 'Org configurations';
   if (kind === 'content') return site ? 'All site content' : 'All sites';
   if (kind === 'folder') {
     const norm = normPath(path);

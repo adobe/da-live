@@ -1,9 +1,9 @@
 /* eslint-disable object-curly-newline */
 /* eslint-disable no-use-before-define */
-import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
+import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN, object2sheet } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
-export { AEM_API };
+export { AEM_API, loadIms, handleSignIn };
 
 // ============================================================================
 // Public API
@@ -66,6 +66,13 @@ export const aem = {
 // config: top-level org/site config.
 export const config = {
   get: withArgs(async ({ org, site }) => {
+    if (await isHlx6(org, site)) {
+      const resp = await daFetch({ url: `${AEM_API}/${org}/sites/${site}/config/editor/da.json` });
+      if (!resp.ok) return resp;
+      const adapted = new Response(JSON.stringify(object2sheet(await resp.json())), resp);
+      adapted.permissions = resp.permissions;
+      return adapted;
+    }
     const url = await getDaApiPath(CONFIG, org, site);
     return daFetch({ url });
   }),
@@ -253,13 +260,21 @@ export const source = {
     return daFetch({ url, opts: { method: 'HEAD' } });
   }),
 
-  delete: withArgs(async ({ org, site, path }) => {
+  delete: withArgs(async ({
+    org, site, path, continuationToken,
+  }) => {
     const url = await getDaApiPath(SOURCE, org, site, path);
-    return daFetch({ url, opts: { method: 'DELETE' } });
+    const opts = { method: 'DELETE' };
+    if (continuationToken) {
+      const formData = new FormData();
+      formData.append('continuation-token', continuationToken);
+      opts.body = formData;
+    }
+    return daFetch({ url, opts });
   }),
 
   copy: withArgs(async ({
-    org, site, path, destination, collision,
+    org, site, path, destination, collision, continuationToken,
   }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
@@ -270,6 +285,7 @@ export const source = {
     }
     const formData = new FormData();
     formData.append('destination', destination);
+    if (continuationToken) formData.append('continuation-token', continuationToken);
     return daFetch({
       url: `${DA_ADMIN}/copy/${org}/${site}${path}`,
       opts: { method: 'POST', body: formData },
@@ -277,7 +293,7 @@ export const source = {
   }),
 
   move: withArgs(async ({
-    org, site, path, destination, collision,
+    org, site, path, destination, collision, continuationToken,
   }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
@@ -289,6 +305,7 @@ export const source = {
     }
     const formData = new FormData();
     formData.append('destination', destination);
+    if (continuationToken) formData.append('continuation-token', continuationToken);
     return daFetch({
       url: `${DA_ADMIN}/move/${org}/${site}${path}`,
       opts: { method: 'POST', body: formData },
@@ -300,10 +317,11 @@ export const source = {
     return daFetch({ url, opts: { method: 'POST' } });
   }),
 
-  deleteFolder: withArgs(async ({ org, site, path }) => {
-    const url = await getDaApiPath(SOURCE, org, site, `${path}/`);
-    return daFetch({ url, opts: { method: 'DELETE' } });
-  }),
+  deleteFolder: withArgs(({
+    org, site, path, continuationToken,
+  }) => source.delete({
+    org, site, path: `${path}/`, continuationToken,
+  })),
 };
 
 // status: single-path only. H6 has no bulk status endpoint.

@@ -532,6 +532,8 @@ describe('da-permissions', () => {
     el._confirmRemove = { path: 'CONFIG', level: 'write', who: 'admin@example.com' };
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('nx-dialog')).to.not.equal(null);
+    expect(el.shadowRoot.querySelector('nx-dialog p').textContent)
+      .to.equal('Remove admin@example.com from Org configurations · Write?');
 
     el.site = 'mysite';
     await el.updateComplete;

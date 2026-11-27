@@ -230,6 +230,17 @@ describe('fetchWysiwygBranch', () => {
 });
 
 describe('parseSections', () => {
+  it('does not expose preserved section metadata as outline content', () => {
+    const [section] = parseSections(`<main><div>
+      <p data-prose-index="1">Intro</p>
+      <div class="section-metadata"><div><div>Grid</div><div>4</div></div></div>
+    </div></main>`);
+    expect(section.blocks).to.deep.equal([]);
+    expect(section.items).to.have.lengthOf(1);
+    expect(section.items[0].innerText).to.equal('Intro');
+    expect(section.items[0].children).to.have.lengthOf(1);
+  });
+
   it('collects a single block and mirrors it in items (unchanged behavior)', () => {
     const html = `<main><div>
       <div class="hero" data-block-index="0">Hero content</div>
@@ -437,10 +448,10 @@ describe('updateDocument rerender scopes', () => {
     container?.remove();
   });
 
-  function mount(nodes) {
+  function mount(nodes, previewOptions) {
     container = document.createElement('div');
     document.body.append(container);
-    ctx = { suppressRerender: false, port: { postMessage: sinon.spy() } };
+    ctx = { suppressRerender: false, port: { postMessage: sinon.spy() }, previewOptions };
     const tracking = createTrackingPlugin(
       (details) => updateDocument(ctx, details),
       undefined,
@@ -472,6 +483,36 @@ describe('updateDocument rerender scopes', () => {
     posOf(index) + ctx.view.state.doc.child(index).nodeSize,
     node,
   ));
+
+  it('preserves legacy metadata in initial, subsequent and debounced metadata body updates', () => {
+    const cell = (text) => schema.nodes.table_cell.create(null, p(text));
+    const metadata = (grid) => schema.nodes.table.create(null, [
+      row('Section Metadata'),
+      schema.nodes.table_row.create(null, [cell('Grid'), cell(grid)]),
+    ]);
+    mount([p('Intro'), metadata('4')], { legacySectionMetadata: true });
+    const parseBody = (body) => new DOMParser().parseFromString(body, 'text/html');
+    const assertMetadata = (body, grid) => {
+      const doc = parseBody(body);
+      expect(doc.querySelector('.section-metadata').textContent).to.include(grid);
+      expect(doc.querySelector('main > div').hasAttribute('data-grid')).to.be.false;
+    };
+    assertMetadata(bodies()[0].payload.body, '4');
+    replaceChild(0, p('Updated'));
+    assertMetadata(bodies().at(-1).payload.body, '4');
+    const clock = sinon.useFakeTimers();
+    try {
+      replaceChild(1, metadata('2'));
+      assertMetadata(updateDocument(ctx, {
+        previousDoc: ctx.syncedDoc,
+        doc: ctx.view.state.doc,
+      }), '2');
+      clock.tick(2000);
+      assertMetadata(bodies().at(-1).payload.body, '2');
+    } finally {
+      clock.restore();
+    }
+  });
 
   it('renders the page when the preview has no baseline yet', () => {
     mount([p('a')]);

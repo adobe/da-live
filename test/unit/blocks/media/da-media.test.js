@@ -84,6 +84,7 @@ describe('media loading', () => {
   let createObjectURL;
   let addEventListener;
   let observer;
+  let recentWrites;
 
   function setHash(path) {
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${path}`);
@@ -99,6 +100,12 @@ describe('media loading', () => {
     container = document.createElement('div');
     createObjectURL = sinon.stub(URL, 'createObjectURL').returns('blob:media-test');
     addEventListener = sinon.spy(window, 'addEventListener');
+    recentWrites = [];
+    const setItem = sinon.stub(Storage.prototype, 'setItem');
+    setItem.callsFake(function record(key, value) {
+      if (key === 'da-recent-files') recentWrites.push(JSON.parse(value));
+      else setItem.wrappedMethod.call(this, key, value);
+    });
   });
 
   afterEach(() => {
@@ -144,6 +151,7 @@ describe('media loading', () => {
       expect(createObjectURL.calledOnce).to.equal(true);
       expect(await createObjectURL.firstCall.args[0].text()).to.equal('media-data');
       expect(container.querySelector('da-media').details.contentUrl).to.equal('blob:media-test');
+      expect(recentWrites[0]['/kptdobe/sample-content-hlx6-migrated'][0].path).to.equal(path);
     });
   });
 
@@ -172,12 +180,16 @@ describe('media loading', () => {
       .to.equal('https://content.da.live/mediaorg/legacysite/images/second.png');
     expect(container.querySelector('da-title').details.name).to.equal('second.png');
     expect(container.children.length).to.equal(2);
+    expect(recentWrites.map((recent) => recent['/mediaorg/legacysite'][0].path)).to.deep.equal([
+      '/mediaorg/legacysite/images/first.svg',
+      '/mediaorg/legacysite/images/second.png',
+    ]);
 
     document.body.appendChild(media);
     await media.updateComplete;
     expect(media.shadowRoot.querySelector('img').getAttribute('src'))
       .to.equal('https://content.da.live/mediaorg/legacysite/images/second.png');
-    expect(document.title).to.equal('View second.png - Experience Workspace');
+    expect(document.title).to.equal('View second.png | Experience Workspace');
     media.remove();
   });
 
@@ -217,7 +229,7 @@ describe('media loading', () => {
     await media.updateComplete;
     expect(media.shadowRoot.querySelector('video source').getAttribute('src'))
       .to.equal('https://content.da.live/mediaorg/legacysite/videos/movie.mp4');
-    expect(document.title).to.equal('View movie.mp4 - Experience Workspace');
+    expect(document.title).to.equal('View movie.mp4 | Experience Workspace');
 
     await navigate('/mediaorg/legacysite/images/second.png');
     media = container.querySelector('da-media');

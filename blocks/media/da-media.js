@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../scripts/utils.js';
+import { getNx, setPageTitle } from '../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
@@ -10,7 +10,7 @@ class DaMedia extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    document.title = `View ${this.details.name} - Experience Workspace`;
+    setPageTitle(`View ${this.details.name}`);
   }
 
   disconnectedCallback() {

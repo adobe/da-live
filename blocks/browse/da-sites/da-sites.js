@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, parseSubdomain } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -12,6 +12,10 @@ function getRandom() {
 
 export default class DaSites extends LitElement {
   static properties = {
+    greeting: { attribute: false },
+    tiles: { attribute: false },
+    _ready: { state: true },
+    _authError: { state: true },
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
@@ -22,10 +26,37 @@ export default class DaSites extends LitElement {
     this._urlError = false;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    this._ready = false;
+    this._authError = undefined;
     this._recents = this.getRecents();
+    if (this._recents?.length) {
+      try {
+        const { loadIms, handleSignIn } = await getNx2Api();
+        const ims = await loadIms();
+        if (!this.isConnected) return;
+        if (!ims?.accessToken || ims.anonymous) {
+          handleSignIn();
+          return;
+        }
+      } catch {
+        if (this.isConnected) this._authError = true;
+        return;
+      }
+    }
+    this._ready = true;
+    if (this.tiles) {
+      this.tiles.slot = 'tiles';
+      this.append(this.tiles);
+    }
+    if (this.greeting) {
+      const greeting = await this.greeting;
+      if (!this.isConnected) return;
+      greeting.slot = 'greeting';
+      this.append(greeting);
+    }
   }
 
   getRecents() {
@@ -66,28 +97,12 @@ export default class DaSites extends LitElement {
     this.requestUpdate();
   }
 
-  parseSubdomain(siteUrl) {
-    try {
-      const url = new URL(siteUrl);
-      if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) {
-        return null;
-      }
-      const helixString = url.hostname.split('.')[0];
-      if (!helixString) return null;
-      const [, site, org] = helixString.split('--');
-      if (!site || !org) return null;
-      return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
-    } catch (_) {
-      return null;
-    }
-  }
-
   async handleGo(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const { siteUrl } = Object.fromEntries(formData);
     if (!siteUrl) return;
-    const result = this.parseSubdomain(siteUrl);
+    const result = parseSubdomain(siteUrl);
     if (result) {
       window.location = result;
     } else {
@@ -199,8 +214,14 @@ export default class DaSites extends LitElement {
   }
 
   render() {
+    if (this._authError) {
+      return html`<p role="alert">Could not sign in. Please <a href=${window.location.href}>reload the page</a> to try again.</p>`;
+    }
+    if (!this._ready) return nothing;
     return html`
       <div class="da-site-container">
+        ${this.greeting ? html`
+          <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">
           <h2>Recents</h2>
         </div>
@@ -209,7 +230,7 @@ export default class DaSites extends LitElement {
           <h2>Sites</h2>
           ${this._recents?.length > 0 ? this.renderGo() : nothing}
         </div>
-        <div class="da-site-sandbox-new">
+        ${this.tiles?.entries?.length ? html`<slot name="tiles"></slot>` : html`<div class="da-site-sandbox-new">
           <a class="da-double-card da-double-card-sandbox" href="#/aem-sandbox/block-collection">
             <picture>
               <img class="da-double-card-bg" src="/blocks/browse/da-sites/img/bg-sandbox-card.avif" width="800" height="534" alt="" />
@@ -228,7 +249,7 @@ export default class DaSites extends LitElement {
               <h3>Add new</h3>
             </div>
           </a>
-        </div>
+        </div>`}
       </div>
       ${this._status ? this.renderStatus() : nothing}
     `;
