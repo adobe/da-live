@@ -10,6 +10,7 @@
 
 import { refreshLocalCursor } from 'da-y-wrapper';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getSelectionData } from '../comments/helpers/anchor.js';
 
 let toolbarEl;
 let toolbarLoading;
@@ -127,6 +128,7 @@ function editorModeAllows(surface) {
  * a dialog / picker / menu is the single source of truth for "is interacting". */
 function shouldShow(tb) {
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return false;
+  if (state.docView?.editable === false && !getSelectionData(state.docView.state)) return false;
   return state.activeSurface !== null
     && state.showableBySurface[state.activeSurface]
     && editorModeAllows(state.activeSurface);

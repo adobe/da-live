@@ -352,6 +352,14 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
+  _renderReadOnlyComment() {
+    const [{ id, label, icon }] = COMMENT_ITEMS;
+    return html`
+      <button type="button" class="toolbar-btn toolbar-btn-labeled" data-id=${id}>
+        ${this._icon(icon)}<span>${label}</span>
+      </button>`;
+  }
+
   _renderAddImageItem(item) {
     const imageItem = this.view && isImageNodeSelected(this.view.state)
       ? { ...item, label: 'Replace image', icon: 'image' }
@@ -441,6 +449,7 @@ class EwSelectionToolbar extends LitElement {
       { items: COMMENT_ITEMS, wysiwyg: true, render: () => renderButtons(COMMENT_ITEMS) },
     ];
 
+    if (this.view?.editable === false) return this._renderReadOnlyComment();
     const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
     const visible = allowed.filter(({ items }) => this._hasVisibleCommands(items));
     return visible.flatMap(({ render }, i) => {

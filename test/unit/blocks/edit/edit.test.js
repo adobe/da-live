@@ -11,6 +11,7 @@ const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
 describe('edit entry point', () => {
   it('records the opened document in Recent with its .html path', async () => {
     const { href } = window.location;
+    const { title } = document;
     const savedSocket = window.WebSocket;
     const el = document.createElement('div');
     let socketClosed;
@@ -36,6 +37,7 @@ describe('edit entry point', () => {
       await init(el);
       await closed;
       expect(writes[0]['/org/site'][0].path).to.equal('/org/site/docs/page.html');
+      expect(document.title).to.equal('Edit page | Experience Workspace');
     } finally {
       addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));
       clock.uninstall();
@@ -43,6 +45,7 @@ describe('edit entry point', () => {
       setImsResult(undefined);
       window.WebSocket = savedSocket;
       window.history.replaceState(null, '', href);
+      document.title = title;
     }
   });
 });

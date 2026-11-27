@@ -30,7 +30,7 @@ const librarySessions = new Map();
 const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
 
 export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
-  + 'to DA and have access to the library site. For an AEM-only library, open '
+  + 'to Experience Workspace and have access to the library site. For an AEM-only library, open '
   + 'its preview and sign in with AEM Sidekick, then reopen the library.';
 
 // ---------------------------------------------------------------------------
@@ -957,10 +957,10 @@ export function extensionToPanelView(ext, section) {
       openModal: async () => {
         const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
         openBlockLibraryModal({
-          onInsert: (dom) => {
+          onInsert: getExtensionsBridge().view?.editable ? (dom) => {
             const { view } = getExtensionsBridge();
             if (view) insertLibraryBlock(view, dom);
-          },
+          } : undefined,
         });
       },
     };

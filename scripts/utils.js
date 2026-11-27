@@ -30,6 +30,29 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
     .replace(/-$/g, '');
 }
 
+export const PRODUCT_NAME = 'Experience Workspace';
+
+export function setPageTitle(name) {
+  document.title = name ? `${name} | ${PRODUCT_NAME}` : PRODUCT_NAME;
+}
+
+export function parseSubdomain(siteUrl) {
+  try {
+    const url = new URL(siteUrl);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
+    if (!/^[a-z0-9-]+\.(?:hlx|aem)\.(?:live|page)$/.test(url.hostname)) return null;
+    const helixString = url.hostname.split('.')[0];
+    if (!helixString) return null;
+    const parts = helixString.split('--');
+    if (parts.length !== 3) return null;
+    const [branch, site, org] = parts;
+    if (!branch || !site || !org) return null;
+    return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizePathParts(path) {
   const parts = path.slice(1)
     .toLowerCase()

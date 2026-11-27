@@ -77,6 +77,10 @@
   overflow: hidden;
 }
 
+.toolbar-label {
+  padding: 0 8px;
+}
+
 .block-name {
   text-transform: capitalize;
   white-space: nowrap;
