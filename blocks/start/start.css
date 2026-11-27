@@ -321,16 +321,12 @@
 }
 
 .start-page .start-cards-panel,
-.start-page .nx-cards.start {
+.start-page .nx-cards {
   margin-block-start: var(--s2-spacing-300);
   padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
   box-shadow: var(--s2-drop-shadow-emphasized);
-}
-
-.start-page .nx-cards.start {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
 }
 
 .start-page .start-cards-panel > .default-content {
@@ -353,7 +349,7 @@
   }
 }
 
-.start-page .start-cards-panel > .nx-cards.start {
+.start-page .start-cards-panel > .nx-cards {
   margin: 0;
   padding: 0;
   border-radius: 0;

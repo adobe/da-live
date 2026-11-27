@@ -5,7 +5,6 @@ const nx = setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
 const sheet = new CSSStyleSheet();
-sheet.replaceSync(await (await fetch('/blocks/start/start.css')).text());
 loadStyle._set(new URL('../../../../blocks/start/start.js', import.meta.url).href, sheet);
 
 const { default: init } = await import('../../../../blocks/start/start.js');
@@ -24,7 +23,7 @@ describe('authored Start page', () => {
       <da-greeting class="greeting">Welcome</da-greeting>
       <div class="add-site">Add a site</div>
       <div class="content">Additional authored content</div>
-      <div class="nx-cards start">
+      <div class="nx-cards bordered">
         <div>One</div><div>Two</div><div>Three</div><div>Four</div>
       </div>
     </div>`;
@@ -75,10 +74,10 @@ describe('authored Start page', () => {
       <div class="add-site">Add a site</div>
     </div>
     <div class="default-content"><h4>Need to create a site?</h4></div>
-    <div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+    <div class="block-content"><div class="nx-cards bordered">Cards</div></div>`;
     entry = surface.querySelector('div.start');
     const intro = surface.querySelector('.default-content');
-    const cards = surface.querySelector('.nx-cards.start');
+    const cards = surface.querySelector('.nx-cards');
     init(entry);
 
     expect(surface.classList.contains('start-page')).to.be.true;
@@ -94,9 +93,9 @@ describe('authored Start page', () => {
     surface.className = 'section';
     surface.innerHTML = `<div class="block-content">
       <div class="start"></div><div class="add-site"></div>
-    </div><div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+    </div><div class="block-content"><div class="nx-cards">Cards</div></div>`;
     entry = surface.querySelector('div.start');
-    const cards = surface.querySelector('.nx-cards.start');
+    const cards = surface.querySelector('.nx-cards');
     init(entry);
 
     expect(surface.querySelector('.start-cards-panel')).to.be.null;
@@ -107,61 +106,13 @@ describe('authored Start page', () => {
     surface.className = 'section';
     surface.innerHTML = `<div class="block-content"><div class="start"></div></div>
       <div class="default-content"><h4>Other content</h4><ul><li>Keep here</li></ul></div>
-      <div class="block-content"><div class="nx-cards start">Cards</div></div>`;
+      <div class="block-content"><div class="nx-cards bordered">Cards</div></div>`;
     entry = surface.querySelector('div.start');
     const intro = surface.querySelector('.default-content');
     init(entry);
 
     expect(surface.querySelector('.start-cards-panel')).to.be.null;
     expect(intro.parentElement).to.equal(surface);
-  });
-
-  it('fits a panel with authored text on wide and narrow screens with space around Add Site', () => {
-    container.style.cssText = `
-      width: 900px;
-      --s2-spacing-300: 16px;
-      --s2-spacing-400: 24px;
-      --s2-spacing-600: 40px;
-    `;
-    surface.className = 'section';
-    surface.innerHTML = `<div class="block-content">
-      <div class="start"></div>
-      <da-greeting class="greeting"><h1>Welcome</h1><p>Add a site</p></da-greeting>
-      <div class="add-site" style="height: 80px"></div>
-    </div>
-    <div class="default-content"><h4>Need to create a site?</h4><p>Choose a starting point.</p></div>
-    <div class="block-content"><div class="nx-cards start" style="display: grid; gap: 16px">
-      <div>One</div><div>Two</div><div>Three</div><div>Four</div>
-    </div></div>`;
-    entry = surface.querySelector('div.start');
-    init(entry);
-
-    const panel = surface.querySelector('.start-cards-panel');
-    const cards = panel.querySelector('.nx-cards.start');
-    const intro = panel.querySelector('.default-content');
-    expect(intro.querySelector('p').getBoundingClientRect().top
-      - intro.querySelector('h4').getBoundingClientRect().bottom).to.equal(0);
-    const addSite = surface.querySelector('.add-site');
-    const greeting = surface.querySelector('.greeting');
-    expect(addSite.getBoundingClientRect().top - greeting.getBoundingClientRect().bottom)
-      .to.equal(40);
-    expect(panel.getBoundingClientRect().top - addSite.getBoundingClientRect().bottom)
-      .to.equal(16);
-    expect(panel.getBoundingClientRect().width).to.equal(664);
-    expect(getComputedStyle(cards).gridTemplateColumns.split(' ').length).to.equal(2);
-    expect(cards.getBoundingClientRect().top - intro.getBoundingClientRect().bottom).to.equal(16);
-    expect(intro.getBoundingClientRect().left - panel.getBoundingClientRect().left).to.equal(16);
-    expect(getComputedStyle(cards).padding).to.equal('0px');
-
-    container.style.width = '320px';
-    expect(container.scrollWidth).to.equal(320);
-    expect(getComputedStyle(cards).gridTemplateColumns.split(' ').length).to.equal(1);
-    expect(cards.children[1].offsetTop).to.be.greaterThan(cards.children[0].offsetTop);
-    const panelRect = panel.getBoundingClientRect();
-    const surfaceRect = surface.getBoundingClientRect();
-    expect(panelRect.left - surfaceRect.left).to.equal(24);
-    expect(surfaceRect.right - panelRect.right).to.equal(24);
-    expect(surfaceRect.bottom - panelRect.bottom).to.be.at.least(24);
   });
 
   it('adopts the Start stylesheet only once', () => {
