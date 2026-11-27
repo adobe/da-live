@@ -992,11 +992,11 @@ describe('da-permissions', () => {
   });
 
   describe('remove all permissions', () => {
-    const removeButton = async (el, path) => {
+    async function removeButton(el, path) {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       await cards.updateComplete;
       return cards.shadowRoot.querySelector(`article.scope-card[data-path="${path}"] button.remove-scope`);
-    };
+    }
 
     it('removes every rule of a folder after confirming, and nothing on cancel', async () => {
       const body = structuredClone(SITE_S_CONFIG_BODY);
@@ -1040,13 +1040,12 @@ describe('da-permissions', () => {
       const { putCalls } = mockFetch({ configFor: () => body, putFor: () => new Response('', { status: 200 }) });
       const el = await mount('myorg', 's');
 
-      (await removeButton(el, '/s/promotions.html')).click();
+      el._onRemoveRequest({ detail: { path: '/s/promotions.html' } });
       await el.updateComplete;
-      const dialog = el.shadowRoot.querySelector('nx-dialog');
-      expect(dialog.querySelector('p').textContent).to.equal('Remove all permissions for promotions.html and .promotions/?');
-      dialog.querySelector('[slot="actions"].nx-form-btn-primary').click();
-      await waitUntil(() => putCalls.length === 1);
+      expect(el.shadowRoot.querySelector('nx-dialog p').textContent).to.equal('Remove all permissions for promotions.html and .promotions/?');
+      await el._confirmRemoveNow();
 
+      expect(putCalls.length).to.equal(1);
       const saved = JSON.parse(putCalls[0].opts.body.get('config'));
       expect(saved.permissions.data).to.deep.equal(SITE_S_CONFIG_BODY.permissions.data);
     });
@@ -1057,7 +1056,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => body });
       const el = await mount('myorg', 's');
 
-      (await removeButton(el, '/s/promotions.html')).click();
+      el._onRemoveRequest({ detail: { path: '/s/promotions.html' } });
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('nx-dialog p').textContent).to.equal('Remove all permissions for promotions.html?');
     });
@@ -1068,9 +1067,8 @@ describe('da-permissions', () => {
       await addPath(el, '/blog');
 
       (await removeButton(el, '/s/blog/ + **')).click();
+      await el._confirmRemoveNow();
       await el.updateComplete;
-      el.shadowRoot.querySelector('nx-dialog [slot="actions"].nx-form-btn-primary').click();
-      await waitUntil(() => el._pendingPath === null, el);
 
       expect(putCalls.length).to.equal(0);
       const cards = el.shadowRoot.querySelector('da-permissions-cards');

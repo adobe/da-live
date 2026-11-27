@@ -418,11 +418,11 @@ describe('permissions utils', () => {
     });
   });
 
-  describe('removeScope', () => {
-    function makeConfig(data = []) {
-      return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
-    }
+  function makeConfig(data = []) {
+    return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
+  }
 
+  describe('removeScope', () => {
     it('removes every rule of the scope, however its path is spelled and whatever its actions', () => {
       const cfg = makeConfig([
         { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
@@ -449,9 +449,6 @@ describe('permissions utils', () => {
   });
 
   describe('scopePaths / updateScope', () => {
-    function makeConfig(data = []) {
-      return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
-    }
     const pagePaths = scopePaths('/s/promotions.html', 's');
 
     it('pairs a page with its media folder, and leaves other scopes alone', () => {

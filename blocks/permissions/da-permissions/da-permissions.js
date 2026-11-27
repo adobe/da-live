@@ -456,11 +456,10 @@ class DaPermissions extends LitElement {
     const [, media] = scopePaths(path, this.site);
     const mediaSlot = media && this._slots.find((s) => s.path === media);
     const label = scopeLabel(path, this.site);
-    const mediaLabel = mediaSlot && scopeLabel(media, this.site);
-    const onMedia = mediaSlot?.[level]?.some((m) => m.toLowerCase() === who.toLowerCase());
+    const onMedia = who && mediaSlot?.[level].some((m) => m.toLowerCase() === who.toLowerCase());
     const text = who
-      ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?${onMedia ? ` This also removes them from ${mediaLabel}.` : ''}`
-      : `Remove all permissions for ${label}${mediaSlot ? ` and ${mediaLabel}` : ''}?`;
+      ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?${onMedia ? ` This also removes them from ${mediaSlot.label}.` : ''}`
+      : `Remove all permissions for ${label}${mediaSlot ? ` and ${mediaSlot.label}` : ''}?`;
     return html`
       <nx-dialog title=${who ? 'Remove member' : 'Remove permissions'} @close=${() => this._cancelRemove()}>
         <p>${text}</p>
