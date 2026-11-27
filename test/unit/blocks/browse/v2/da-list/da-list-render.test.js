@@ -337,24 +337,29 @@ describe('da-list render', () => {
     expect(dialog.title).to.contain('Deleting');
   });
 
-  it('Hides Cancel only in the preview/publish results dialog', async () => {
+  it('Swaps Cancel for a close button only in the preview/publish results dialog', async () => {
     await fixture({ fullpath: '/o/r' });
-    const cancelButton = async () => {
+    const getDialog = async () => {
       await customElements.whenDefined('da-confirm-dialog');
       const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
       await dialog.updateComplete;
-      return [...dialog.shadowRoot.querySelectorAll('button')].find((btn) => btn.textContent.trim() === 'Cancel');
+      return dialog;
     };
+    const cancelButton = async () => [...(await getDialog()).shadowRoot.querySelectorAll('button')]
+      .find((btn) => btn.textContent.trim() === 'Cancel');
+    const closeButton = async () => (await getDialog()).shadowRoot.querySelector('button[aria-label="Close"]');
 
     el._selectedItems = [{ path: '/o/r/x.html', ext: 'html' }];
     el._confirm = { type: 'publish' };
     await rerender();
     expect(await cancelButton()).to.exist;
+    expect(await closeButton()).to.not.exist;
 
     el._aemActionState = { verb: 'Publish', results: [{ name: 'x', url: 'https://example.com/x' }] };
     el._confirm = { type: 'results' };
     await rerender();
     expect(await cancelButton()).to.not.exist;
+    expect(await closeButton()).to.exist;
   });
 
   it('Renders the drop area when drag is enabled', async () => {

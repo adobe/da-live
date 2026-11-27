@@ -1,10 +1,13 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 
+const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
+
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
 const form = await loadStyle(`${getNx2()}/styles/form.css`);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 const STYLE = await loadStyle(import.meta.url);
 
 /**
@@ -21,7 +24,7 @@ class DaConfirmDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [form, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [form, buttons, STYLE];
   }
 
   _onCancel() {
@@ -32,6 +35,10 @@ class DaConfirmDialog extends LitElement {
     const { action } = this;
     return html`
       <nx-dialog title=${this.title ?? ''}>
+        ${this.hideCancel ? html`
+          <button type="button" class="nx-action-btn-icon da-confirm-close" aria-label="Close" @click=${this._onCancel}>
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${ICON_CLOSE}#icon"></use></svg>
+          </button>` : nothing}
         <slot></slot>
         ${this.message ? html`<span slot="actions" class="da-confirm-message">${this.message}</span>` : nothing}
         ${this.hideCancel ? nothing : html`<button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>`}

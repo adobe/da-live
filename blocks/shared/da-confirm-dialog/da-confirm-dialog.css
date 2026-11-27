@@ -14,3 +14,14 @@
   background: var(--s2-red-1000);
   border-color: var(--s2-red-1000);
 }
+
+nx-dialog::part(panel) {
+  position: relative;
+}
+
+.da-confirm-close {
+  position: absolute;
+  top: calc(var(--s2-spacing-500) + (var(--s2-component-xl-bold-line-height, 22px) - 32px) / 2);
+  right: var(--s2-spacing-400);
+  border-radius: var(--s2-corner-radius-800);
+}
