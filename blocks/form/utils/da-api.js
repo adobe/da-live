@@ -56,3 +56,17 @@ export async function saveSourceHtml({ path, html }) {
     return { error: 'Could not save source document.', cause: e?.message ?? String(e) };
   }
 }
+
+// Helix 6 native JSON document. Only `metadata` and `data` are persisted.
+export async function saveSourceJson({ path, json }) {
+  if (!path || !json || typeof json !== 'object') return { error: 'Invalid save input.' };
+
+  try {
+    const { metadata, data } = json;
+    const resp = await source.save(path, { body: JSON.stringify({ metadata, data }) });
+    if (!resp?.ok) return { error: 'Could not save source document.', status: resp?.status };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Could not save source document.', cause: e?.message ?? String(e) };
+  }
+}

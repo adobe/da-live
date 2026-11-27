@@ -11,3 +11,31 @@ export function getFileItemHref({ path, ext, editor }) {
     return externalUrl;
   });
 }
+
+// Sheets carry `:type`; native structured content carries `metadata.schemaName`.
+export function isStructuredContentJson(json) {
+  return !!json && typeof json === 'object' && !Array.isArray(json) && !json[':type']
+    && typeof json.metadata?.schemaName === 'string' && json.metadata.schemaName.length > 0;
+}
+
+// The list API can't tell a sheet from native structured content (both `.json`),
+// so peek at the content to pick the editor. Falls back to the sheet editor.
+export async function getJsonEditorHref({ path, ext, editor }) {
+  const fallback = getEditPath({ path, ext, editor });
+  try {
+    const { source } = await getNx2Api();
+    const resp = await source.get(path);
+    if (resp.ok && isStructuredContentJson(await resp.json())) {
+      return `/form${window.location.search}#${path}`;
+    }
+  } catch {
+    // fall through to the sheet editor
+  }
+  return fallback;
+}
+
+// Async href for on-demand navigation (click, search pick).
+export function resolveFileItemHref(item) {
+  if (item.ext === 'json') return getJsonEditorHref(item);
+  return getFileItemHref(item);
+}

@@ -216,3 +216,41 @@ describe('attachPersistence', () => {
     p.detach();
   });
 });
+
+describe('attachPersistence json mode (Helix 6)', () => {
+  it('saves { metadata, data } as json to the path, single payload', async () => {
+    const editor = makeEditor({ a: 1 });
+    const calls = [];
+    const save = async (args) => {
+      calls.push(args);
+      return { ok: true };
+    };
+    const p = attachPersistence(editor, { path: '/o/s/p.json', mode: 'json', save });
+    editor.setValues({ a: 2 });
+    p.notify();
+    await new Promise((r) => { setTimeout(r, 0); });
+    expect(calls).to.have.length(1);
+    expect(calls[0].path).to.equal('/o/s/p.json');
+    expect(calls[0].html).to.equal(undefined);
+    expect(calls[0].json).to.deep.equal({ metadata: { schemaName: 'demo' }, data: { a: 2 } });
+  });
+
+  it('re-queues with the latest document while in flight', async () => {
+    const editor = makeEditor({});
+    const bodies = [];
+    const releases = [];
+    const save = ({ json }) => new Promise((resolve) => {
+      bodies.push(json.data);
+      releases.push(() => resolve({ ok: true }));
+    });
+    const p = attachPersistence(editor, { path: '/x.json', mode: 'json', save });
+    editor.setValues({ v: 1 });
+    p.notify();
+    editor.setValues({ v: 2 });
+    p.notify();
+    releases[0]();
+    await new Promise((r) => { setTimeout(r, 0); });
+    expect(bodies).to.deep.equal([{ v: 1 }, { v: 2 }]);
+    releases[1]();
+  });
+});

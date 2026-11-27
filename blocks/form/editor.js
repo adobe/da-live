@@ -27,8 +27,9 @@ const EL_NAME = 'ew-form-editor';
 function detailsFromCtx(ctx) {
   if (!ctx?.org || !ctx?.repo || !ctx?.path) return null;
   const raw = `/${String(ctx.path).replace(/^\/+/, '')}`;
-  const fullpath = raw.toLowerCase().endsWith('.html') ? raw : `${raw}.html`;
-  const name = fullpath.slice(fullpath.lastIndexOf('/') + 1, -'.html'.length);
+  // Helix 6 native JSON documents keep their `.json` extension in the hash.
+  const fullpath = /\.(html|json)$/i.test(raw) ? raw : `${raw}.html`;
+  const name = fullpath.slice(fullpath.lastIndexOf('/') + 1).replace(/\.(html|json)$/i, '');
   return {
     owner: ctx.org,
     repo: ctx.repo,
@@ -36,6 +37,38 @@ function detailsFromCtx(ctx) {
     fullpath,
     sourceUrl: fullpath,
   };
+}
+
+// Rewrites `#/org/site/path` to `#/org/site/path.json` when the document is
+// stored as native JSON. Returns true if the hash changed.
+function syncJsonHash(jsonPath) {
+  if (!jsonPath?.toLowerCase().endsWith('.json')) return false;
+  const { hash } = window.location;
+  if (!hash.startsWith('#/') || /\.json$/i.test(hash)) return false;
+  const next = `${hash.replace(/\.html$/i, '')}.json`;
+  window.history.replaceState(null, '', next);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  return true;
+}
+
+// The /form page points preview/live "open" links at the da-sc worker, which
+// converts legacy DA HTML to JSON. Helix 6 sites deliver native JSON directly,
+// so drop those metas there (ew-actions then falls back to .aem.page/.aem.live)
+// and restore them for legacy sites.
+const DA_SC_URL_METAS = ['preview-url', 'live-url'];
+const removedUrlMetas = new Map();
+
+function syncDeliveryUrlMetas(hlx6) {
+  DA_SC_URL_METAS.forEach((name) => {
+    const meta = document.head.querySelector(`meta[name="${name}"]`);
+    if (hlx6 && meta) {
+      removedUrlMetas.set(name, meta);
+      meta.remove();
+    } else if (!hlx6 && !meta && removedUrlMetas.has(name)) {
+      document.head.append(removedUrlMetas.get(name));
+      removedUrlMetas.delete(name);
+    }
+  });
 }
 
 // hashChange emits `{ org, site, path, fullpath }`; the element wants
@@ -139,7 +172,10 @@ class Form extends LitElement {
     this._state = this._editor.getState();
     // Attach AFTER load so the loaded document is the persistence's baseline —
     // mutations after this point trigger saves; the load itself does not.
-    this._persistence = attachPersistence(this._editor, { path: this._details?.fullpath });
+    this._persistence = attachPersistence(this._editor, {
+      path: this._details?.fullpath,
+      mode: this._context?.storage === 'json' ? 'json' : 'html',
+    });
     this._nav = { pointer: '/data', origin: null, seq: 0 };
   }
 
@@ -182,8 +218,17 @@ class Form extends LitElement {
     ]);
     if (version !== this._loadVersion) return;
 
+    // Native JSON docs: carry `.json` in the hash so hash-driven consumers
+    // (workspace nav preview/publish, status) target the JSON resource, like
+    // sheets do. The hashchange reloads the context once with the new path.
+    if (context.storage === 'json' && syncJsonHash(context.details?.fullpath)) return;
+    // `storage: 'json'` is only set when the site is Helix 6 (isHlx6 probe).
+    syncDeliveryUrlMetas(context.storage === 'json');
+
     this._previewEnabled = previewEnabled;
     this._context = context;
+    // Helix 6 resolves the document to its native .json path.
+    if (context.details) this._details = { ...this._details, ...context.details };
 
     if (context.status === 'ready') {
       this._start({ schema: context.schema, json: context.json });

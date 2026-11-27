@@ -3,8 +3,11 @@ import '../../../setup-nx.js';
 import {
   isEmptyDocumentHtml,
   isStructuredContentHtml,
-  loadFormContext,
+  loadFormContext as loadFormContextRaw,
 } from '../../../../../blocks/form/utils/context.js';
+
+// Default to non-Helix-6 so tests never hit the network probe.
+const loadFormContext = (args) => loadFormContextRaw({ isHlx6: () => false, ...args });
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -270,5 +273,108 @@ describe('loadFormContext', () => {
       });
       expect(result.displayPath).to.equal('/adobe/demo/page');
     });
+  });
+});
+
+// ─── Helix 6 (native JSON) ─────────────────────────────────────────────────
+
+describe('loadFormContext (Helix 6)', () => {
+  const schemas = { project: { type: 'object' } };
+  const htmlDetails = { ...validDetails, fullpath: '/adobe/demo/page.html', sourceUrl: '/adobe/demo/page.html' };
+  const hlx6 = () => true;
+  const scJson = { metadata: { schemaName: 'project', title: 'T' }, data: { a: 1 } };
+  const run = ({ files, schemaSet = schemas, details = htmlDetails }) => {
+    const calls = [];
+    const fetchHtml = async ({ sourceUrl }) => {
+      calls.push(sourceUrl);
+      return files[sourceUrl] ?? { error: 'x', status: 404 };
+    };
+    return loadFormContext({
+      details,
+      fetchHtml,
+      fetchSchemas: async () => schemaSet,
+      isHlx6: hlx6,
+    }).then((r) => ({ r, calls }));
+  };
+
+  it('reads <path>.json and uses it directly', async () => {
+    const { r, calls } = await run({ files: { '/adobe/demo/page.json': { html: JSON.stringify(scJson) } } });
+    expect(calls).to.deep.equal(['/adobe/demo/page.json']);
+    expect(r.status).to.equal('ready');
+    expect(r.storage).to.equal('json');
+    expect(r.json).to.deep.equal(scJson);
+    expect(r.details.fullpath).to.equal('/adobe/demo/page.json');
+    expect(r.displayPath).to.equal('/adobe/demo/page');
+  });
+
+  it('accepts array data and strips a .json ctx path', async () => {
+    const json = { metadata: { schemaName: 'project' }, data: [] };
+    const { r } = await run({
+      details: { ...htmlDetails, fullpath: '/adobe/demo/page.json' },
+      files: { '/adobe/demo/page.json': { html: JSON.stringify(json) } },
+    });
+    expect(r.status).to.equal('ready');
+  });
+
+  it('blocks load-failed on invalid JSON', async () => {
+    const { r } = await run({ files: { '/adobe/demo/page.json': { html: '{nope' } } });
+    expect(r.blocker.type).to.equal('load-failed');
+  });
+
+  it('blocks not-form-content on non-SC JSON', async () => {
+    const { r } = await run({ files: { '/adobe/demo/page.json': { html: '{":type":"sheet","data":[]}' } } });
+    expect(r.blocker.type).to.equal('not-form-content');
+  });
+
+  it('blocks missing-schema for unknown schemaName', async () => {
+    const { r } = await run({ schemaSet: {}, files: { '/adobe/demo/page.json': { html: JSON.stringify(scJson) } } });
+    expect(r.blocker.type).to.equal('missing-schema');
+  });
+
+  it('treats empty body or {} as new', async () => {
+    expect((await run({ files: { '/adobe/demo/page.json': { html: '' } } })).r.status).to.equal('select-schema');
+    expect((await run({ files: { '/adobe/demo/page.json': { html: '{}' } } })).r.status).to.equal('select-schema');
+    expect((await run({ schemaSet: {}, files: { '/adobe/demo/page.json': { html: '{}' } } })).r.status).to.equal('no-schemas');
+  });
+
+  it('maps 403 to no-access', async () => {
+    const { r } = await run({ files: { '/adobe/demo/page.json': { error: 'x', status: 403 } } });
+    expect(r.blocker.type).to.equal('no-access');
+  });
+
+  it('falls back to legacy .html on json 404 and converts it', async () => {
+    const { r, calls } = await run({ files: { '/adobe/demo/page.html': { html: scHtml() } } });
+    expect(calls).to.deep.equal(['/adobe/demo/page.json', '/adobe/demo/page.html']);
+    expect(r.status).to.equal('ready');
+    expect(r.storage).to.equal('json');
+    expect(r.details.fullpath).to.equal('/adobe/demo/page.json');
+    expect(r.json.metadata.schemaName).to.equal('project');
+  });
+
+  it('treats empty legacy html as new', async () => {
+    const { r } = await run({ files: { '/adobe/demo/page.html': { html: emptyDocHtml } } });
+    expect(r.status).to.equal('select-schema');
+  });
+
+  it('treats 404 on both as new, not not-document', async () => {
+    const { r } = await run({ files: {} });
+    expect(r.status).to.equal('select-schema');
+    expect(r.storage).to.equal('json');
+  });
+
+  it('non-Helix-6 keeps the html flow', async () => {
+    const calls = [];
+    const r = await loadFormContext({
+      details: htmlDetails,
+      fetchHtml: async ({ sourceUrl }) => {
+        calls.push(sourceUrl);
+        return { html: scHtml() };
+      },
+      fetchSchemas: async () => schemas,
+      isHlx6: () => false,
+    });
+    expect(calls).to.deep.equal(['/adobe/demo/page.html']);
+    expect(r.status).to.equal('ready');
+    expect(r.storage).to.equal(undefined);
   });
 });

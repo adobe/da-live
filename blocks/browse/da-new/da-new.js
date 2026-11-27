@@ -69,6 +69,8 @@ export default class DaNew extends LitElement {
         const { source } = await getNx2Api();
         await source.createFolder(path);
         this.sendNewItem({ name: finalName, path });
+      } else if (this._createType === 'structured') {
+        window.location = await this._createStructuredContent(finalName);
       } else {
         const ext = this._createType === 'document' ? 'html' : 'json';
         const path = `${this.fullpath}/${finalName}.${ext}`;
@@ -80,6 +82,22 @@ export default class DaNew extends LitElement {
     } finally {
       this._loading = false;
     }
+  }
+
+  // Structured content opens in the form editor, which shows the schema
+  // picker for an empty/missing document. Helix 6 stores native JSON written
+  // on first edit, so nothing is saved up front; legacy sites need an empty
+  // `.html` document to exist first.
+  async _createStructuredContent(name) {
+    const [, org, site] = this.fullpath.split('/');
+    const { source, isHlx6 } = await getNx2Api();
+    let path = `${this.fullpath}/${name}`;
+    if (await isHlx6(org, site)) {
+      path = `${path}.json`;
+    } else {
+      await source.save(`${path}.html`, { body: EMPTY_DOC });
+    }
+    return `/form${window.location.search}#${path}`;
   }
 
   _handleCreateDialogClose() {
@@ -130,7 +148,12 @@ export default class DaNew extends LitElement {
   }
 
   get _createDialogTitle() {
-    const titles = { folder: 'New folder', document: 'New page', sheet: 'New sheet' };
+    const titles = {
+      folder: 'New folder',
+      document: 'New page',
+      sheet: 'New sheet',
+      structured: 'New structured content',
+    };
     return titles[this._createType] ?? 'New';
   }
 
@@ -142,6 +165,7 @@ export default class DaNew extends LitElement {
         { id: 'folder', label: 'Folder', icon: 'folder' },
         { id: 'document', label: 'Page', icon: 'filehtml' },
         { id: 'sheet', label: 'Sheet', icon: 'data' },
+        { id: 'structured', label: 'Structured content', icon: 'schema' },
         { id: 'media', label: 'Media', icon: 'image' },
         { id: 'link', label: 'Link', icon: 'link' },
       ]} @select=${this.handleNewType}>
