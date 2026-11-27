@@ -1,3 +1,10 @@
+## [1.37.2](https://github.com/adobe/da-live/compare/v1.37.1...v1.37.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ui:** replace da branding with ew in user-facing copy ([#1750](https://github.com/adobe/da-live/issues/1750)) ([e52adf9](https://github.com/adobe/da-live/commit/e52adf9a83534ba5af481252f4db1dc02bc79eb2))
+
 ## [1.37.1](https://github.com/adobe/da-live/compare/v1.37.0...v1.37.1) (2026-11-26)
 
 
