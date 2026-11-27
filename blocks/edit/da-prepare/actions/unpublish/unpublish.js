@@ -42,6 +42,11 @@ class DaUnpublish extends LitElement {
       this._results.push('Couldn\'t unpublish from production.');
     }
 
+    if (previewResp.ok || liveResp.ok) {
+      // Stable da-nx aem-status-events.js contract; older/pinned Nexter can ignore it.
+      document.dispatchEvent(new CustomEvent('nx-aem-status-changed', { detail: { path: fullpath } }));
+    }
+
     if (this._results.length) {
       this._statusText = 'There was an error';
       return;
