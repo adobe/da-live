@@ -3,8 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  activeQuery, folderRulePath, parseFolderPath, parsePagePath, scopePaths,
-  updateScope, hasPermissionsSheet, LEVEL_LABEL,
+  activeQuery, folderRulePath, parseFolderPath, parsePagePath, hasPermissionsSheet, LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -199,14 +198,9 @@ class DaPermissions extends LitElement {
     const who = parseMembers(value);
     if (who.length === 0) return;
 
-    // A page also checks its media folder rule, so adding a member again can fill it in.
-    const paths = scopePaths(path, this.site);
-    const slots = this._slots;
-    const allDuplicate = paths.every((p) => {
-      const slot = slots.find((s) => s.path === p);
-      const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
-      return who.every((w) => currentLower.has(w.toLowerCase()));
-    });
+    const slot = this._slots.find((s) => s.path === path);
+    const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
+    const allDuplicate = who.every((w) => currentLower.has(w.toLowerCase()));
     if (allDuplicate) {
       const { showToast, VARIANT_WARNING } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
       showToast({ text: `Already has access: ${who.join(', ')}`, variant: VARIANT_WARNING });
@@ -215,8 +209,7 @@ class DaPermissions extends LitElement {
 
     // Clear the filter so the new member is visible even if it doesn't match.
     this._query = '';
-    const add = (config, p) => addMembers(config, p, level, who);
-    await this._mutate((config) => updateScope(config, paths, add), path);
+    await this._mutate((config) => addMembers(config, path, level, who), path);
   }
 
   _onRemoveRequest({ detail }) {
@@ -230,9 +223,7 @@ class DaPermissions extends LitElement {
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    const paths = scopePaths(path, this.site);
-    const remove = (config, p) => removeMember(config, p, level, who);
-    await this._mutate((config) => updateScope(config, paths, remove), path);
+    await this._mutate((config) => removeMember(config, path, level, who), path);
   }
 
   // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
@@ -451,12 +442,9 @@ class DaPermissions extends LitElement {
   _renderRemoveDialog() {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
-    const [, media] = scopePaths(path, this.site);
-    const mediaSlot = media && this._slots.find((s) => s.path === media);
-    const onMedia = mediaSlot?.[level].some((m) => m.toLowerCase() === who.toLowerCase());
     return html`
       <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
-        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?${onMedia ? ` This also removes them from ${scopeLabel(media, this.site)}.` : ''}</p>
+        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
         <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;

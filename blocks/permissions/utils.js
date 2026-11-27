@@ -53,22 +53,6 @@ export function parseFolderPath(value) {
   return { folder };
 }
 
-// A page's images live in its media folder `.{page}/`. An exact page rule doesn't cover that
-// folder itself in da-admin, so it gets its own rule. Sheets and DA's own dot folders
-// (`.da/`, `.trash/`, ...) aren't a page's media folder. da-admin drops spaces from rule paths.
-const RESERVED_DOT_FOLDERS = ['da', 'da-versions', 'helix', 'snapshots', 'trash', 'versions'];
-
-export function mediaRulePath(pagePath) {
-  const path = pagePath.replace(/ /g, '');
-  const isHtml = path.endsWith('.html');
-  const page = isHtml ? path.slice(0, -'.html'.length) : path;
-  const slash = page.lastIndexOf('/');
-  const name = page.slice(slash + 1);
-  if (!name || name.startsWith('.') || RESERVED_DOT_FOLDERS.includes(name)) return null;
-  if (!isHtml && name.includes('.')) return null;
-  return normPath(`${page.slice(0, slash + 1)}.${name}/+**`);
-}
-
 // da-admin lowercases request paths and drops spaces from rule paths, so only names DA can
 // create would match. Pages keep .html: an exact rule without it also matches the folder.
 const PAGE_SEGMENT_RE = /^[a-z0-9_-][a-z0-9._-]*$/;
@@ -272,19 +256,6 @@ export function removeMember(config, path, level, who) {
   sheet.data = kept;
   syncSheetCounts(sheet);
   return { config: next, changed: true };
-}
-
-// A change to a page also goes to its media folder rule.
-export function scopePaths(path, site) {
-  const media = scopeKind(path, site) === 'page' && mediaRulePath(path);
-  return media ? [path, media] : [path];
-}
-
-export function updateScope(config, paths, update) {
-  return paths.reduce((acc, path) => {
-    const result = update(acc.config, path);
-    return { config: result.config, changed: acc.changed || result.changed };
-  }, { config, changed: false });
 }
 
 const MIN_QUERY_LENGTH = 2;

@@ -11,39 +11,13 @@ import {
   addMembers,
   removeMember,
   parseFolderPath,
-  mediaRulePath,
   parsePagePath,
-  scopePaths,
-  updateScope,
 } from '../../../../blocks/permissions/utils.js';
 
 describe('permissions utils', () => {
   describe('folderRulePath', () => {
     it('builds a normalized folder rule path', () => {
       expect(folderRulePath('s', 'blog/drafts')).to.equal('/s/blog/drafts/ + **');
-    });
-  });
-
-  describe('mediaRulePath', () => {
-    it('builds the rule path of the page media folder', () => {
-      expect(mediaRulePath('/s/promotions.html')).to.equal('/s/.promotions/ + **');
-      expect(mediaRulePath('/s/blog/post.html')).to.equal('/s/blog/.post/ + **');
-      expect(mediaRulePath('/s/about.us.html')).to.equal('/s/.about.us/ + **');
-      expect(mediaRulePath('/s/promotions')).to.equal('/s/.promotions/ + **');
-    });
-
-    it('returns null for files with an extension, which have no media folder', () => {
-      expect(mediaRulePath('/s/redirects.json')).to.equal(null);
-    });
-
-    it('returns null for names starting with a dot', () => {
-      expect(mediaRulePath('/s/.about.html')).to.equal(null);
-    });
-
-    it('returns null for pages named like DA\'s own dot folders', () => {
-      expect(mediaRulePath('/s/da.html')).to.equal(null);
-      expect(mediaRulePath('/s/sub/trash.html')).to.equal(null);
-      expect(mediaRulePath('/s/snapshots')).to.equal(null);
     });
   });
 
@@ -413,62 +387,6 @@ describe('permissions utils', () => {
 
     it('is a no-op when the member is absent', () => {
       const { changed } = removeMember(makeMultiConfig(), '/s/+**', 'write', 'nobody@x.com');
-      expect(changed).to.be.false;
-    });
-  });
-
-  describe('scopePaths / updateScope', () => {
-    function makeConfig(data = []) {
-      return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
-    }
-    const pagePaths = scopePaths('/s/promotions.html', 's');
-
-    it('pairs a page with its media folder, and leaves other scopes alone', () => {
-      expect(pagePaths).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
-      expect(scopePaths('/s/promotions', 's')).to.deep.equal(['/s/promotions', '/s/.promotions/ + **']);
-      expect(scopePaths('/s/redirects.json', 's')).to.deep.equal(['/s/redirects.json']);
-      expect(scopePaths('/s/blog/ + **', 's')).to.deep.equal(['/s/blog/ + **']);
-      expect(scopePaths('/s/foo/', 's')).to.deep.equal(['/s/foo/']);
-      expect(scopePaths('/s/foo/ ', 's')).to.deep.equal(['/s/foo/ ']);
-      expect(scopePaths('/s/foo.html ', 's')).to.deep.equal(['/s/foo.html ', '/s/.foo/ + **']);
-      expect(scopePaths('/s/C O N F I G', 's')).to.deep.equal(['/s/C O N F I G']);
-      expect(scopePaths('/s/CONFIG', 's')).to.deep.equal(['/s/CONFIG']);
-    });
-
-    it('adds a member to the page row and its media folder row', () => {
-      const { config, changed } = updateScope(makeConfig(), pagePaths, (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
-      expect(changed).to.be.true;
-      expect(config.permissions.data).to.deep.equal([
-        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/.promotions/ + **', groups: 'legal@x.com', actions: 'write' },
-      ]);
-      expect(config.permissions.total).to.equal(2);
-    });
-
-    it('fills in a missing media folder row when the page row already has the member', () => {
-      const cfg = makeConfig([{ path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' }]);
-      const { config, changed } = updateScope(cfg, pagePaths, (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
-      expect(changed).to.be.true;
-      expect(config.permissions.data.map((r) => r.path)).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
-    });
-
-    it('removes the member from both rows and keeps other members', () => {
-      const cfg = makeConfig([
-        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/.promotions/+**', groups: 'Legal@x.com, img@x.com', actions: 'write' },
-        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
-      ]);
-      const { config, changed } = updateScope(cfg, pagePaths, (c, p) => removeMember(c, p, 'write', 'legal@x.com'));
-      expect(changed).to.be.true;
-      expect(config.permissions.data).to.deep.equal([
-        { path: '/s/.promotions/+**', groups: 'img@x.com', actions: 'write' },
-        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
-      ]);
-      expect(config.permissions.total).to.equal(2);
-    });
-
-    it('is unchanged when no row changes', () => {
-      const { changed } = updateScope(makeConfig(), pagePaths, (c, p) => removeMember(c, p, 'write', 'x@x.com'));
       expect(changed).to.be.false;
     });
   });
