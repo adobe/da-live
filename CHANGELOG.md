@@ -1,3 +1,10 @@
+## [1.37.4](https://github.com/adobe/da-live/compare/v1.37.3...v1.37.4) (2026-11-27)
+
+
+### Bug Fixes
+
+* **canvas:** notify send status after unpublish ([#1800](https://github.com/adobe/da-live/issues/1800)) ([a5155dd](https://github.com/adobe/da-live/commit/a5155dd9750c1f437fac716db7b7ead185bac202))
+
 ## [1.37.3](https://github.com/adobe/da-live/compare/v1.37.2...v1.37.3) (2026-11-27)
 
 
