@@ -3,12 +3,14 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  activeQuery, folderRulePath, parseFolderPath, hasPermissionsSheet, LEVEL_LABEL,
+  activeQuery, folderRulePath, parseFolderPath, parsePagePath, removeScope, hasPermissionsSheet,
+  LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
+await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 await import('../da-permissions-cards/da-permissions-cards.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -79,6 +81,11 @@ export async function mutatePermissions(org, mutate) {
 
 const DOCS_URL = 'https://www.aem.live/docs/ew/administering/permissions';
 
+const PATH_KINDS = [
+  { value: 'folder', label: 'Folder', placeholder: '/blog/drafts', hint: 'Covers the folder and everything in it.' },
+  { value: 'page', label: 'Page', placeholder: '/about', hint: 'Covers the page and its images.' },
+];
+
 class DaPermissions extends LitElement {
   static properties = {
     org: { attribute: false },
@@ -92,9 +99,9 @@ class DaPermissions extends LitElement {
     _busy: { state: true },
     _adding: { state: true },
     _confirmRemove: { state: true },
-    _pendingFolder: { state: true },
-    _folderDialogOpen: { state: true },
-    _folderError: { state: true },
+    _pendingPath: { state: true },
+    _pathDialog: { state: true },
+    _pathError: { state: true },
   };
 
   constructor() {
@@ -110,9 +117,9 @@ class DaPermissions extends LitElement {
     this._query = '';
     this._adding = null;
     this._confirmRemove = null;
-    this._pendingFolder = null;
-    this._folderDialogOpen = false;
-    this._folderError = null;
+    this._pendingPath = null;
+    this._pathDialog = null;
+    this._pathError = null;
   }
 
   connectedCallback() {
@@ -126,8 +133,8 @@ class DaPermissions extends LitElement {
     if (!orgChanged && !siteChanged) return;
 
     this._query = '';
-    this._pendingFolder = null;
-    this._folderDialogOpen = false;
+    this._pendingPath = null;
+    this._pathDialog = null;
     this._adding = null;
     this._confirmRemove = null;
     if (orgChanged) {
@@ -159,7 +166,7 @@ class DaPermissions extends LitElement {
   }
 
   get _slots() {
-    return buildSlots(this._rules, this.site, this._pendingFolder);
+    return buildSlots(this._rules, this.site, this._pendingPath);
   }
 
   get _filteredSlots() {
@@ -214,10 +221,12 @@ class DaPermissions extends LitElement {
     this._confirmRemove = null;
   }
 
+  // Without `who`, removes all permissions of the scope.
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    await this._mutate((config) => removeMember(config, path, level, who), path);
+    const remove = who ? (config, p) => removeMember(config, p, level, who) : removeScope;
+    await this._mutate((config) => remove(config, path), path);
   }
 
   // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
@@ -230,9 +239,7 @@ class DaPermissions extends LitElement {
 
     if (result.ok) {
       this._rules = result.rules;
-      if (this._pendingFolder && path === folderRulePath(this.site, this._pendingFolder)) {
-        this._pendingFolder = null;
-      }
+      if (path === this._pendingPath) this._pendingPath = null;
       return;
     }
     if (result.status === 401 || result.status === 403) {
@@ -258,28 +265,37 @@ class DaPermissions extends LitElement {
     window.location.hash = `/${value}`;
   }
 
-  _onOpenFolderDialog() {
-    this._folderError = null;
-    this._folderDialogOpen = true;
+  async _onOpenPathDialog(kind) {
+    this._pathError = null;
+    this._pathDialog = kind;
+    await this.updateComplete;
+    this.shadowRoot.querySelector('.path-input')?.focus();
   }
 
-  _onFolderSubmit(e) {
+  _onPathSubmit(e) {
     e?.preventDefault();
-    const input = this.shadowRoot.querySelector('.folder-path-input');
-    const result = parseFolderPath(input?.value);
+    const kind = this._pathDialog;
+    const input = this.shadowRoot.querySelector('.path-input');
+    const result = kind === 'page' ? parsePagePath(input?.value) : parseFolderPath(input?.value);
     if (result.error) {
-      this._folderError = result.error;
+      this._pathError = result.error;
       return;
     }
-    this._folderError = null;
-    this._folderDialogOpen = false;
-    this._pendingFolder = result.folder;
+    this._pathDialog = null;
+    let path = kind === 'page'
+      ? `/${this.site}/${result.page}` : folderRulePath(this.site, result.folder);
+    // Add to a hand-typed rule for the same page without .html, unless the .html one exists.
+    const bare = path.replace(/\.html$/, '');
+    const slots = this._slots;
+    if (kind === 'page' && !bare.split('/').pop().includes('.')
+      && !slots.some((s) => s.path === path) && slots.some((s) => s.path === bare)) path = bare;
+    this._pendingPath = path;
     this._query = '';
-    this._adding = { path: folderRulePath(this.site, result.folder), level: 'read' };
+    this._adding = { path, level: 'read' };
   }
 
-  _onFolderCancel() {
-    this._folderDialogOpen = false;
+  _onPathCancel() {
+    this._pathDialog = null;
   }
 
   _renderOrgForm() {
@@ -327,7 +343,7 @@ class DaPermissions extends LitElement {
           <nx-search
             variant="field"
             size="m"
-            placeholder="Filter by person or folder…"
+            placeholder="Filter by person, folder or page…"
             .value=${this._query}
             @input=${(e) => this._onFilterInput(e)}
           ></nx-search>
@@ -376,52 +392,68 @@ class DaPermissions extends LitElement {
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
-        .canAddFolder=${!!this.site && this._editable && !activeQuery(this._query)}
-        @permissions-add-folder=${() => this._onOpenFolderDialog()}
+        .canAdd=${!!this.site && this._editable && !activeQuery(this._query)}
+        @permissions-add-path=${() => this._onOpenPathDialog('folder')}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
+        @permissions-remove-scope=${(e) => this._onRemoveRequest(e)}
       ></da-permissions-cards>`;
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
       ${content}
       ${this._renderRemoveDialog()}
-      ${this._renderFolderDialog()}`;
+      ${this._renderPathDialog()}`;
   }
 
-  _renderFolderDialog() {
-    if (!this._folderDialogOpen) return nothing;
-    const error = this._folderError;
+  _renderPathDialog() {
+    const kind = this._pathDialog;
+    if (!kind) return nothing;
+    const error = this._pathError;
+    const { placeholder, hint } = PATH_KINDS.find((item) => item.value === kind);
     return html`
-      <nx-dialog title="Add folder permission" @close=${() => this._onFolderCancel()}>
-        <form class="folder-add-form" @submit=${(e) => this._onFolderSubmit(e)}>
+      <nx-dialog title="Add permission" @close=${() => this._onPathCancel()}>
+        <form class="path-add-form" @submit=${(e) => this._onPathSubmit(e)}>
+          <nx-segmented-btn
+            size="m"
+            label="Folder or page"
+            .items=${PATH_KINDS}
+            .value=${kind}
+            @change=${(e) => this._onOpenPathDialog(e.detail.value)}
+          ></nx-segmented-btn>
           <div class="nx-form-field ${error ? 'nx-field-error' : ''}">
-            <label for="permissions-folder-path">Folder path</label>
+            <label for="permissions-path">Path</label>
             <input
-              id="permissions-folder-path"
-              class="folder-path-input nx-input"
+              id="permissions-path"
+              class="path-input nx-input"
               type="text"
-              placeholder="/blog/drafts"
+              placeholder=${placeholder}
               autocomplete="off"
               autofocus
               aria-invalid=${error ? 'true' : 'false'}
+              aria-describedby=${error ? 'permissions-path-error permissions-path-hint' : 'permissions-path-hint'}
             >
-            ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
+            ${error ? html`<p id="permissions-path-error" class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
+            <p id="permissions-path-hint" class="path-kind-hint">${hint}</p>
           </div>
         </form>
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onFolderCancel()}>Cancel</button>
-        <button type="button" slot="actions" class="folder-add-submit nx-form-btn-primary" @click=${() => this._onFolderSubmit()}>Add</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onPathCancel()}>Cancel</button>
+        <button type="button" slot="actions" class="path-add-submit nx-form-btn-primary" @click=${() => this._onPathSubmit()}>Add</button>
       </nx-dialog>`;
   }
 
   _renderRemoveDialog() {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
+    const label = scopeLabel(path, this.site);
+    const text = who
+      ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?`
+      : `Remove all permissions for ${label}?`;
     return html`
-      <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
-        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
+      <nx-dialog title=${who ? 'Remove member' : 'Remove permissions'} @close=${() => this._cancelRemove()}>
+        <p>${text}</p>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this.shadowRoot.querySelector('nx-dialog').close()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;
   }

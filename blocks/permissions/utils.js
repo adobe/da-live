@@ -41,7 +41,7 @@ export function folderRulePath(site, folder) {
 }
 
 export function parseFolderPath(value) {
-  const trimmed = (value || '').trim();
+  const trimmed = (value || '').trim().toLowerCase();
   if (!trimmed) return { error: 'Enter a folder path, e.g. /blog.' };
   if (!trimmed.startsWith('/')) return { error: 'Folder paths start with /, e.g. /blog.' };
   const folder = trimmed.split('/').filter(Boolean).join('/');
@@ -49,7 +49,26 @@ export function parseFolderPath(value) {
   if (folder.split('/').some((segment) => segment === '.' || segment === '..' || segment.includes('*'))) {
     return { error: 'Folder paths cannot contain traversal or wildcard segments.' };
   }
+  if (folder.endsWith('.html')) return { error: 'Folder paths cannot end with .html. Choose Page to add a page.' };
   return { folder };
+}
+
+// da-admin lowercases request paths and drops spaces from rule paths, so only names DA can
+// create would match. Pages keep .html: an exact rule without it also matches the folder.
+const PAGE_SEGMENT_RE = /^[a-z0-9_-][a-z0-9._-]*$/;
+
+export function parsePagePath(value) {
+  const trimmed = (value || '').trim().toLowerCase();
+  if (!trimmed) return { error: 'Enter a page path, e.g. /about.' };
+  if (!trimmed.startsWith('/')) return { error: 'Page paths start with /, e.g. /about.' };
+  const segments = trimmed.split('/').filter(Boolean);
+  if (!segments.length) return { error: 'Enter a page below the site root, e.g. /about.' };
+  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Choose Folder to add a folder.' };
+  if (segments.some((segment) => !PAGE_SEGMENT_RE.test(segment))) {
+    return { error: 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.' };
+  }
+  const page = segments.join('/');
+  return { page: segments.at(-1).includes('.') ? page : `${page}.html` };
 }
 
 function scopeKind(path, site) {
@@ -64,7 +83,9 @@ function scopeKind(path, site) {
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
   if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
-  return 'other';
+  const effective = norm.replace(/ /g, '');
+  if (effective === `${prefix}CONFIG` || effective.includes('*') || effective.endsWith('/')) return 'other';
+  return 'page';
 }
 
 export function scopeLabel(path, site) {
@@ -75,6 +96,7 @@ export function scopeLabel(path, site) {
     const norm = normPath(path);
     return `${norm.slice(`/${site}/`.length, -FOLDER_SUFFIX.length)}/`;
   }
+  if (kind === 'page') return path.slice(`/${site}/`.length);
   return path;
 }
 
@@ -107,7 +129,7 @@ function applyInheritance(slot, orgRules) {
   });
 }
 
-export function buildSlots(rules, site, pendingFolder = null) {
+export function buildSlots(rules, site, pendingPath = null) {
   const slotsMap = new Map();
   const defaults = defaultPaths(site);
   defaults.forEach((path) => ensureSlot(slotsMap, path, site));
@@ -133,10 +155,9 @@ export function buildSlots(rules, site, pendingFolder = null) {
     applyInheritance(slotsMap.get(normPath(`/${site}/+**`)), orgContentRules);
   }
 
-  if (site && pendingFolder) {
-    const folderPath = folderRulePath(site, pendingFolder);
-    const existed = slotsMap.has(folderPath);
-    const slot = ensureSlot(slotsMap, folderPath, site);
+  if (site && pendingPath) {
+    const existed = slotsMap.has(pendingPath);
+    const slot = ensureSlot(slotsMap, pendingPath, site);
     if (!existed) slot.pending = true;
   }
 
@@ -216,7 +237,7 @@ export function removeMember(config, path, level, who) {
       return;
     }
     const current = splitGroups(rule.groups);
-    const filtered = current.filter((m) => m !== who);
+    const filtered = current.filter((m) => m.toLowerCase() !== who.toLowerCase());
     if (filtered.length !== current.length) changed = true;
     if (filtered.length > 0) {
       rule.groups = filtered.join(', ');
@@ -225,6 +246,19 @@ export function removeMember(config, path, level, who) {
   });
 
   if (!changed) return { config: next, changed: false };
+
+  sheet.data = kept;
+  syncSheetCounts(sheet);
+  return { config: next, changed: true };
+}
+
+// Drops every rule of a scope, whatever its actions.
+export function removeScope(config, path) {
+  const next = structuredClone(config);
+  const normalizedPath = normPath(path);
+  const sheet = next.permissions;
+  const kept = sheet.data.filter((rule) => normPath(rule.path) !== normalizedPath);
+  if (kept.length === sheet.data.length) return { config: next, changed: false };
 
   sheet.data = kept;
   syncSheetCounts(sheet);

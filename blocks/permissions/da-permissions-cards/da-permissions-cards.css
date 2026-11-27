@@ -9,6 +9,7 @@
 
 .scope-section-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--s2-spacing-200);
@@ -46,6 +47,8 @@
 }
 
 .card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   color: var(--s2-gray-900);
   font-size: var(--s2-body-size-m);
@@ -171,4 +174,8 @@ nx-pills {
   flex: none;
   margin-left: auto;
   white-space: nowrap;
+}
+
+.card-header .remove-scope {
+  flex-shrink: 0;
 }

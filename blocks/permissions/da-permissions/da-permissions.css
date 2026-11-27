@@ -91,3 +91,17 @@
   height: 24px;
   border-width: 3px;
 }
+
+.path-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-300);
+}
+
+.path-add-form p {
+  margin: 0;
+}
+
+.path-kind-hint {
+  font-size: var(--s2-component-s-regular-font-size);
+}
