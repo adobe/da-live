@@ -225,7 +225,7 @@ class DaPermissions extends LitElement {
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    const remove = who ? (config) => removeMember(config, path, level, who) : removeScope;
+    const remove = who ? (config, p) => removeMember(config, p, level, who) : removeScope;
     await this._mutate((config) => remove(config, path), path);
   }
 
@@ -447,7 +447,9 @@ class DaPermissions extends LitElement {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
     const label = scopeLabel(path, this.site);
-    const text = who ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?` : `Remove all permissions for ${label}?`;
+    const text = who
+      ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?`
+      : `Remove all permissions for ${label}?`;
     return html`
       <nx-dialog title=${who ? 'Remove member' : 'Remove permissions'} @close=${() => this._cancelRemove()}>
         <p>${text}</p>
