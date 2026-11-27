@@ -17,9 +17,13 @@
 // queue-backed save, an offline write, etc., without touching persistence.
 
 import { convertJsonToHtml } from '../../../deps/da-sc-sdk/dist/index.js';
-import { saveSourceHtml } from './da-api.js';
+import { saveSourceHtml, saveSourceJson } from './da-api.js';
 
-export function attachPersistence(editor, { path, save = saveSourceHtml } = {}) {
+// `mode` is 'html' (default; convert to DA HTML) or 'json' (Helix 6 native
+// JSON; document saved as-is via `save({ path, json })`).
+export function attachPersistence(editor, { path, mode = 'html', save } = {}) {
+  const isJson = mode === 'json';
+  const doSave = save ?? (isJson ? saveSourceJson : saveSourceHtml);
   let inFlight = false;
   let pending = false;
   let lastValues = editor.getState()?.document;
@@ -36,10 +40,16 @@ export function attachPersistence(editor, { path, save = saveSourceHtml } = {}) 
         pending = false;
         // The model lets the SDK write each rich-text value into a block of its own.
         const { document, model } = editor.getState();
-        const { html, error } = convertJsonToHtml({ json: document, model });
-        if (error) return;
+        let payload;
+        if (isJson) {
+          payload = { json: document };
+        } else {
+          const { html, error } = convertJsonToHtml({ json: document, model });
+          if (error) return;
+          payload = { html };
+        }
         try {
-          await save({ path, html });
+          await doSave({ path, ...payload });
         } catch {
           return;
         }

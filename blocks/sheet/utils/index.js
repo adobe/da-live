@@ -1,6 +1,7 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import { NOT_PERMITTED } from '../../shared/empty-list.js';
+import { isStructuredContentJson } from '../../shared/da-file-item/navigation.js';
 import makeKeyboardAccessible, { releaseKeyboard } from './keyboard.js';
 import '../da-sheet-tabs.js';
 
@@ -156,6 +157,14 @@ export async function getData(input) {
 
   // Get base data
   const json = await resp.json();
+
+  // Safety net for direct /sheet links (bookmarks, new-tab opens): native
+  // structured content belongs in the form editor.
+  if (!isVersion && view === 'sheet' && isStructuredContentJson(json)) {
+    const docPath = path.endsWith('.json') ? path : `${path}.json`;
+    window.location.replace(`/form${window.location.search}#/${org}/${site}${docPath}`);
+    return new Promise(() => {});
+  }
 
   if (!isVersion) {
     staleCheck.markSynced(resp.headers.get('etag'));

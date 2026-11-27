@@ -2,7 +2,7 @@ import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../icons.js';
-import { getFileItemHref } from './navigation.js';
+import { getFileItemHref, getJsonEditorHref } from './navigation.js';
 
 import {
   fetchAemStatus,
@@ -315,11 +315,20 @@ export default class DaFileItem extends LitElement {
     return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
   }
 
+  // `.json` may be a sheet or native structured content; resolve the editor
+  // from the content on a plain click. Modified clicks keep the sheet href.
+  async handleOpen(e) {
+    if (this.href || this.ext !== 'json') return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    window.location.assign(await getJsonEditorHref(this));
+  }
+
   renderItem() {
     const href = this.href ?? getFileItemHref(this);
 
     return html`
-      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
+      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" @click=${this.handleOpen} data-column="name">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
@@ -392,12 +401,12 @@ export default class DaFileItem extends LitElement {
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
-        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" @click=${this.handleOpen} tabindex="-1" aria-hidden="true">
           ${this.renderFilePreview()}
         </a>
         ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
         ${this.rename ? this.renderRename('content') : html`
-          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
+          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" @click=${this.handleOpen} title=${this.name}>
             ${this.name}
           </a>
           ${this.renderCardMenu()}`}

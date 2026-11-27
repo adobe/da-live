@@ -1,6 +1,7 @@
 import { convertHtmlToJson } from '../../../deps/da-sc-sdk/dist/index.js';
 import { fetchSourceHtml } from './da-api.js';
 import { loadSchemas } from './schemas.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 
 export { convertHtmlToJson };
 
@@ -53,7 +54,7 @@ function isDocument(details) {
 
 function displayPath(details) {
   const fullpath = (details?.fullpath ?? '').trim();
-  return fullpath.toLowerCase().endsWith('.html') ? fullpath.slice(0, -5) : fullpath;
+  return fullpath.replace(/\.(html|json)$/i, '');
 }
 
 async function loadHtml(details, fetchHtml) {
@@ -80,15 +81,106 @@ function withBase(details, schemas) {
 // `fetchHtml` and `fetchSchemas` are injectable for testability; defaults are
 // the production network calls. Tests pass stubs without touching importmaps
 // or stubbing globals.
+export async function checkHlx6({ org, site }) {
+  if (!org || !site) return false;
+  try {
+    const { isHlx6 } = await getNx2Api();
+    return !!(await isHlx6(org, site));
+  } catch {
+    return false;
+  }
+}
+
+// Valid native structured content: object with `metadata.schemaName`.
+export function isStructuredContentJson(json) {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return false;
+  const { metadata } = json;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  return typeof metadata.schemaName === 'string' && metadata.schemaName.length > 0;
+}
+
+function jsonDetails(details) {
+  const fullpath = (details?.fullpath ?? '').trim().replace(/\.(html|json)$/i, '');
+  const next = `${fullpath}.json`;
+  return { ...details, fullpath: next, sourceUrl: next };
+}
+
+function htmlSiblingDetails(details) {
+  const next = details.fullpath.replace(/\.json$/i, '.html');
+  return { ...details, fullpath: next, sourceUrl: next };
+}
+
+function resolveJson({ json, schemas, details }) {
+  const base = { storage: 'json', ...withBase(details, schemas) };
+  const schemaName = json?.metadata?.schemaName;
+  const schema = schemaName ? schemas?.[schemaName] : null;
+  if (!schema) {
+    return {
+      status: 'blocked',
+      blocker: { type: 'missing-schema', schemaName: schemaName ?? '' },
+      json,
+      ...base,
+    };
+  }
+  return { status: 'ready', schemaName, schema, json, ...base };
+}
+
+async function loadHlx6Context({ details: htmlDetails, fetchHtml, schemasPromise }) {
+  const details = jsonDetails(htmlDetails);
+  const [schemas, docResult] = await Promise.all([schemasPromise, loadHtml(details, fetchHtml)]);
+  const base = { storage: 'json', ...withBase(details, schemas) };
+  const newDoc = () => ({
+    status: Object.keys(schemas).length > 0 ? 'select-schema' : 'no-schemas',
+    ...base,
+  });
+  const blocked = (blocker) => ({ status: 'blocked', blocker, ...base });
+
+  if (docResult.error) {
+    if (docResult.status !== 404) return blocked(loadErrorToBlocker(docResult));
+
+    // Migration: no .json yet, fall back to a legacy .html document.
+    const legacy = await loadHtml(htmlSiblingDetails(details), fetchHtml);
+    if (legacy.error) {
+      if (legacy.status === 401 || legacy.status === 403) return blocked({ type: 'no-access' });
+      if (legacy.status === 404) return newDoc();
+      return blocked(loadErrorToBlocker(legacy));
+    }
+    const html = legacy.html ?? '';
+    if (isEmptyDocumentHtml(html)) return newDoc();
+    if (!isStructuredContentHtml(html)) return blocked({ type: 'not-form-content' });
+    const { json, error } = convertHtmlToJson({ html });
+    if (error || !json) return blocked({ type: 'load-failed' });
+    return resolveJson({ json, schemas, details });
+  }
+
+  const text = (docResult.html ?? '').trim();
+  if (!text) return newDoc();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return blocked({ type: 'load-failed' });
+  }
+  if (json && typeof json === 'object' && !Array.isArray(json)
+    && Object.keys(json).length === 0) return newDoc();
+  if (!isStructuredContentJson(json)) return blocked({ type: 'not-form-content' });
+  return resolveJson({ json, schemas, details });
+}
+
 export async function loadFormContext({
   details,
   fetchHtml = fetchSourceHtml,
   fetchSchemas = loadSchemas,
+  isHlx6 = checkHlx6,
 } = {}) {
   const schemasPromise = fetchSchemas({
     owner: details?.owner,
     repo: details?.repo,
   });
+
+  if (await isHlx6({ org: details?.owner, site: details?.repo })) {
+    return loadHlx6Context({ details, fetchHtml, schemasPromise });
+  }
 
   if (!isDocument(details)) {
     const schemas = await schemasPromise;

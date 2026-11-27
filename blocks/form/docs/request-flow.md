@@ -54,6 +54,8 @@ decorate(block)                                  ← form.js (EW workspace wrapp
 | HTML has unknown `schemaName`     | `blocked: missing-schema`   | "Schema not found"     |
 | Otherwise                         | `ready`                     | Editor                 |
 
+**Helix 6 storage.** When `isHlx6(org, site)` is true, the document is native JSON at `<path>.json` (`{ metadata, data }`, used as-is, no conversion; saved via `saveSourceJson`). Valid = object with non-empty `metadata.schemaName`. Unparseable → `load-failed`; other JSON → `not-form-content`; empty or `{}` → schema picker. A 404 on `.json` falls back to a legacy `<path>.html` (converted on load; the next save writes `.json`, the `.html` is left untouched); 404 on both is a new document. Non-Helix-6 sites keep the HTML flow above.
+
 **What's lazy.** `views/editor.js` dynamically imports `array-menu`, `reorder` and the nx2 dialog in `firstUpdated`, which Lit calls after the first render. While the status is `loading`, the editor renders nothing.
 
 ---
