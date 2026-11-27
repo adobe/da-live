@@ -69,7 +69,7 @@ describe('da-permissions-cards', () => {
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['config', 'content', 'paths']);
     expect(sections[0].querySelector('h3').textContent.trim()).to.equal('Configuration Permissions for: site1');
     expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Content Permissions for: site1');
-    expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folder and Page Permissions');
+    expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Path Permissions');
   });
 
   it('uses org scope in organization configuration accessibility labels', async () => {
@@ -103,12 +103,12 @@ describe('da-permissions-cards', () => {
     });
   });
 
-  it('puts a secondary "Add folder or page" button on the Folder and Page Permissions heading row', async () => {
+  it('puts a secondary "Add folder or page" button on the Path Permissions heading row', async () => {
     const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
     const el = await mount({ slots: [folderSlot], scopeName: 'site1', canAdd: true });
 
     const header = el.shadowRoot.querySelector('section[data-section="paths"] .scope-section-header');
-    expect(header?.querySelector('h3')?.textContent.trim()).to.equal('Folder and Page Permissions');
+    expect(header?.querySelector('h3')?.textContent.trim()).to.equal('Path Permissions');
     const btn = header?.querySelector('button.add-path');
     expect(btn?.textContent.trim()).to.equal('Add folder or page');
     expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
@@ -120,7 +120,7 @@ describe('da-permissions-cards', () => {
     expect(opened).to.equal(1);
   });
 
-  it('shows the Folder and Page Permissions section with an empty note when rules can be added but none exist', async () => {
+  it('shows the Path Permissions section with an empty note when rules can be added but none exist', async () => {
     const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
     const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: true, busy: true });
 
@@ -129,7 +129,7 @@ describe('da-permissions-cards', () => {
     expect(section?.querySelector('button.add-path')?.disabled).to.equal(true);
   });
 
-  it('has no Folder and Page Permissions section or button when rules cannot be added and none exist', async () => {
+  it('has no Path Permissions section or button when rules cannot be added and none exist', async () => {
     const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
     const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: false });
     expect(!!el.shadowRoot.querySelector('section[data-section="paths"]')).to.equal(false);
@@ -146,6 +146,49 @@ describe('da-permissions-cards', () => {
     const cards = [...sections[0].querySelectorAll('article.scope-card')];
     expect(cards.map((c) => c.dataset.path)).to.deep.equal([pageSlot.path, folderSlot.path]);
     expect(cards[0].querySelector('.card-title').textContent.trim()).to.equal('promotions');
+  });
+
+  it('puts a remove button on folder and page cards that emits permissions-remove-scope, disabled while busy', async () => {
+    const contentSlot = baseSlot({ path: '/myorg/site1/ + **', kind: 'content', label: 'All site content' });
+    const otherSlot = baseSlot({ path: '/myorg/site1/foo/', kind: 'other', label: '/myorg/site1/foo/' });
+    const pageSlot = baseSlot({ path: '/myorg/site1/about.html', kind: 'page', label: 'about.html' });
+    const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
+    const el = await mount({ slots: [contentSlot, otherSlot, pageSlot, folderSlot], scopeName: 'site1' });
+
+    const button = (slot) => el.shadowRoot.querySelector(`article.scope-card[data-path="${slot.path}"] .card-header button.remove-scope`);
+    expect(button(contentSlot)).to.equal(null);
+    expect(button(otherSlot)).to.equal(null);
+    expect(button(folderSlot).getAttribute('aria-label')).to.equal('Remove all permissions for blog/');
+    expect(button(folderSlot).getAttribute('title')).to.equal('Remove all permissions for blog/');
+    expect(button(folderSlot).classList.contains('nx-action-btn-icon')).to.equal(true);
+
+    let removeEvent = null;
+    el.addEventListener('permissions-remove-scope', (e) => { removeEvent = e; });
+    button(pageSlot).click();
+    expect(removeEvent.detail).to.deep.equal({ path: pageSlot.path });
+
+    el.busy = true;
+    await el.updateComplete;
+    expect(button(folderSlot).disabled).to.equal(true);
+  });
+
+  it('has no remove button on cards when not editable', async () => {
+    const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
+    const el = await mount({ slots: [folderSlot], editable: false });
+    expect(el.shadowRoot.querySelector('button.remove-scope')).to.equal(null);
+  });
+
+  it('has no remove button on a card the filter narrows, so it can\'t remove members it doesn\'t show', async () => {
+    const folder = { kind: 'folder', read: ['reader@x.com'], write: ['legal@x.com'] };
+    const slots = filterSlots([
+      baseSlot({ ...folder, path: '/myorg/site1/blog/ + **', label: 'blog/' }),
+      baseSlot({ ...folder, path: '/myorg/site1/legal/ + **', label: 'legal/' }),
+    ], 'legal');
+    const el = await mount({ slots });
+
+    const button = (path) => el.shadowRoot.querySelector(`article.scope-card[data-path="${path}"] button.remove-scope`);
+    expect(button('/myorg/site1/blog/ + **')).to.equal(null);
+    expect(button('/myorg/site1/legal/ + **')).to.not.equal(null);
   });
 
   it('hides empty sections: only folder slots renders no config or content section', async () => {

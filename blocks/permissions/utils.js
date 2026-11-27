@@ -252,6 +252,19 @@ export function removeMember(config, path, level, who) {
   return { config: next, changed: true };
 }
 
+// Drops every rule of a scope, whatever its actions.
+export function removeScope(config, path) {
+  const next = structuredClone(config);
+  const normalizedPath = normPath(path);
+  const sheet = next.permissions;
+  const kept = sheet.data.filter((rule) => normPath(rule.path) !== normalizedPath);
+  if (kept.length === sheet.data.length) return { config: next, changed: false };
+
+  sheet.data = kept;
+  syncSheetCounts(sheet);
+  return { config: next, changed: true };
+}
+
 const MIN_QUERY_LENGTH = 2;
 
 // The normalized filter text, or '' while it's too short to filter on.

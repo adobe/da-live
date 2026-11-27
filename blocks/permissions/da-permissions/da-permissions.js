@@ -3,7 +3,8 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  activeQuery, folderRulePath, parseFolderPath, parsePagePath, hasPermissionsSheet, LEVEL_LABEL,
+  activeQuery, folderRulePath, parseFolderPath, parsePagePath, removeScope, hasPermissionsSheet,
+  LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -220,10 +221,12 @@ class DaPermissions extends LitElement {
     this._confirmRemove = null;
   }
 
+  // Without `who`, removes all permissions of the scope.
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    await this._mutate((config) => removeMember(config, path, level, who), path);
+    const remove = who ? (config) => removeMember(config, path, level, who) : removeScope;
+    await this._mutate((config) => remove(config, path), path);
   }
 
   // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
@@ -395,6 +398,7 @@ class DaPermissions extends LitElement {
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
+        @permissions-remove-scope=${(e) => this._onRemoveRequest(e)}
       ></da-permissions-cards>`;
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
@@ -409,7 +413,7 @@ class DaPermissions extends LitElement {
     const error = this._pathError;
     const { placeholder, hint } = PATH_KINDS.find((item) => item.value === kind);
     return html`
-      <nx-dialog title="Add folder or page permission" @close=${() => this._onPathCancel()}>
+      <nx-dialog title="Add permission" @close=${() => this._onPathCancel()}>
         <form class="path-add-form" @submit=${(e) => this._onPathSubmit(e)}>
           <nx-segmented-btn
             size="m"
@@ -442,10 +446,12 @@ class DaPermissions extends LitElement {
   _renderRemoveDialog() {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
+    const label = scopeLabel(path, this.site);
+    const text = who ? `Remove ${who} from ${label} · ${LEVEL_LABEL[level]}?` : `Remove all permissions for ${label}?`;
     return html`
-      <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
-        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
+      <nx-dialog title=${who ? 'Remove member' : 'Remove permissions'} @close=${() => this._cancelRemove()}>
+        <p>${text}</p>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this.shadowRoot.querySelector('nx-dialog').close()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;
   }
