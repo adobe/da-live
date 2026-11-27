@@ -73,14 +73,19 @@ export default class DaList extends DaListBase {
 
   renderYesInput() {
     return html`
-      <input
-        class="nx-input"
-        type="text"
-        placeholder="YES"
-        autofocus
-        @input=${this.upperCaseConfirm}
-        aria-label="Type YES to confirm"
-        value=${this._confirmText ?? ''}>
+      <div class="nx-form-field ${this._confirmError ? 'nx-field-error' : ''}">
+        <input
+          class="nx-input"
+          type="text"
+          placeholder="YES"
+          autofocus
+          @input=${this.handleConfirmInput}
+          aria-label="Type YES to confirm"
+          aria-invalid=${this._confirmError ? 'true' : 'false'}
+          aria-describedby=${this._confirmError ? 'confirm-error' : nothing}
+          value=${this._confirmText ?? ''}>
+        <span id="confirm-error" class="nx-input-error-msg" role="alert">${this._confirmError}</span>
+      </div>
     `;
   }
 

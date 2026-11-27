@@ -1,8 +1,12 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getNx2Api } from '../../../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../../../scripts/utils.js';
 
-const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const [form, sheet] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/form.css`),
+  getSheet(import.meta.url.replace('js', 'css')),
+]);
 
 class DaUnpublish extends LitElement {
   static properties = {
@@ -14,7 +18,7 @@ class DaUnpublish extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.shadowRoot.adoptedStyleSheets = [form, sheet];
   }
 
   handleClose() {
@@ -54,6 +58,12 @@ class DaUnpublish extends LitElement {
     return this._confirmText !== 'YES' || this._statusText || this._results?.length;
   }
 
+  get _confirmError() {
+    return this._confirmText?.length >= 3 && this._confirmText !== 'YES'
+      ? 'Type YES in uppercase.'
+      : '';
+  }
+
   renderResults() {
     return this._results.map((result) => html`<p>${result}</p>`);
   }
@@ -62,12 +72,18 @@ class DaUnpublish extends LitElement {
     return html`
       <p class="sl-heading-m">Are you sure you want to unpublish?</p>
       <p>Type <strong>YES</strong> to confirm.</p>
-      <sl-input
-        type="text"
-        placeholder="YES"
-        @input=${({ target }) => { this._confirmText = target.value; }}
-        aria-label="Type yes to confirm unpublish"
-        value=${this._confirmText}></sl-input>`;
+      <div class="nx-form-field ${this._confirmError ? 'nx-field-error' : ''}">
+        <input
+          class="nx-input"
+          type="text"
+          placeholder="YES"
+          @input=${({ target }) => { this._confirmText = target.value; }}
+          aria-label="Type YES to confirm unpublish"
+          aria-invalid=${this._confirmError ? 'true' : 'false'}
+          aria-describedby=${this._confirmError ? 'confirm-error' : nothing}
+          value=${this._confirmText ?? ''}>
+        <span id="confirm-error" class="nx-input-error-msg" role="alert">${this._confirmError}</span>
+      </div>`;
   }
 
   render() {
