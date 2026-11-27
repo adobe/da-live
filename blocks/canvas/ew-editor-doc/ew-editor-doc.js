@@ -121,6 +121,11 @@ export class EwEditorDoc extends LitElement {
     canvasBus.editorHtmlState.emit(getInstrumentedHTML(view, previewOptions));
   }
 
+  _syncInlineEdit(data) {
+    if (this._controllerCtx) getEditor(data, this._controllerCtx);
+    if (data.updateOutline) this._emitHtmlChange();
+  }
+
   _emitUndoState() {
     const mgr = this._proseContext?.undoManager;
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
@@ -415,7 +420,7 @@ export class EwEditorDoc extends LitElement {
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
               () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
-              (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
+              (data) => this._syncInlineEdit(data),
               (pmView) => {
                 const blockIndex = getActiveBlockIndex(pmView);
                 const proseIndex = activeContentProseIndex(pmView);

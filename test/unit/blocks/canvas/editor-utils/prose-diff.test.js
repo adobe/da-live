@@ -220,6 +220,78 @@ describe('createTrackingPlugin — block identity changes', () => {
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
   });
 
+  it('rerenders when undo restores text inside a retained empty heading', () => {
+    const { plugin, prevState, counts } = setupHeading(2);
+    const pluginView = plugin.spec.view();
+    const cut = prevState.tr.delete(1, prevState.doc.firstChild.nodeSize - 1);
+    const cutState = prevState.apply(cut);
+    expect(cutState.doc.firstChild.type.name).to.equal('heading');
+    expect(cutState.doc.firstChild.content.size).to.equal(0);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+
+    const redoState = restoredState.apply(
+      restoredState.tr.step(cut.steps[0])
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: redoState }, restoredState);
+
+    expect(redoState.doc.eq(cutState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 3, getEditorCalls: 0 });
+  });
+
+  it('rerenders when undo restores a removed top-level heading', () => {
+    const heading = docWithHeading('Title').firstChild;
+    const paragraph = docWithParagraph('Body').firstChild;
+    const { plugin, prevState, counts } = setup(
+      schema.nodes.doc.create(null, [heading, paragraph]),
+    );
+    const pluginView = plugin.spec.view();
+    const cut = prevState.tr.delete(0, heading.nodeSize);
+    const cutState = prevState.apply(cut);
+    expect(cutState.doc.childCount).to.equal(1);
+    expect(cutState.doc.firstChild.eq(paragraph)).to.equal(true);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
+  it('rerenders when undo restores a heading replaced by an empty paragraph', () => {
+    const { plugin, prevState, counts } = setupHeading(2);
+    const pluginView = plugin.spec.view();
+    const emptyParagraph = schema.nodes.paragraph.create();
+    const cut = prevState.tr.replaceWith(0, prevState.doc.content.size, emptyParagraph);
+    const cutState = prevState.apply(cut);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
   it('reports the accumulated diff when updates are coalesced', () => {
     const { plugin, prevState, rerenderDetails } = setupHeading(2);
     const intermediateState = prevState.apply(
@@ -269,6 +341,83 @@ describe('createTrackingPlugin — attrs changes outside EDITABLE_TYPES', () => 
 
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
   });
+
+  it('rerenders after deleting an image so the outline removes it', () => {
+    const { plugin, prevState, counts } = setupImage('/a.png');
+    const nextState = prevState.apply(prevState.tr.delete(1, 2));
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
+
+  ['', 'caption'].forEach((text) => {
+    it(`rerenders image cut, undo and redo ${text ? 'alongside text' : 'in an image-only paragraph'}`, () => {
+      const image = schema.nodes.image.create({ src: '/a.png' });
+      const paragraph = schema.nodes.paragraph.create(null, [
+        image,
+        ...(text ? [schema.text(text)] : []),
+      ]);
+      const { plugin, prevState, counts } = setup(schema.nodes.doc.create(null, paragraph));
+      const pluginView = plugin.spec.view();
+      const cut = prevState.tr.delete(1, 2);
+      const cutState = prevState.apply(cut);
+      pluginView.update({ state: cutState }, prevState);
+      expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+      const undoState = cutState.apply(
+        cutState.tr.step(cut.steps[0].invert(prevState.doc))
+          .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+      );
+      pluginView.update({ state: undoState }, cutState);
+      expect(undoState.doc.eq(prevState.doc)).to.equal(true);
+      expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+
+      const redoState = undoState.apply(
+        undoState.tr.step(cut.steps[0])
+          .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+      );
+      pluginView.update({ state: redoState }, undoState);
+      expect(redoState.doc.eq(cutState.doc)).to.equal(true);
+      expect(counts()).to.deep.equal({ rerenderCalls: 3, getEditorCalls: 0 });
+    });
+  });
+
+  it('rerenders when inserting an image into existing text', () => {
+    const { plugin, prevState, counts } = setup('caption');
+    const nextState = prevState.apply(
+      prevState.tr.insert(1, schema.nodes.image.create({ src: '/a.png' })),
+    );
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
+
+  it('rerenders when an image is replaced with text and restored', () => {
+    const { plugin, prevState, counts } = setupImage('/a.png');
+    const pluginView = plugin.spec.view();
+    const replacement = prevState.tr.replaceWith(1, 2, schema.text('caption'));
+    const nextState = prevState.apply(replacement);
+    pluginView.update({ state: nextState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = nextState.apply(
+      nextState.tr.step(replacement.steps[0].invert(prevState.doc)),
+    );
+    pluginView.update({ state: restoredState }, nextState);
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
+  it('rerenders after clearing an editable item so the outline removes it', () => {
+    const { plugin, prevState, counts } = setup('Text');
+    const nextState = prevState.apply(prevState.tr.delete(1, 5));
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
 });
 
 describe('createTrackingPlugin — edit origin', () => {
@@ -312,5 +461,60 @@ describe('createTrackingPlugin — edit origin', () => {
     const next = update(state, { isChangeOrigin: true }, null);
     update(next, { isChangeOrigin: true });
     expect(calls).to.deep.equal(['local', 'remote']);
+  });
+});
+
+describe('createTrackingPlugin — Outline update triggers', () => {
+  it('does not update Outline for character edits, including their undo/redo', () => {
+    const calls = [];
+    const onInlineEdit = (data) => calls.push(data.updateOutline);
+    const plugin = createTrackingPlugin(undefined, undefined, onInlineEdit);
+    const history = { isChangeOrigin: true, isUndoRedoOperation: true };
+    const before = EditorState.create({ schema, doc: docWithParagraph('hello'), plugins: [plugin] });
+    const typed = before.apply(before.tr.insertText('!', 1));
+    plugin.spec.view().update({ state: typed }, before);
+    const undone = typed.apply(typed.tr.delete(1, 2).setMeta(ySyncPluginKey, history));
+    plugin.spec.view().update({ state: undone }, typed);
+    const redone = undone.apply(undone.tr.insertText('!', 1).setMeta(ySyncPluginKey, history));
+    plugin.spec.view().update({ state: redone }, undone);
+
+    expect(calls).to.deep.equal([false, false, false]);
+  });
+
+  ['bullet_list', 'ordered_list'].forEach((listType) => {
+    [
+      { removed: 'first', index: 0, expected: true },
+      { removed: 'second', index: 1, expected: false },
+      { removed: 'last', index: 2, expected: false },
+    ].forEach(({ removed, index, expected }) => {
+      it(`${expected ? 'updates' : 'skips'} Outline when the ${removed} ${listType} item is removed, restored and removed again`, () => {
+        const calls = [];
+        let rerenders = 0;
+        const onInlineEdit = (data) => calls.push(data.updateOutline);
+        const plugin = createTrackingPlugin(() => { rerenders += 1; }, undefined, onInlineEdit);
+        const pluginView = plugin.spec.view();
+        const history = { isChangeOrigin: true, isUndoRedoOperation: true };
+        const item = (text) => schema.nodes.list_item.create(null, [
+          schema.nodes.paragraph.create(null, schema.text(text)),
+        ]);
+        const items = [item('First'), item('Second'), item('Third')];
+        const doc = schema.nodes.doc.create(null, [schema.nodes[listType].create(null, items)]);
+        const before = EditorState.create({ schema, doc, plugins: [plugin] });
+        const start = 1 + items.slice(0, index).reduce((size, node) => size + node.nodeSize, 0);
+        const cut = before.tr.delete(start, start + items[index].nodeSize);
+        const after = before.apply(cut);
+        pluginView.update({ state: after }, before);
+        const undone = after.apply(after.tr.step(cut.steps[0].invert(before.doc))
+          .setMeta(ySyncPluginKey, history));
+        pluginView.update({ state: undone }, after);
+        const redone = undone.apply(undone.tr.step(cut.steps[0]).setMeta(ySyncPluginKey, history));
+        pluginView.update({ state: redone }, undone);
+
+        expect(after.doc.textContent).to.not.include(items[index].textContent);
+        expect(undone.doc.eq(before.doc)).to.equal(true);
+        expect(calls).to.deep.equal([expected, expected, expected]);
+        expect(rerenders).to.equal(0);
+      });
+    });
   });
 });
