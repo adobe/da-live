@@ -1084,7 +1084,7 @@ export default class DaListBase extends LitElement {
       `;
     }
 
-    return this.renderDialog({ title, action, onClose: closeHandler }, body);
+    return this.renderDialog({ title, action, onClose: closeHandler, hideCancel: type === 'results' }, body);
   }
 
   renderErrors() {
